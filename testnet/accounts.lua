@@ -55,21 +55,23 @@ function create_keystore_users (node, accounts)
   end
 end
 
-function fund_addresses (node, faucet, addresses)
-  for index, address in ipairs(addresses) do
-    if address.address ~= nil and address.initialFunds ~= nil then
-      params = account_credentials(faucet)
-      params.assetID = "AVA"
-      params.amount = address.initialFunds
-      params.to = address.address
-      avash_call("callrpc " .. node .. " ext/bc/X avm.send " .. json.encode(params) .. " st nid")
-    end
-  end
-end
-
 function fund_accounts (node, faucet, accounts)
+  first = true
   for index, account in pairs(accounts) do
-    fund_addresses (node, faucet, account.wallet)
+    for windex, address in ipairs(account.wallet) do
+      if address.address ~= nil and address.initialFunds ~= nil then
+        if first then
+          first = false
+        else
+          avash_sleepmicro(2000000)
+        end
+        params = account_credentials(faucet)
+        params.assetID = "AVA"
+        params.amount = address.initialFunds
+        params.to = address.address
+        avash_call("callrpc " .. node .. " ext/bc/X avm.send " .. json.encode(params) .. " st nid")
+      end
+    end
   end
 end
 

@@ -24,4 +24,4 @@ There's a poorly documented feature that, at least with Gecko JSONRPC calls, you
 
 You have to `cd` into the `testnet` directory so that `accounts.lua` can find `json.lua`.  It would be nice to fix this at some point.
 
-Not sure why `test2` isn't getting funded... the rpc call params look right, next I need to figure out how to get useful results of RPC calls out of avash.
+Todo: figure out how to get and use the results of an RPC call in avash
