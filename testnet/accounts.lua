@@ -34,6 +34,7 @@ accounts = {
 }
 
 function account_credentials (account)
+  if account.username == nil or account.password == nil then return nil end
   return {
     username = account.username,
     password = account.password,
@@ -41,11 +42,19 @@ function account_credentials (account)
 end
 
 function create_keystore_user (node, account)
-  avash_call("callrpc " .. node .. " ext/keystore keystore.createUser " .. json.encode(account_credentials(account)) .. " st nid")
-  for index, addrKey in ipairs(account.wallet) do
-    cred = account_credentials(account)
-    cred.privateKey = addrKey.privateKey
-    avash_call("callrpc " .. node .. " ext/bc/X avm.importKey " .. json.encode(cred) .. " st nid")
+  cred = account_credentials(account)
+  if cred ~= nil then
+    print("creating gecko keystore user " .. account.username .. " on " .. node)
+    avash_call("callrpc " .. node .. " ext/keystore keystore.createUser " .. json.encode(account_credentials(account)) .. " st nid")
+    for index, addressSpec in ipairs(account.wallet) do
+      if addressSpec.privateKey ~= nil then
+        cred = account_credentials(account)
+        cred.privateKey = addressSpec.privateKey
+        address = addressSpec.address or "unknown"
+        print("importing private key for address " .. address)
+        avash_call("callrpc " .. node .. " ext/bc/X avm.importKey " .. json.encode(cred) .. " st nid")
+      end
+    end
   end
 end
 
@@ -65,6 +74,7 @@ function fund_accounts (node, faucet, accounts)
         else
           avash_sleepmicro(2000000)
         end
+        print("sending " .. address.initialFunds .. " to " .. address.address)
         params = account_credentials(faucet)
         params.assetID = "AVA"
         params.amount = address.initialFunds
