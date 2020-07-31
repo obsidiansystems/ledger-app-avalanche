@@ -2,6 +2,7 @@
 /debug
 /dep
 /obj
+/testnet/stash
 
 src/glyphs.h
 src/glyphs.c
