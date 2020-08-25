@@ -2,6 +2,7 @@
 
 #include "types.h"
 #include "bolos_target.h"
+#include "parser.h"
 
 // Zeros out all globals that can keep track of APDU instruction state.
 // Notably this does *not* include UI state.
@@ -21,6 +22,9 @@ typedef struct {
     buffer_t final_hash_as_buffer;
 
     uint8_t num_signatures_left;
+
+    struct TransactionState parse_state;
+    uint8_t rejected;
 } apdu_sign_state_t;
 
 typedef struct {
