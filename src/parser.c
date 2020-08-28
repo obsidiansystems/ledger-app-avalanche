@@ -308,11 +308,13 @@ enum parse_rv parse_Memo(struct Memo_state *state, struct buf* buf) {
 void initTransaction(struct TransactionState* state) {
     state->state=0;
     init_uint32_t(&state->uint32State);
+    cx_sha256_init(&state->hash_state);
 }
 
 void update_transaction_hash(uint8_t *src, size_t length) {
   // FIXME: actually hash this for Ava spec.
   PRINTF("HASH DATA: %.*h\n", length, src);
+  cx_hash((cx_hash_t *const)state, 0, src, length, NULL, 0);
 }
 
 enum parse_rv parseTransaction(struct TransactionState* state, struct buf* buf) {
@@ -356,7 +358,7 @@ enum parse_rv parseTransaction(struct TransactionState* state, struct buf* buf) 
       PRINTF("Done with memo; done.\n");
   }
 
-  update_transaction_hash(start, buf->consumed);
+  update_transaction_hash(&state->hash_state, start, buf->consumed);
 
   return sub_rv;
 }

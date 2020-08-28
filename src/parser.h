@@ -137,6 +137,7 @@ struct TransactionState {
 		struct TransferableInputs_state inputsState;
 		struct Memo_state memoState;
 	};
+	cx_sha256_t hash_state;
 };
 
 void initTransaction(struct TransactionState* state);
