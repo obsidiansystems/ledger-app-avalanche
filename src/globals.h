@@ -24,7 +24,6 @@ typedef struct {
     uint8_t num_signatures_left;
 
     struct TransactionState parse_state;
-    uint8_t rejected;
 } apdu_sign_state_t;
 
 typedef struct {

@@ -10,7 +10,6 @@ struct buf {
 enum parse_rv {
   PARSE_RV_NEED_MORE,
   PARSE_RV_DONE,
-  PARSE_RV_REJECT
 };
 
 struct FixedState {

@@ -160,16 +160,13 @@ size_t handle_apdu_sign_transaction(void) {
         return finalize_successful_send(0);
     }
 
-    if(global.apdu.u.sign.rejected) THROW(EXC_REJECT); // Don't even try to parse if we've already failed.
-
     struct buf pbuf;
     pbuf.src=buff;
     pbuf.consumed=0;
     pbuf.length=buff_size;
     enum parse_rv rv = parseTransaction(&G.parse_state, &pbuf);
 
-    if(global.apdu.u.sign.rejected || rv == PARSE_RV_REJECT || pbuf.consumed != pbuf.length) {
-	global.apdu.u.sign.rejected=1; // Just to make sure this is set.
+    if (pbuf.consumed != pbuf.length) {
 	PRINTF("Rejected: %d %d %d\n", rv, pbuf.consumed, pbuf.length);
 	THROW(EXC_REJECT);
     }

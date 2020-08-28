@@ -3,7 +3,7 @@
 #include "parser.h"
 #include "protocol.h"
 
-#define REJECT(msg, ...) do { PRINTF("Rejecting: " msg "\n", ##__VA_ARGS__); global.apdu.u.sign.rejected=1; return PARSE_RV_REJECT; } while(0)
+#define REJECT(msg, ...) { PRINTF("Rejecting: " msg "\n", ##__VA_ARGS__); THROW(EXC_REJECT); }
 
 #define CALL_SUBPARSER(subFieldName, subParser) { \
   sub_rv = parse_ ## subParser(&state->subFieldName, buf); \
@@ -380,7 +380,7 @@ parse_rv parseSomeObject(struct SomeObjectState *state, struct buf *buffer) {
       // Don't allow 4s:
       if(state->firstIntElement->val == 4) {
         PRINTF("Rejected: I arbitrarily hate 4\n");
-        return PARSE_RV_REJECT;
+        THROW(EXC_REJECT);
       }
 
       // and then before the next case statement we increment our state and initialize the next child:
