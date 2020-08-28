@@ -311,14 +311,12 @@ void initTransaction(struct TransactionState* state) {
     cx_sha256_init(&state->hash_state);
 }
 
-void update_transaction_hash(uint8_t *src, size_t length) {
-  // FIXME: actually hash this for Ava spec.
+void update_transaction_hash(cx_sha256_t *const state, uint8_t const *const src, size_t const length) {
   PRINTF("HASH DATA: %.*h\n", length, src);
   cx_hash((cx_hash_t *const)state, 0, src, length, NULL, 0);
 }
 
-enum parse_rv parseTransaction(struct TransactionState* state, struct buf* buf) {
-
+enum parse_rv parseTransaction(struct TransactionState *const state, struct buf *const buf) {
   PRINTF("***Parse Transaction***\n");
   enum parse_rv sub_rv;
 
