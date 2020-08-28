@@ -347,7 +347,7 @@ enum parse_rv parseTransaction(struct TransactionState* state, struct buf* buf) 
       state->state++;
       INIT_SUBPARSER(inputsState, TransferableInputs);
     case 4: // inputs
-      CALL_SUBPARSER(outputsState, TransferableInputs);
+      CALL_SUBPARSER(inputsState, TransferableInputs);
       PRINTF("Done with inputs\n");
       state->state++;
       INIT_SUBPARSER(memoState, Memo);
