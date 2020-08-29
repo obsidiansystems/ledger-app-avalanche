@@ -3,7 +3,7 @@ $(error Environment variable BOLOS_SDK is not set)
 endif
 include $(BOLOS_SDK)/Makefile.defines
 
-APPNAME = "Avax"
+APPNAME = "Avalanche"
 
 APP_LOAD_PARAMS= --appFlags 0 --curve secp256k1 --path "44'/9000'" $(COMMON_LOAD_PARAMS)
 
@@ -162,10 +162,8 @@ watch:
 test: tests/*.js tests/package.json bin/app.elf
 	LEDGER_APP=bin/app.elf run-ledger-tests.sh tests/
 
-test-no-nix: tests/*.js tests/package.json bin/app.elf
+test-no-nix: tests/node_packages tests/*.js tests/package.json bin/app.elf
 	(cd tests; yarn test)
 
-# Looks like this mixes up host and ledger code; doesn't work.
-tests/node_packages:
-	(cd tests; yarn install)
-
+tests/node_packages: tests/package.json
+	(cd tests; yarn install --frozen-lockfile)
