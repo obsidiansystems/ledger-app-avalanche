@@ -64,7 +64,7 @@ let
           (pkgs.lib.sources.cleanSourceWith { src = ./.; filter = glyphsFilter; }) [".c" ".h" ".gif" "Makefile" ".sh" ".json" ".bats" ".txt" ".der" ".js" ".lock"]);
 
   speculos = pkgs.callPackage ./nix/dep/speculos { };
-  tests = import ./tests;
+  tests = import ./tests { inherit pkgs; };
 
   build = bolos:
     let
