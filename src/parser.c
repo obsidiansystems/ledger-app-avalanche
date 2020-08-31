@@ -6,12 +6,12 @@
 #define REJECT(msg, ...) { PRINTF("Rejecting: " msg "\n", ##__VA_ARGS__); THROW(EXC_REJECT); }
 
 #define CALL_SUBPARSER(subFieldName, subParser) { \
-  sub_rv = parse_ ## subParser(&state->subFieldName, buf); \
-    if (sub_rv != PARSE_RV_DONE) break; \
-  }
+    sub_rv = parse_ ## subParser(&state->subFieldName, buf); \
+        if (sub_rv != PARSE_RV_DONE) break; \
+    }
 
 #define INIT_SUBPARSER(subFieldName, subParser) \
-  init_ ## subParser(&state->subFieldName);
+    init_ ## subParser(&state->subFieldName);
 
 void initFixed(struct FixedState *const state, size_t const len) {
     state->filledTo = 0;
@@ -62,41 +62,41 @@ void init_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const st
 }
 
 enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const state, input_buf_t *const buf) {
-  enum parse_rv sub_rv = PARSE_RV_INVALID;
-  switch (state->state) {
-      case 0:
-          // Amount; Type is already handled in init_Output
-          CALL_SUBPARSER(uint64State, uint64_t);
-          state->state++;
-          PRINTF("OUTPUT AMOUNT: %.*h\n", 8, state->uint64State.buf); // we don't seem to have longs in printf specfiers.
-          INIT_SUBPARSER(uint64State, uint64_t);
-      case 1:
-          // Locktime
-          CALL_SUBPARSER(uint64State, uint64_t);
-          PRINTF("LOCK TIME: %.*h\n", 8, state->uint64State.buf); // we don't seem to have longs in printf specfiers.
-          state->state++;
-          INIT_SUBPARSER(uint32State, uint32_t);
-      case 2:
-          // Threshold
-          CALL_SUBPARSER(uint32State, uint32_t);
-          PRINTF("Threshold: %d\n", state->uint32State.val);
-          state->state++;
-          INIT_SUBPARSER(uint32State, uint32_t);
-      case 3: // Address Count
-          CALL_SUBPARSER(uint32State, uint32_t);
-          state->state++;
-          state->address_n = state->uint32State.val;
-          INIT_SUBPARSER(addressState, Address);
-      case 4:
-        while (1) {
-            CALL_SUBPARSER(addressState, Address);
-            state->address_i++;
-            PRINTF("Output address %d: %.*h\n", state->address_i, 20, state->addressState.buf);
-            if (state->address_i == state->address_n) return PARSE_RV_DONE;
+    enum parse_rv sub_rv = PARSE_RV_INVALID;
+    switch (state->state) {
+        case 0:
+            // Amount; Type is already handled in init_Output
+            CALL_SUBPARSER(uint64State, uint64_t);
+            state->state++;
+            PRINTF("OUTPUT AMOUNT: %.*h\n", 8, state->uint64State.buf); // we don't seem to have longs in printf specfiers.
+            INIT_SUBPARSER(uint64State, uint64_t);
+        case 1:
+            // Locktime
+            CALL_SUBPARSER(uint64State, uint64_t);
+            PRINTF("LOCK TIME: %.*h\n", 8, state->uint64State.buf); // we don't seem to have longs in printf specfiers.
+            state->state++;
+            INIT_SUBPARSER(uint32State, uint32_t);
+        case 2:
+            // Threshold
+            CALL_SUBPARSER(uint32State, uint32_t);
+            PRINTF("Threshold: %d\n", state->uint32State.val);
+            state->state++;
+            INIT_SUBPARSER(uint32State, uint32_t);
+        case 3: // Address Count
+            CALL_SUBPARSER(uint32State, uint32_t);
+            state->state++;
+            state->address_n = state->uint32State.val;
             INIT_SUBPARSER(addressState, Address);
-        }
-  }
-  return sub_rv;
+        case 4:
+            while (true) {
+                CALL_SUBPARSER(addressState, Address);
+                state->address_i++;
+                PRINTF("Output address %d: %.*h\n", state->address_i, 20, state->addressState.buf);
+                if (state->address_i == state->address_n) return PARSE_RV_DONE;
+                INIT_SUBPARSER(addressState, Address);
+            }
+    }
+    return sub_rv;
 }
 
 void init_Output(struct Output_state *const state) {
@@ -107,21 +107,21 @@ void init_Output(struct Output_state *const state) {
 enum parse_rv parse_Output(struct Output_state *const state, input_buf_t *const buf) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
     switch (state->state) {
-      case 0:
-          CALL_SUBPARSER(uint32State, uint32_t);
-          state->type = state->uint32State.val;
-          state->state++;
-          switch (state->type) {
-              case 0x00000007:
-                INIT_SUBPARSER(secp256k1TransferOutput, SECP256K1TransferOutput);
-                state->state++;
-          }
-      case 1:
-          switch (state->type) {
-              case 0x00000007:
-                  PRINTF("SECP256K1TransferOutput\n");
-                  CALL_SUBPARSER(secp256k1TransferOutput, SECP256K1TransferOutput);
-          }
+        case 0:
+            CALL_SUBPARSER(uint32State, uint32_t);
+            state->type = state->uint32State.val;
+            state->state++;
+            switch (state->type) {
+                case 0x00000007:
+                    INIT_SUBPARSER(secp256k1TransferOutput, SECP256K1TransferOutput);
+                    state->state++;
+            }
+        case 1:
+            switch (state->type) {
+                case 0x00000007:
+                    PRINTF("SECP256K1TransferOutput\n");
+                    CALL_SUBPARSER(secp256k1TransferOutput, SECP256K1TransferOutput);
+            }
     }
     return sub_rv;
 }
@@ -136,13 +136,13 @@ enum parse_rv parse_TransferableOutput(struct TransferableOutput_state *const st
     enum parse_rv sub_rv = PARSE_RV_INVALID;
 
     switch (state->state) {
-      case 0: // asset ID
-          CALL_SUBPARSER(id32State, Id32);
-          state->state++;
-          PRINTF("Asset ID: %.*h\n", 32, state->id32State.buf);
-          INIT_SUBPARSER(outputState, Output);
-      case 1:
-          CALL_SUBPARSER(outputState, Output);
+        case 0: // asset ID
+            CALL_SUBPARSER(id32State, Id32);
+            state->state++;
+            PRINTF("Asset ID: %.*h\n", 32, state->id32State.buf);
+            INIT_SUBPARSER(outputState, Output);
+        case 1:
+            CALL_SUBPARSER(outputState, Output);
     }
     return sub_rv;
 }
