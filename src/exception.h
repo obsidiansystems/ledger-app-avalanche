@@ -4,6 +4,7 @@
 
 // Throw this to indicate prompting
 #define ASYNC_EXCEPTION 0x2000
+#define ASYNC_CONTINUE_EXCEPTION 0x2001 // indicate prompting but no io_exchange
 
 // Standard APDU error codes:
 // https://www.eftlab.co.uk/index.php/site-map/knowledge-base/118-apdu-response-list

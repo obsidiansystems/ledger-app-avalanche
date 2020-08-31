@@ -226,7 +226,7 @@ void ui_prompt_debug(size_t screen_count) {
     }
 }
 
-__attribute__((noreturn)) void ui_prompt(const char *const *labels, ui_callback_t ok_c, ui_callback_t cxl_c) {
+__attribute__((noreturn)) void ui_prompt_with_exception(uint16_t const exception, const char *const *labels, ui_callback_t ok_c, ui_callback_t cxl_c) {
     check_null(labels);
     global.ui.prompt.prompts = labels;
 
@@ -245,10 +245,14 @@ __attribute__((noreturn)) void ui_prompt(const char *const *labels, ui_callback_
     ui_prompt_debug(screen_count);
     // In debug mode, the THROW below produces a PRINTF statement in an invalid position and causes the screen to blank,
     // so instead we just directly call the equivalent longjmp for debug only.
-    longjmp(try_context_get()->jmp_buf, ASYNC_EXCEPTION);
+    longjmp(try_context_get()->jmp_buf, exception);
 #else
-    THROW(ASYNC_EXCEPTION);
+    THROW(exception);
 #endif
+}
+
+__attribute__((noreturn)) void ui_prompt(const char *const *labels, ui_callback_t ok_c, ui_callback_t cxl_c) {
+    ui_prompt_with_exception(ASYNC_EXCEPTION, labels, ok_c, cxl_c);
 }
 
 __attribute__((noreturn)) void ui_prompt_with_cb(void (*switch_screen_cb)(uint32_t), size_t screen_count, ui_callback_t ok_c, ui_callback_t cxl_c) {

@@ -143,6 +143,83 @@ size_t handle_apdu_sign_hash(void) {
     return sign_hash_impl(buff, buff_size, isFirstMessage, isLastMessage);
 }
 
+static size_t next_parse(bool const is_reentry);
+
+static bool continue_parsing(void) {
+    memset(&G.parser.meta_state.prompt, 0, sizeof(G.parser.meta_state.prompt));
+    next_parse(true);
+    return true;
+}
+
+static inline size_t reply_maybe_delayed(bool const is_reentry, size_t const tx) {
+    if (is_reentry) {
+        delayed_send(tx);
+    }
+    return tx;
+}
+
+static size_t next_parse(bool const is_reentry) {
+    PRINTF("Next parse\n");
+    enum parse_rv const rv = parseTransaction(&G.parser.state, &G.parser.meta_state);
+
+    if (rv == PARSE_RV_PROMPT) {
+        check_null(G.parser.meta_state.prompt.to_string);
+
+        PRINTF("Prompting for %s\n", G.parser.meta_state.prompt.label);
+        static char const *prompts[2];
+        prompts[0] = G.parser.meta_state.prompt.label;
+        prompts[1] = NULL;
+        register_ui_callback(0, G.parser.meta_state.prompt.to_string, G.parser.meta_state.prompt.in);
+
+        ui_prompt_with_exception(is_reentry ? ASYNC_CONTINUE_EXCEPTION : ASYNC_EXCEPTION, prompts, continue_parsing, sign_reject);
+    }
+
+    if (rv == PARSE_RV_DONE || rv == PARSE_RV_NEED_MORE) {
+        if (G.parser.meta_state.input.consumed != G.parser.meta_state.input.length) {
+            PRINTF("Not all input was parsed: %d %d %d\n", rv, G.parser.meta_state.input.consumed, G.parser.meta_state.input.length);
+            THROW(EXC_PARSE_ERROR);
+        }
+
+        if (rv == PARSE_RV_NEED_MORE) {
+            if (G.parser.is_last_message) {
+                PRINTF("Sender claimed last message and we aren't done\n");
+                THROW(EXC_PARSE_ERROR);
+            }
+            PRINTF("Need more\n");
+            return reply_maybe_delayed(is_reentry, finalize_successful_send(0));
+        }
+
+        if (rv == PARSE_RV_DONE) {
+            if (!G.parser.is_last_message) {
+                PRINTF("Sender claims there is more but we are done\n");
+                THROW(EXC_PARSE_ERROR);
+            }
+
+            PRINTF("Parser signaled done; sending final hash\n");
+            cx_hash((cx_hash_t *const)&G.parser.state.hash_state, CX_LAST, NULL, 0, G.final_hash, sizeof(G.final_hash));
+            G.num_signatures_left = G.requested_num_signatures;
+
+            size_t tx = 0;
+            memcpy(&G_io_apdu_buffer[tx], G.final_hash, sizeof(G.final_hash));
+            tx += sizeof(G.final_hash);
+            return reply_maybe_delayed(is_reentry, finalize_successful_send(tx));
+        }
+    }
+
+    PRINTF("Parse error: %d %d %d\n", rv, G.parser.meta_state.input.consumed, G.parser.meta_state.input.length);
+    THROW(EXC_PARSE_ERROR);
+}
+
+static size_t first_parse(uint8_t const *const in, uint8_t const in_size, bool const is_last_message) {
+    check_null(in);
+    PRINTF("First parse\n");
+    initTransaction(&G.parser.state);
+    G.parser.is_last_message = is_last_message;
+    G.parser.meta_state.input.src = in;
+    G.parser.meta_state.input.length = in_size;
+    return next_parse(false);
+}
+
 size_t handle_apdu_sign_transaction(void) {
     uint8_t const *const buff = &G_io_apdu_buffer[OFFSET_CDATA];
     uint8_t const buff_size = READ_UNALIGNED_BIG_ENDIAN(uint8_t, &G_io_apdu_buffer[OFFSET_LC]);
@@ -156,34 +233,10 @@ size_t handle_apdu_sign_transaction(void) {
     if (isFirstMessage) {
         clear_data();
         read_bip32_path(&G.bip32_path_prefix, buff, buff_size);
-        initTransaction(&G.parse_state);
         return finalize_successful_send(0);
     }
 
-    input_buf_t pbuf;
-    pbuf.src = buff;
-    pbuf.consumed = 0;
-    pbuf.length = buff_size;
-    enum parse_rv const rv = parseTransaction(&G.parse_state, &pbuf);
-
-    if (rv != PARSE_RV_DONE && rv != PARSE_RV_NEED_MORE) {
-        PRINTF("Parse error: %d %d %d\n", rv, pbuf.consumed, pbuf.length);
-        THROW(EXC_PARSE_ERROR);
-    }
-
-    if (pbuf.consumed != pbuf.length) {
-        PRINTF("Rejected: %d %d %d\n", rv, pbuf.consumed, pbuf.length);
-        THROW(EXC_REJECT);
-    }
-
-    if (isLastMessage && rv == PARSE_RV_DONE && pbuf.consumed == pbuf.length) {
-        PRINTF("Parse succeeded\n");
-        return sign_complete();
-    }
-    PRINTF("Need more data.\n");
-    if (isLastMessage) {
-        PRINTF("Host claimed last message and we aren't done: reject\n");
-        THROW(EXC_REJECT);
-    }
-    return finalize_successful_send(0);
+    return G.parser.meta_state.input.consumed == 0
+        ? first_parse(buff, buff_size, isLastMessage)
+        : next_parse(false);
 }

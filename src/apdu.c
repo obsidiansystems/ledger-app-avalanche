@@ -161,6 +161,12 @@ __attribute__((noreturn)) void main_loop(apdu_handler const *const handlers, siz
 #endif
                 rx = io_exchange(CHANNEL_APDU | IO_ASYNCH_REPLY, 0);
             }
+            CATCH(ASYNC_CONTINUE_EXCEPTION) {
+#ifdef STACK_MEASURE
+                measure_stack_max();
+#endif
+                // no-op
+            }
             CATCH(EXCEPTION_IO_RESET) {
                 THROW(EXCEPTION_IO_RESET);
             }
@@ -175,7 +181,7 @@ __attribute__((noreturn)) void main_loop(apdu_handler const *const handlers, siz
                     // FALL THROUGH
                 case 0x6000 ... 0x6FFF:
                 case 0x9000 ... 0x9FFF: {
-                    PRINTF("Line number: %d", sw & 0x0FFF);
+                    PRINTF("Line number: %d\n", sw & 0x0FFF);
                     size_t tx = 0;
                     G_io_apdu_buffer[tx++] = sw >> 8;
                     G_io_apdu_buffer[tx++] = sw;

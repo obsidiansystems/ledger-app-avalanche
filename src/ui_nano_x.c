@@ -178,7 +178,7 @@ void ui_prompt_debug(size_t screen_count) {
 }
 
 __attribute__((noreturn))
-void ui_prompt(const char *const *labels, ui_callback_t ok_c, ui_callback_t cxl_c) {
+void ui_prompt_with_exception(uint16_t const exception, const char *const *labels, ui_callback_t ok_c, ui_callback_t cxl_c) {
     check_null(labels);
     global.ui.prompt.prompts = labels;
 
@@ -201,7 +201,12 @@ void ui_prompt(const char *const *labels, ui_callback_t ok_c, ui_callback_t cxl_
     G.ok_callback = ok_c;
     G.cxl_callback = cxl_c;
     ux_flow_init(0, &ux_prompts_flow[G.prompt.offset], NULL);
-    THROW(ASYNC_EXCEPTION);
+    THROW(exception);
+}
+
+__attribute__((noreturn))
+void ui_prompt(const char *const *labels, ui_callback_t ok_c, ui_callback_t cxl_c) {
+    ui_prompt_with_exception(ASYNC_EXCEPTION, labels, ok_c, cxl_c);
 }
 
 __attribute__((noreturn)) void ui_prompt_with_cb(void (*switch_screen_cb)(uint32_t), size_t screen_count, ui_callback_t ok_c, ui_callback_t cxl_c) {

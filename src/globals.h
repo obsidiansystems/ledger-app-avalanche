@@ -23,7 +23,11 @@ typedef struct {
 
     uint8_t num_signatures_left;
 
-    struct TransactionState parse_state;
+    struct {
+        struct TransactionState state;
+        parser_meta_state_t meta_state;
+        bool is_last_message;
+    } parser;
 } apdu_sign_state_t;
 
 typedef struct {

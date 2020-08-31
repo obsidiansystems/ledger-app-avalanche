@@ -1,15 +1,29 @@
 #pragma once
 
+#include "types.h"
+
 // some global definitions
 typedef struct {
     uint8_t const *src;
     size_t consumed;
     size_t length;
-} input_buf_t;
+} parser_input_meta_state_t;
+
+typedef struct {
+    char const *label;
+    string_generation_callback to_string;
+    void const *in;
+} prompt_entry_t;
+
+typedef struct {
+    parser_input_meta_state_t input;
+    prompt_entry_t prompt;
+} parser_meta_state_t;
 
 enum parse_rv {
     PARSE_RV_INVALID = 0,
     PARSE_RV_NEED_MORE,
+    PARSE_RV_PROMPT,
     PARSE_RV_DONE,
 };
 
@@ -142,6 +156,6 @@ struct TransactionState {
 
 void initTransaction(struct TransactionState *const state);
 
-enum parse_rv parseTransaction(struct TransactionState *const state, input_buf_t *const buf);
+enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta_state_t *const meta);
 
 

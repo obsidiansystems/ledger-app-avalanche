@@ -1,12 +1,21 @@
-#include "types.h"
 #include "globals.h"
 #include "parser.h"
 #include "protocol.h"
+#include "to_string.h"
+#include "types.h"
 
-#define REJECT(msg, ...) { PRINTF("Rejecting: " msg "\n", ##__VA_ARGS__); THROW(EXC_REJECT); }
+#define REJECT(msg, ...) { PRINTF("Rejecting: " msg "\n", ##__VA_ARGS__); THROW(EXC_PARSE_ERROR); }
+
+#define OPEN_PROMPT(label_, in_, to_string_) { \
+        sub_rv = PARSE_RV_PROMPT; \
+        meta->prompt.to_string = to_string_; \
+        meta->prompt.label = PROMPT(label_); \
+        meta->prompt.in = in_; \
+        break; \
+    }
 
 #define CALL_SUBPARSER(subFieldName, subParser) { \
-    sub_rv = parse_ ## subParser(&state->subFieldName, buf); \
+        sub_rv = parse_ ## subParser(&state->subFieldName, meta); \
         if (sub_rv != PARSE_RV_DONE) break; \
     }
 
@@ -18,28 +27,28 @@ void initFixed(struct FixedState *const state, size_t const len) {
     memset(&state->buffer, 0, len);
 }
 
-enum parse_rv parseFixed(struct FixedState *const state, input_buf_t *const buf, size_t const len) {
-    size_t available = buf->length - buf->consumed;
-    size_t needed = len - state->filledTo;
-    size_t to_copy = available > needed ? needed : available;
-    memcpy(&state->buffer[state->filledTo], &buf->src[buf->consumed], to_copy);
+enum parse_rv parseFixed(struct FixedState *const state, parser_meta_state_t *const meta, size_t const len) {
+    size_t const available = meta->input.length - meta->input.consumed;
+    size_t const needed = len - state->filledTo;
+    size_t const to_copy = available > needed ? needed : available;
+    memcpy(&state->buffer[state->filledTo], &meta->input.src[meta->input.consumed], to_copy);
     state->filledTo += to_copy;
-    buf->consumed += to_copy;
+    meta->input.consumed += to_copy;
     return state->filledTo == len ? PARSE_RV_DONE : PARSE_RV_NEED_MORE;
 }
 
 #define IMPL_FIXED(name) \
-    inline enum parse_rv parse_ ## name (struct name ## _state *const state, input_buf_t *const buf) { \
-        return parseFixed((struct FixedState *const)state, buf, sizeof(name));\
+    inline enum parse_rv parse_ ## name (struct name ## _state *const state, parser_meta_state_t *const meta) { \
+        return parseFixed((struct FixedState *const)state, meta, sizeof(name));\
     } \
     inline void init_ ## name (struct name ## _state *const state) { \
         return initFixed((struct FixedState *const)state, sizeof(state)); \
     }
 
 #define IMPL_FIXED_BE(name) \
-    inline enum parse_rv parse_ ## name (struct name ## _state *const state, input_buf_t *const buf) { \
+    inline enum parse_rv parse_ ## name (struct name ## _state *const state, parser_meta_state_t *const meta) { \
         enum parse_rv sub_rv = PARSE_RV_INVALID; \
-        sub_rv = parseFixed((struct FixedState *const)state, buf, sizeof(name)); \
+        sub_rv = parseFixed((struct FixedState *const)state, meta, sizeof(name)); \
         if (sub_rv == PARSE_RV_DONE) { \
             state->val = READ_UNALIGNED_BIG_ENDIAN(name, state->buf); \
         } \
@@ -61,7 +70,7 @@ void init_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const st
     INIT_SUBPARSER(uint64State, uint64_t);
 }
 
-enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const state, input_buf_t *const buf) {
+enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
     switch (state->state) {
         case 0:
@@ -69,25 +78,28 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
             CALL_SUBPARSER(uint64State, uint64_t);
             state->state++;
             PRINTF("OUTPUT AMOUNT: %.*h\n", 8, state->uint64State.buf); // we don't seem to have longs in printf specfiers.
-            INIT_SUBPARSER(uint64State, uint64_t);
+            OPEN_PROMPT("Amount", &state->uint64State.val, number_to_string_indirect64);
         case 1:
+            INIT_SUBPARSER(uint64State, uint64_t);
+            state->state++;
+        case 2:
             // Locktime
             CALL_SUBPARSER(uint64State, uint64_t);
             PRINTF("LOCK TIME: %.*h\n", 8, state->uint64State.buf); // we don't seem to have longs in printf specfiers.
             state->state++;
             INIT_SUBPARSER(uint32State, uint32_t);
-        case 2:
+        case 3:
             // Threshold
             CALL_SUBPARSER(uint32State, uint32_t);
             PRINTF("Threshold: %d\n", state->uint32State.val);
             state->state++;
             INIT_SUBPARSER(uint32State, uint32_t);
-        case 3: // Address Count
+        case 4: // Address Count
             CALL_SUBPARSER(uint32State, uint32_t);
             state->state++;
             state->address_n = state->uint32State.val;
             INIT_SUBPARSER(addressState, Address);
-        case 4:
+        case 5:
             while (true) {
                 CALL_SUBPARSER(addressState, Address);
                 state->address_i++;
@@ -104,7 +116,7 @@ void init_Output(struct Output_state *const state) {
     INIT_SUBPARSER(uint32State, uint32_t);
 }
 
-enum parse_rv parse_Output(struct Output_state *const state, input_buf_t *const buf) {
+enum parse_rv parse_Output(struct Output_state *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
     switch (state->state) {
         case 0:
@@ -114,7 +126,6 @@ enum parse_rv parse_Output(struct Output_state *const state, input_buf_t *const 
             switch (state->type) {
                 case 0x00000007:
                     INIT_SUBPARSER(secp256k1TransferOutput, SECP256K1TransferOutput);
-                    state->state++;
             }
         case 1:
             switch (state->type) {
@@ -131,7 +142,7 @@ void init_TransferableOutput(struct TransferableOutput_state *const state) {
     INIT_SUBPARSER(id32State, Id32);
 }
 
-enum parse_rv parse_TransferableOutput(struct TransferableOutput_state *const state, input_buf_t *const buf) {
+enum parse_rv parse_TransferableOutput(struct TransferableOutput_state *const state, parser_meta_state_t *const meta) {
     PRINTF("***Parse Transferable Output***\n");
     enum parse_rv sub_rv = PARSE_RV_INVALID;
 
@@ -154,7 +165,7 @@ void init_SECP256K1TransferInput(struct SECP256K1TransferInput_state *const stat
     INIT_SUBPARSER(uint64State, uint64_t);
 }
 
-enum parse_rv parse_SECP256K1TransferInput(struct SECP256K1TransferInput_state *const state, input_buf_t *const buf) {
+enum parse_rv parse_SECP256K1TransferInput(struct SECP256K1TransferInput_state *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
 
     switch (state->state) {
@@ -192,7 +203,7 @@ void init_Input(struct Input_state *const state) {
     INIT_SUBPARSER(uint32State, uint32_t);
 }
 
-enum parse_rv parse_Input(struct Input_state *const state, input_buf_t *const buf) {
+enum parse_rv parse_Input(struct Input_state *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
 
     switch (state->state) {
@@ -220,7 +231,7 @@ void init_TransferableInput(struct TransferableInput_state *const state) {
     INIT_SUBPARSER(id32State, Id32);
 }
 
-enum parse_rv parse_TransferableInput(struct TransferableInput_state *const state, input_buf_t *const buf) {
+enum parse_rv parse_TransferableInput(struct TransferableInput_state *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
 
     switch (state->state) {
@@ -252,7 +263,7 @@ enum parse_rv parse_TransferableInput(struct TransferableInput_state *const stat
         state->i = 0; \
         init_uint32_t(&state->len_state); \
     } \
-    enum parse_rv parse_ ## name ## s (struct name ## s_state *const state, input_buf_t *const buf) { \
+    enum parse_rv parse_ ## name ## s (struct name ## s_state *const state, parser_meta_state_t *const meta) { \
         enum parse_rv sub_rv = PARSE_RV_INVALID; \
         switch (state->state) { \
             case 0: \
@@ -283,7 +294,7 @@ void init_Memo(struct Memo_state *const state) {
     INIT_SUBPARSER(uint32State, uint32_t);
 }
 
-enum parse_rv parse_Memo(struct Memo_state *const state, input_buf_t *const buf) {
+enum parse_rv parse_Memo(struct Memo_state *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
 
     switch (state->state) {
@@ -292,12 +303,12 @@ enum parse_rv parse_Memo(struct Memo_state *const state, input_buf_t *const buf)
             state->n = state->uint32State.val;
             state->state++;
         case 1: {
-            size_t available = buf->length - buf->consumed;
+            size_t available = meta->input.length - meta->input.consumed;
             size_t needed = state->n - state->i;
             size_t to_consume = available > needed ? needed : available;
             state->i += to_consume;
-            PRINTF("Memo bytes: %.*h\n", to_consume, &buf->src[buf->consumed]);
-            buf->consumed += to_consume;
+            PRINTF("Memo bytes: %.*h\n", to_consume, &meta->input.src[meta->input.consumed]);
+            meta->input.consumed += to_consume;
             sub_rv = state->i == state->n ? PARSE_RV_DONE : PARSE_RV_NEED_MORE;
         }
     }
@@ -316,11 +327,15 @@ void update_transaction_hash(cx_sha256_t *const state, uint8_t const *const src,
     cx_hash((cx_hash_t *const)state, 0, src, length, NULL, 0);
 }
 
-enum parse_rv parseTransaction(struct TransactionState *const state, input_buf_t *const buf) {
+enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta_state_t *const meta) {
+    check_null(state);
+    check_null(meta);
+    check_null(meta->input.src);
+
     PRINTF("***Parse Transaction***\n");
     enum parse_rv sub_rv = PARSE_RV_INVALID;
 
-    uint8_t const *const start = &buf->src[buf->consumed];
+    uint8_t const *const start = &meta->input.src[meta->input.consumed];
 
     switch (state->state) {
         case 0: // type ID
@@ -356,13 +371,13 @@ enum parse_rv parseTransaction(struct TransactionState *const state, input_buf_t
             PRINTF("Done with memo; done.\n");
     }
 
-    update_transaction_hash(&state->hash_state, start, buf->consumed);
+    update_transaction_hash(&state->hash_state, start, meta->input.consumed);
 
     return sub_rv;
 }
 
 /*
-parse_rv parseSomeObject(struct SomeObjectState *const state, input_buf_t *const buffer) {
+parse_rv parseSomeObject(struct SomeObjectState *const state, parser_meta_state_t *const metafer) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
 
     // If we need to operate chunk-wise on this object, save the starting point of the buffer:
