@@ -51,8 +51,7 @@ unsigned char io_event(__attribute__((unused)) unsigned char channel) {
         break;
 
     case SEPROXYHAL_TAG_TICKER_EVENT:
-	UX_TICKER_EVENT(G_io_seproxyhal_spi_buffer, {});
-
+        UX_TICKER_EVENT(G_io_seproxyhal_spi_buffer, {});
         break;
     }
 
@@ -96,7 +95,7 @@ UX_FLOW(ux_idle_flow,
     EVAL(UX_STEP_NOCB_INIT BLANK() ( \
         PROMPT_SCREEN_NAME(idx), \
         bnnn_paging, \
-	G.switch_screen(idx-G.prompt.offset),\
+        G.switch_screen(idx-G.prompt.offset),\
         { \
             .title = G.prompt.active_prompt, \
             .text = G.prompt.active_value, \
@@ -153,7 +152,7 @@ _Static_assert(NUM_ELEMENTS(ux_prompts_flow) - 3 /*reject + accept + end*/ == MA
 void ui_initial_screen(void) {
 
     // reserve a display stack slot if none yet
-    if(G_ux.stack_count == 0) {
+    if (G_ux.stack_count == 0) {
         ux_stack_push();
     }
     ux_flow_init(0, ux_idle_flow, NULL);
@@ -172,7 +171,7 @@ void switch_screen(uint32_t which) {
 }
 
 void ui_prompt_debug(size_t screen_count) {
-    for(uint32_t i=0; i<screen_count; i++) {
+    for(uint32_t i = 0; i < screen_count; i++) {
         G.switch_screen(i);
         PRINTF("Prompt %d:\n%s\n%s\n", i, global.ui.prompt.active_prompt, global.ui.prompt.active_value);
     }
@@ -189,13 +188,13 @@ void ui_prompt(const char *const *labels, ui_callback_t ok_c, ui_callback_t cxl_
         i;
     });
 
-    G.switch_screen=switch_screen;
+    G.switch_screen = switch_screen;
     // We fill the destination buffers at the end instead of the beginning so we can
     // use the same array for any number of screens.
     // size_t const offset = MAX_SCREEN_COUNT - screen_count;
 
-    G.switch_screen=switch_screen;
-    G.prompt.offset=MAX_SCREEN_COUNT-screen_count;
+    G.switch_screen = switch_screen;
+    G.prompt.offset = MAX_SCREEN_COUNT - screen_count;
 
     ui_prompt_debug(screen_count);
 
@@ -208,8 +207,8 @@ void ui_prompt(const char *const *labels, ui_callback_t ok_c, ui_callback_t cxl_
 __attribute__((noreturn)) void ui_prompt_with_cb(void (*switch_screen_cb)(uint32_t), size_t screen_count, ui_callback_t ok_c, ui_callback_t cxl_c) {
     check_null(switch_screen_cb);
 
-    G.switch_screen=switch_screen_cb;
-    G.prompt.offset=MAX_SCREEN_COUNT-screen_count;
+    G.switch_screen = switch_screen_cb;
+    G.prompt.offset = MAX_SCREEN_COUNT - screen_count;
 
     G.ok_callback = ok_c;
     G.cxl_callback = cxl_c;
@@ -224,4 +223,3 @@ __attribute__((noreturn)) void ui_prompt_with_cb(void (*switch_screen_cb)(uint32
     THROW(ASYNC_EXCEPTION);
 #endif
 }
-

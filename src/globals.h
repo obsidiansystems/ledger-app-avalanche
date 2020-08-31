@@ -103,12 +103,12 @@ static inline void throw_stack_size() {
 // Properly updates NVRAM data to prevent any clobbering of data.
 // 'out_param' defines the name of a pointer to the nvram_data struct
 // that 'body' can change to apply updates.
-#define UPDATE_NVRAM(out_name, body)                                                                                   \
-    ({                                                                                                                 \
+#define UPDATE_NVRAM(out_name, body)                                                                  \
+    ({                                                                                                \
         nvram_data *const out_name = &global.new_data;                                                \
         memcpy(&global.new_data, (nvram_data const *const) & N_data,                                  \
                sizeof(global.new_data));                                                              \
-        body;                                                                                                          \
+        body;                                                                                         \
         nvm_write((void *)&N_data, &global.new_data, sizeof(N_data));                                 \
     })
 

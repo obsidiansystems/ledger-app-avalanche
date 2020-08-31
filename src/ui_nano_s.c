@@ -220,7 +220,7 @@ void clear_ui_callbacks(void) {
 }
 
 void ui_prompt_debug(size_t screen_count) {
-    for(uint32_t i=0; i<screen_count; i++) {
+    for(uint32_t i = 0; i < screen_count; i++) {
         G.switch_screen(i);
         PRINTF("Prompt %d:\n%s\n%s\n", i, global.ui.prompt.active_prompt, global.ui.prompt.active_value);
     }
@@ -238,7 +238,7 @@ __attribute__((noreturn)) void ui_prompt(const char *const *labels, ui_callback_
     }
     size_t screen_count = i;
 
-    G.switch_screen=&switch_screen;
+    G.switch_screen = &switch_screen;
 
     ui_display(ui_multi_screen, NUM_ELEMENTS(ui_multi_screen), ok_c, cxl_c, screen_count);
 #ifdef AVA_DEBUG
@@ -254,7 +254,7 @@ __attribute__((noreturn)) void ui_prompt(const char *const *labels, ui_callback_
 __attribute__((noreturn)) void ui_prompt_with_cb(void (*switch_screen_cb)(uint32_t), size_t screen_count, ui_callback_t ok_c, ui_callback_t cxl_c) {
     check_null(switch_screen_cb);
 
-    G.switch_screen=switch_screen_cb;
+    G.switch_screen = switch_screen_cb;
 
     ui_display(ui_multi_screen, NUM_ELEMENTS(ui_multi_screen), ok_c, cxl_c, screen_count);
 #ifdef AVA_DEBUG

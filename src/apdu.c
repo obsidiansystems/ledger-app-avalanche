@@ -65,7 +65,7 @@ size_t handle_apdu_get_wallet_id(void) {
     const unsigned char hmac_key[] = "wallet-id";
 
     cx_hmac_sha256_t hmac_state;
-    cx_hmac_sha256_init(&hmac_state, hmac_key, sizeof(hmac_key)-1);
+    cx_hmac_sha256_init(&hmac_state, hmac_key, sizeof(hmac_key) - 1);
     WITH_EXTENDED_KEY_PAIR(id_path, it, size_t, ({
         PRINTF("\nPublic Key: %.*h\n", it->key_pair.public_key.W_len, it->key_pair.public_key.W);
         cx_hmac((cx_hmac_t *)&hmac_state, CX_LAST, (uint8_t const *const)it->key_pair.public_key.W,
@@ -81,16 +81,16 @@ size_t handle_apdu_get_wallet_id(void) {
 __attribute__((noinline)) void stack_sentry_fill() {
   uint32_t* p;
   volatile int top;
-  top=5;
-  memset((void*)(&app_stack_canary+1), 42, ((uint8_t*)(&top-10))-((uint8_t*)&app_stack_canary));
+  top = 5;
+  memset((void*)(&app_stack_canary + 1), 42, ((uint8_t*)(&top - 10)) - ((uint8_t*)&app_stack_canary));
 }
 
 void measure_stack_max() {
   uint32_t* p;
   volatile int top;
-  for(p=&app_stack_canary+1; p<((&top)-10); p++)
-    if(*p != 0x2a2a2a2a) {
-        PRINTF("Free space between globals and maximum stack: %d\n", 4*(p-&app_stack_canary));
+  for (p = &app_stack_canary + 1; p < ((&top) - 10); p++)
+    if (*p != 0x2a2a2a2a) {
+        PRINTF("Free space between globals and maximum stack: %d\n", 4 * (p - &app_stack_canary));
         return;
     }
 }
@@ -103,7 +103,7 @@ __attribute__((noreturn)) void main_loop(apdu_handler const *const handlers, siz
     while (true) {
         BEGIN_TRY {
             TRY {
-                app_stack_canary=0xdeadbeef;
+                app_stack_canary = 0xdeadbeef;
                 // Process APDU of size rx
 
                 if (rx == 0) {
@@ -146,7 +146,7 @@ __attribute__((noreturn)) void main_loop(apdu_handler const *const handlers, siz
                 size_t const tx = cb();
                 PRINTF("Normal return\n");
 
-                if(0xdeadbeef != app_stack_canary) {
+                if (0xdeadbeef != app_stack_canary) {
                     THROW(EXC_STACK_ERROR);
                 }
 #ifdef STACK_MEASURE

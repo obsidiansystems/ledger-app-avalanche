@@ -156,29 +156,29 @@ size_t handle_apdu_sign_transaction(void) {
     if (isFirstMessage) {
         clear_data();
         read_bip32_path(&G.bip32_path_prefix, buff, buff_size);
-	initTransaction(&G.parse_state);
+        initTransaction(&G.parse_state);
         return finalize_successful_send(0);
     }
 
     struct buf pbuf;
-    pbuf.src=buff;
-    pbuf.consumed=0;
-    pbuf.length=buff_size;
+    pbuf.src = buff;
+    pbuf.consumed = 0;
+    pbuf.length = buff_size;
     enum parse_rv rv = parseTransaction(&G.parse_state, &pbuf);
 
     if (pbuf.consumed != pbuf.length) {
-	PRINTF("Rejected: %d %d %d\n", rv, pbuf.consumed, pbuf.length);
-	THROW(EXC_REJECT);
+        PRINTF("Rejected: %d %d %d\n", rv, pbuf.consumed, pbuf.length);
+        THROW(EXC_REJECT);
     }
 
     if (isLastMessage && rv == PARSE_RV_DONE && pbuf.consumed == pbuf.length) {
-	PRINTF("Parse succeeded\n");
-	return sign_complete();
+        PRINTF("Parse succeeded\n");
+        return sign_complete();
     }
     PRINTF("Need more data.\n");
     if (isLastMessage) {
-	PRINTF("Host claimed last message and we aren't done: reject\n");
-	THROW(EXC_REJECT);
+        PRINTF("Host claimed last message and we aren't done: reject\n");
+        THROW(EXC_REJECT);
     }
     return finalize_successful_send(0);
 }
