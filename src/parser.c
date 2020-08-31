@@ -22,7 +22,7 @@ enum parse_rv parseFixed(struct FixedState* state, struct buf* buf, size_t len) 
     size_t available = buf->length - buf->consumed;
     size_t needed = len - state->filledTo;
     size_t to_copy = available > needed ? needed : available;
-    memcpy(state->buffer + state->filledTo, buf->src + buf->consumed, to_copy);
+    memcpy(&state->buffer[state->filledTo], &buf->src[buf->consumed], to_copy);
     state->filledTo += to_copy;
     buf->consumed += to_copy;
     return state->filledTo == len ? PARSE_RV_DONE : PARSE_RV_NEED_MORE;
@@ -296,7 +296,7 @@ enum parse_rv parse_Memo(struct Memo_state *state, struct buf* buf) {
             size_t needed = state->n - state->i;
             size_t to_consume = available > needed ? needed : available;
             state->i += to_consume;
-            PRINTF("Memo bytes: %.*h\n", to_consume, buf->src + buf->consumed);
+            PRINTF("Memo bytes: %.*h\n", to_consume, &buf->src[buf->consumed]);
             buf->consumed += to_consume;
             sub_rv = state->i == state->n ? PARSE_RV_DONE : PARSE_RV_NEED_MORE;
         }
@@ -402,7 +402,7 @@ parse_rv parseSomeObject(struct SomeObjectState *state, struct buf *buffer) {
 
     // As we saved our start point above, we can now operate on this object as a
     // stream of unstructured chunks at this point (e.g. to hash it);
-    update_some_hash_func(buffer->src + chunkStart, buffer->consumed - chunkStart);
+    update_some_hash_func(&buffer->src[chunkStart], buffer->consumed - chunkStart);
 
     return sub_rv;
 }
