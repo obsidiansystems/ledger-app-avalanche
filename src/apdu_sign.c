@@ -164,7 +164,12 @@ size_t handle_apdu_sign_transaction(void) {
     pbuf.src = buff;
     pbuf.consumed = 0;
     pbuf.length = buff_size;
-    enum parse_rv rv = parseTransaction(&G.parse_state, &pbuf);
+    enum parse_rv const rv = parseTransaction(&G.parse_state, &pbuf);
+
+    if (rv != PARSE_RV_DONE && rv != PARSE_RV_NEED_MORE) {
+        PRINTF("Parse error: %d %d %d\n", rv, pbuf.consumed, pbuf.length);
+        THROW(EXC_PARSE_ERROR);
+    }
 
     if (pbuf.consumed != pbuf.length) {
         PRINTF("Rejected: %d %d %d\n", rv, pbuf.consumed, pbuf.length);

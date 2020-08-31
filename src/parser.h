@@ -8,6 +8,7 @@ typedef struct {
 } input_buf_t;
 
 enum parse_rv {
+    PARSE_RV_INVALID = 0,
     PARSE_RV_NEED_MORE,
     PARSE_RV_DONE,
 };

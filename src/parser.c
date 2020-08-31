@@ -38,7 +38,7 @@ enum parse_rv parseFixed(struct FixedState *const state, input_buf_t *const buf,
 
 #define IMPL_FIXED_BE(name) \
     inline enum parse_rv parse_ ## name (struct name ## _state *const state, input_buf_t *const buf) { \
-        enum parse_rv sub_rv; \
+        enum parse_rv sub_rv = PARSE_RV_INVALID; \
         sub_rv = parseFixed((struct FixedState *const)state, buf, sizeof(name)); \
         if (sub_rv == PARSE_RV_DONE) { \
             state->val = READ_UNALIGNED_BIG_ENDIAN(name, state->buf); \
@@ -62,7 +62,7 @@ void init_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const st
 }
 
 enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const state, input_buf_t *const buf) {
-  enum parse_rv sub_rv;
+  enum parse_rv sub_rv = PARSE_RV_INVALID;
   switch (state->state) {
       case 0:
           // Amount; Type is already handled in init_Output
@@ -105,7 +105,7 @@ void init_Output(struct Output_state *const state) {
 }
 
 enum parse_rv parse_Output(struct Output_state *const state, input_buf_t *const buf) {
-    enum parse_rv sub_rv;
+    enum parse_rv sub_rv = PARSE_RV_INVALID;
     switch (state->state) {
       case 0:
           CALL_SUBPARSER(uint32State, uint32_t);
@@ -133,7 +133,7 @@ void init_TransferableOutput(struct TransferableOutput_state *const state) {
 
 enum parse_rv parse_TransferableOutput(struct TransferableOutput_state *const state, input_buf_t *const buf) {
     PRINTF("***Parse Transferable Output***\n");
-    enum parse_rv sub_rv;
+    enum parse_rv sub_rv = PARSE_RV_INVALID;
 
     switch (state->state) {
       case 0: // asset ID
@@ -155,7 +155,7 @@ void init_SECP256K1TransferInput(struct SECP256K1TransferInput_state *const stat
 }
 
 enum parse_rv parse_SECP256K1TransferInput(struct SECP256K1TransferInput_state *const state, input_buf_t *const buf) {
-    enum parse_rv sub_rv;
+    enum parse_rv sub_rv = PARSE_RV_INVALID;
 
     switch (state->state) {
         case 0: // Amount
@@ -193,7 +193,7 @@ void init_Input(struct Input_state *const state) {
 }
 
 enum parse_rv parse_Input(struct Input_state *const state, input_buf_t *const buf) {
-    enum parse_rv sub_rv;
+    enum parse_rv sub_rv = PARSE_RV_INVALID;
 
     switch (state->state) {
         case 0:
@@ -221,7 +221,7 @@ void init_TransferableInput(struct TransferableInput_state *const state) {
 }
 
 enum parse_rv parse_TransferableInput(struct TransferableInput_state *const state, input_buf_t *const buf) {
-    enum parse_rv sub_rv;
+    enum parse_rv sub_rv = PARSE_RV_INVALID;
 
     switch (state->state) {
         case 0: // tx_id
@@ -253,7 +253,7 @@ enum parse_rv parse_TransferableInput(struct TransferableInput_state *const stat
         init_uint32_t(&state->len_state); \
     } \
     enum parse_rv parse_ ## name ## s (struct name ## s_state *const state, input_buf_t *const buf) { \
-        enum parse_rv sub_rv; \
+        enum parse_rv sub_rv = PARSE_RV_INVALID; \
         switch (state->state) { \
             case 0: \
                 CALL_SUBPARSER(len_state, uint32_t); \
@@ -284,7 +284,7 @@ void init_Memo(struct Memo_state *const state) {
 }
 
 enum parse_rv parse_Memo(struct Memo_state *const state, input_buf_t *const buf) {
-    enum parse_rv sub_rv;
+    enum parse_rv sub_rv = PARSE_RV_INVALID;
 
     switch (state->state) {
         case 0:
@@ -318,7 +318,7 @@ void update_transaction_hash(cx_sha256_t *const state, uint8_t const *const src,
 
 enum parse_rv parseTransaction(struct TransactionState *const state, input_buf_t *const buf) {
     PRINTF("***Parse Transaction***\n");
-    enum parse_rv sub_rv;
+    enum parse_rv sub_rv = PARSE_RV_INVALID;
 
     uint8_t const *const start = &buf->src[buf->consumed];
 
@@ -363,7 +363,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, input_buf_t
 
 /*
 parse_rv parseSomeObject(struct SomeObjectState *const state, input_buf_t *const buffer) {
-    parse_rv sub_rv;
+    enum parse_rv sub_rv = PARSE_RV_INVALID;
 
     // If we need to operate chunk-wise on this object, save the starting point of the buffer:
     size_t chunkStart = buffer->consumed;
