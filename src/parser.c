@@ -13,12 +13,12 @@
 #define INIT_SUBPARSER(subFieldName, subParser) \
   init_ ## subParser(&state->subFieldName);
 
-void initFixed(struct FixedState* state, size_t len) {
+void initFixed(struct FixedState *const state, size_t const len) {
     state->filledTo = 0;
     memset(&state->buffer, 0, len);
 }
 
-enum parse_rv parseFixed(struct FixedState* state, struct buf* buf, size_t len) {
+enum parse_rv parseFixed(struct FixedState *const state, input_buf_t *const buf, size_t const len) {
     size_t available = buf->length - buf->consumed;
     size_t needed = len - state->filledTo;
     size_t to_copy = available > needed ? needed : available;
@@ -29,24 +29,24 @@ enum parse_rv parseFixed(struct FixedState* state, struct buf* buf, size_t len) 
 }
 
 #define IMPL_FIXED(name) \
-    inline enum parse_rv parse_ ## name (struct name ## _state *state, struct buf* buf) { \
-        return parseFixed((struct FixedState*) state, buf, sizeof(name));\
+    inline enum parse_rv parse_ ## name (struct name ## _state *const state, input_buf_t *const buf) { \
+        return parseFixed((struct FixedState *const)state, buf, sizeof(name));\
     } \
-    inline void init_ ## name (struct name ## _state *state) { \
-        return initFixed((struct FixedState*) state, sizeof(state)); \
+    inline void init_ ## name (struct name ## _state *const state) { \
+        return initFixed((struct FixedState *const)state, sizeof(state)); \
     }
 
 #define IMPL_FIXED_BE(name) \
-    inline enum parse_rv parse_ ## name (struct name ## _state *state, struct buf* buf) { \
+    inline enum parse_rv parse_ ## name (struct name ## _state *const state, input_buf_t *const buf) { \
         enum parse_rv sub_rv; \
-        sub_rv = parseFixed((struct FixedState*) state, buf, sizeof(name)); \
+        sub_rv = parseFixed((struct FixedState *const)state, buf, sizeof(name)); \
         if (sub_rv == PARSE_RV_DONE) { \
             state->val = READ_UNALIGNED_BIG_ENDIAN(name, state->buf); \
         } \
         return sub_rv; \
     } \
-    inline void init_ ## name (struct name ## _state *state) { \
-        return initFixed((struct FixedState*) state, sizeof(state)); \
+    inline void init_ ## name (struct name ## _state *const state) { \
+        return initFixed((struct FixedState *const)state, sizeof(state)); \
     }
 
 IMPL_FIXED_BE(uint32_t);
@@ -54,14 +54,14 @@ IMPL_FIXED_BE(uint64_t);
 IMPL_FIXED(Id32);
 IMPL_FIXED(Address);
 
-void init_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *state) {
+void init_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const state) {
     state->state = 0;
     state->address_n = 0;
     state->address_i = 0;
     INIT_SUBPARSER(uint64State, uint64_t);
 }
 
-enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *state, struct buf* buf) {
+enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const state, input_buf_t *const buf) {
   enum parse_rv sub_rv;
   switch (state->state) {
       case 0:
@@ -99,12 +99,12 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
   return sub_rv;
 }
 
-void init_Output(struct Output_state *state) {
+void init_Output(struct Output_state *const state) {
     state->state = 0;
     INIT_SUBPARSER(uint32State, uint32_t);
 }
 
-enum parse_rv parse_Output(struct Output_state *state, struct buf *buf) {
+enum parse_rv parse_Output(struct Output_state *const state, input_buf_t *const buf) {
     enum parse_rv sub_rv;
     switch (state->state) {
       case 0:
@@ -126,12 +126,12 @@ enum parse_rv parse_Output(struct Output_state *state, struct buf *buf) {
     return sub_rv;
 }
 
-void init_TransferableOutput(struct TransferableOutput_state *state) {
+void init_TransferableOutput(struct TransferableOutput_state *const state) {
     state->state = 0;
     INIT_SUBPARSER(id32State, Id32);
 }
 
-enum parse_rv parse_TransferableOutput(struct TransferableOutput_state *state, struct buf *buf) {
+enum parse_rv parse_TransferableOutput(struct TransferableOutput_state *const state, input_buf_t *const buf) {
     PRINTF("***Parse Transferable Output***\n");
     enum parse_rv sub_rv;
 
@@ -147,14 +147,14 @@ enum parse_rv parse_TransferableOutput(struct TransferableOutput_state *state, s
     return sub_rv;
 }
 
-void init_SECP256K1TransferInput(struct SECP256K1TransferInput_state *state) {
+void init_SECP256K1TransferInput(struct SECP256K1TransferInput_state *const state) {
     state->state = 0;
     state->address_index_i = 0;
     state->address_index_n = 0;
     INIT_SUBPARSER(uint64State, uint64_t);
 }
 
-enum parse_rv parse_SECP256K1TransferInput(struct SECP256K1TransferInput_state *state, struct buf *buf) {
+enum parse_rv parse_SECP256K1TransferInput(struct SECP256K1TransferInput_state *const state, input_buf_t *const buf) {
     enum parse_rv sub_rv;
 
     switch (state->state) {
@@ -187,12 +187,12 @@ enum parse_rv parse_SECP256K1TransferInput(struct SECP256K1TransferInput_state *
 
 
 
-void init_Input(struct Input_state *state) {
+void init_Input(struct Input_state *const state) {
     state->state = 0;
     INIT_SUBPARSER(uint32State, uint32_t);
 }
 
-enum parse_rv parse_Input(struct Input_state *state, struct buf *buf) {
+enum parse_rv parse_Input(struct Input_state *const state, input_buf_t *const buf) {
     enum parse_rv sub_rv;
 
     switch (state->state) {
@@ -215,12 +215,12 @@ enum parse_rv parse_Input(struct Input_state *state, struct buf *buf) {
     return sub_rv;
 }
 
-void init_TransferableInput(struct TransferableInput_state *state) {
+void init_TransferableInput(struct TransferableInput_state *const state) {
     state->state = 0;
     INIT_SUBPARSER(id32State, Id32);
 }
 
-enum parse_rv parse_TransferableInput(struct TransferableInput_state *state, struct buf *buf) {
+enum parse_rv parse_TransferableInput(struct TransferableInput_state *const state, input_buf_t *const buf) {
     enum parse_rv sub_rv;
 
     switch (state->state) {
@@ -247,12 +247,12 @@ enum parse_rv parse_TransferableInput(struct TransferableInput_state *state, str
 }
 
 #define IMPL_ARRAY(name) \
-    void init_ ## name ## s (struct name ## s_state *state) { \
+    void init_ ## name ## s (struct name ## s_state *const state) { \
         state->state = 0; \
         state->i = 0; \
         init_uint32_t(&state->len_state); \
     } \
-    enum parse_rv parse_ ## name ## s (struct name ## s_state *state, struct buf* buf) { \
+    enum parse_rv parse_ ## name ## s (struct name ## s_state *const state, input_buf_t *const buf) { \
         enum parse_rv sub_rv; \
         switch (state->state) { \
             case 0: \
@@ -276,14 +276,14 @@ enum parse_rv parse_TransferableInput(struct TransferableInput_state *state, str
 IMPL_ARRAY(TransferableOutput);
 IMPL_ARRAY(TransferableInput);
 
-void init_Memo(struct Memo_state *state) {
+void init_Memo(struct Memo_state *const state) {
     state->state = 0;
     state->n = 0;
     state->i = 0;
     INIT_SUBPARSER(uint32State, uint32_t);
 }
 
-enum parse_rv parse_Memo(struct Memo_state *state, struct buf* buf) {
+enum parse_rv parse_Memo(struct Memo_state *const state, input_buf_t *const buf) {
     enum parse_rv sub_rv;
 
     switch (state->state) {
@@ -305,7 +305,7 @@ enum parse_rv parse_Memo(struct Memo_state *state, struct buf* buf) {
     return sub_rv;
 }
 
-void initTransaction(struct TransactionState* state) {
+void initTransaction(struct TransactionState *const state) {
     state->state = 0;
     init_uint32_t(&state->uint32State);
     cx_sha256_init(&state->hash_state);
@@ -316,11 +316,11 @@ void update_transaction_hash(cx_sha256_t *const state, uint8_t const *const src,
     cx_hash((cx_hash_t *const)state, 0, src, length, NULL, 0);
 }
 
-enum parse_rv parseTransaction(struct TransactionState *const state, struct buf *const buf) {
+enum parse_rv parseTransaction(struct TransactionState *const state, input_buf_t *const buf) {
     PRINTF("***Parse Transaction***\n");
     enum parse_rv sub_rv;
 
-    uint8_t *start = buf->src + buf->consumed;
+    uint8_t const *const start = &buf->src[buf->consumed];
 
     switch (state->state) {
         case 0: // type ID
@@ -362,7 +362,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, struct buf 
 }
 
 /*
-parse_rv parseSomeObject(struct SomeObjectState *state, struct buf *buffer) {
+parse_rv parseSomeObject(struct SomeObjectState *const state, input_buf_t *const buffer) {
     parse_rv sub_rv;
 
     // If we need to operate chunk-wise on this object, save the starting point of the buffer:

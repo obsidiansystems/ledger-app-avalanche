@@ -160,7 +160,7 @@ size_t handle_apdu_sign_transaction(void) {
         return finalize_successful_send(0);
     }
 
-    struct buf pbuf;
+    input_buf_t pbuf;
     pbuf.src = buff;
     pbuf.consumed = 0;
     pbuf.length = buff_size;

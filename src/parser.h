@@ -1,11 +1,11 @@
 #pragma once
 
 // some global definitions
-struct buf {
-    uint8_t *src;
+typedef struct {
+    uint8_t const *src;
     size_t consumed;
     size_t length;
-};
+} input_buf_t;
 
 enum parse_rv {
     PARSE_RV_NEED_MORE,
@@ -13,7 +13,7 @@ enum parse_rv {
 };
 
 struct FixedState {
-    int filledTo;
+    size_t filledTo;
     uint8_t buffer[1]; // Actually bigger.
 };
 #define DEFINE_FIXED(name) \
@@ -139,8 +139,8 @@ struct TransactionState {
     cx_sha256_t hash_state;
 };
 
-void initTransaction(struct TransactionState* state);
+void initTransaction(struct TransactionState *const state);
 
-enum parse_rv parseTransaction(struct TransactionState* state, struct buf* buf);
+enum parse_rv parseTransaction(struct TransactionState *const state, input_buf_t *const buf);
 
 
