@@ -137,6 +137,16 @@ struct TransactionState {
     cx_sha256_t hash_state;
 };
 
+typedef enum {
+    NETWORK_ID_UNSET    = 0,
+    NETWORK_ID_MAINNET  = 1,
+    NETWORK_ID_CASCADE  = 2,
+    NETWORK_ID_DENALI   = 3,
+    NETWORK_ID_EVEREST  = 4,
+    NETWORK_ID_LOCAL    = 12345,
+    NETWORK_ID_UNITTEST = 10,
+} network_id_t;
+
 typedef struct {
     uint8_t const *src;
     size_t consumed;
@@ -146,7 +156,8 @@ typedef struct {
 typedef struct {
     string_generation_callback to_string;
     union {
-        uint64_t uint64;
+        uint32_t uint32; //network
+        uint64_t uint64; //amount
         Address address;
     } data;
 } prompt_entry_t;
@@ -159,7 +170,10 @@ typedef struct {
         char const *labels[TRANSACTION_PROMPT_BATCH_SIZE + 1]; // For NULL at end
         prompt_entry_t entries[TRANSACTION_PROMPT_BATCH_SIZE];
     } prompt;
+    network_id_t network_id;
 } parser_meta_state_t;
+
+char const *network_id_string(network_id_t network_id);
 
 void initTransaction(struct TransactionState *const state);
 

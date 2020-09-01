@@ -103,7 +103,6 @@ __attribute__((noreturn)) void main_loop(apdu_handler const *const handlers, siz
     while (true) {
         BEGIN_TRY {
             TRY {
-                PRINTF("ENTERING LOOP\n");
                 app_stack_canary = 0xdeadbeef;
                 // Process APDU of size rx
 

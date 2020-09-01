@@ -6,12 +6,12 @@
 
 #define REJECT(msg, ...) { PRINTF("Rejecting: " msg "\n", ##__VA_ARGS__); THROW(EXC_PARSE_ERROR); }
 
-#define ADD_PROMPT(label_, data_, to_string_) ({ \
+#define ADD_PROMPT(label_, data_, size_, to_string_) ({ \
         if (meta->prompt.count > NUM_ELEMENTS(meta->prompt.entries)) THROW(EXC_MEMORY_ERROR); \
         sub_rv = PARSE_RV_PROMPT; \
         meta->prompt.labels[meta->prompt.count] = PROMPT(label_); \
         meta->prompt.entries[meta->prompt.count].to_string = to_string_; \
-        memcpy(&meta->prompt.entries[meta->prompt.count].data, data_, sizeof(*data_)); \
+        memcpy(&meta->prompt.entries[meta->prompt.count].data, data_, size_); \
         meta->prompt.count++; \
         meta->prompt.count >= NUM_ELEMENTS(meta->prompt.entries); \
     })
@@ -72,8 +72,10 @@ void init_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const st
     INIT_SUBPARSER(uint64State, uint64_t);
 }
 
-static void address_to_string_mainnet(char *const out, size_t const out_size, public_key_hash_t const *const addr) {
-    pkh_to_string(out, out_size, "mainnet", sizeof("mainnet") - 1, addr);
+static void address_to_string_on_network(char *const out, size_t const out_size, public_key_hash_t const *const addr) {
+    char const *const network_name = network_id_string(global.apdu.u.sign.parser.meta_state.network_id); // TODO: We have tried to avoid globals in this file.
+    if (network_name == NULL) REJECT("Can't determine network HRP for addresses");
+    pkh_to_string(out, out_size, network_name, strlen(network_name), addr);
 }
 
 enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const state, parser_meta_state_t *const meta) {
@@ -84,7 +86,11 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
             CALL_SUBPARSER(uint64State, uint64_t);
             state->state++;
             PRINTF("OUTPUT AMOUNT: %.*h\n", 8, state->uint64State.buf); // we don't seem to have longs in printf specfiers.
-            bool const should_break = ADD_PROMPT("Amount", &state->uint64State.val, number_to_string_indirect64);
+            bool const should_break = ADD_PROMPT(
+                "Amount",
+                &state->uint64State.val, sizeof(state->uint64State.val),
+                number_to_string_indirect64
+            );
             INIT_SUBPARSER(uint64State, uint64_t);
             if (should_break) break;
         }
@@ -110,7 +116,11 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                 CALL_SUBPARSER(addressState, Address);
                 state->address_i++;
                 PRINTF("Output address %d: %.*h\n", state->address_i, sizeof(state->addressState.buf), state->addressState.buf);
-                bool const should_break = ADD_PROMPT("To", &state->addressState.val, address_to_string_mainnet);
+                bool const should_break = ADD_PROMPT(
+                    "To",
+                    &state->addressState.val, sizeof(state->addressState.val),
+                    address_to_string_on_network
+                );
                 if (state->address_i == state->address_n) return PARSE_RV_DONE;
                 INIT_SUBPARSER(addressState, Address);
                 if (should_break) break;
@@ -335,6 +345,16 @@ void update_transaction_hash(cx_sha256_t *const state, uint8_t const *const src,
     cx_hash((cx_hash_t *const)state, 0, src, length, NULL, 0);
 }
 
+static void strcpy_prompt(char *const out, size_t const out_size, char *const in) {
+    strncpy(out, in, out_size);
+}
+
+static void network_id_to_string(char *const out, size_t const out_size, uint32_t const *const in) {
+    char const *const network_name = network_id_string(*in);
+    if (network_name == NULL) THROW(EXC_SECURITY);
+    strncpy(out, network_name, out_size);
+}
+
 enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta_state_t *const meta) {
     check_null(state);
     check_null(meta);
@@ -352,13 +372,19 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             state->type = state->uint32State.val;
             if (state->type != 0) REJECT("Only Base Tx is supported");
             state->state++;
-            PRINTF("Type ID: %.*h\n", 4, state->uint32State.buf);
+            PRINTF("Type ID: %.*h\n", sizeof(state->uint32State.buf), state->uint32State.buf);
             INIT_SUBPARSER(uint32State, uint32_t);
-        case 1: // Network ID
+            {
+                static char const transactionLabel[] = "Transaction";
+                if (ADD_PROMPT("Sign", transactionLabel, sizeof(transactionLabel), strcpy_prompt)) break;
+            }
+        case 1: { // Network ID
             CALL_SUBPARSER(uint32State, uint32_t);
             state->state++;
-            PRINTF("Network ID: %.*h\n", 4, state->uint32State.buf);
+            PRINTF("Network ID: %.*h\n", sizeof(state->uint32State.buf), state->uint32State.buf);
+            meta->network_id = state->uint32State.val;
             INIT_SUBPARSER(id32State, Id32);
+        }
         case 2: // blockchain ID
             CALL_SUBPARSER(id32State, Id32);
             PRINTF("Blockchain ID: %.*h\n", 32, state->id32State.buf);
@@ -382,6 +408,18 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
     update_transaction_hash(&state->hash_state, start, meta->input.consumed);
 
     return sub_rv;
+}
+
+char const *network_id_string(network_id_t const network_id) {
+    switch (network_id) {
+        case NETWORK_ID_MAINNET: return "mainnet";
+        case NETWORK_ID_CASCADE: return "cascade";
+        case NETWORK_ID_DENALI: return "denali";
+        case NETWORK_ID_EVEREST: return "everest";
+        case NETWORK_ID_LOCAL: return "local";
+        case NETWORK_ID_UNITTEST: return "unittest";
+        default: return NULL;
+    }
 }
 
 /*
