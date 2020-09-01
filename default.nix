@@ -59,9 +59,11 @@ let
       };
     };
 
-  src = let glyphsFilter = (p: _: let p' = baseNameOf p; in p' != "glyphs.c" && p' != "glyphs.h");
-      in (pkgs.lib.sources.sourceFilesBySuffices
-          (pkgs.lib.sources.cleanSourceWith { src = ./.; filter = glyphsFilter; }) [".c" ".h" ".gif" "Makefile" ".sh" ".json" ".bats" ".txt" ".der" ".js" ".lock"]);
+  src = pkgs.nix-gitignore.gitignoreSource [] ./.;
+  # src = foo: ./.;
+  # src = let glyphsFilter = (p: _: let p' = baseNameOf p; in p' != "glyphs.c" && p' != "glyphs.h");
+  #    in (pkgs.lib.sources.sourceFilesBySuffices
+  #        (pkgs.lib.sources.cleanSourceWith { src = ./.; filter = glyphsFilter; }) [".c" ".h" ".gif" "Makefile" ".sh" ".json" ".bats" ".txt" ".der" ".js" ".lock"]);
 
   speculos = pkgs.callPackage ./nix/dep/speculos { };
   tests = import ./tests { inherit pkgs; };
