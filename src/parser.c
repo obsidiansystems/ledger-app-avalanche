@@ -382,7 +382,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             CALL_SUBPARSER(uint32State, uint32_t);
             state->state++;
             PRINTF("Network ID: %.*h\n", sizeof(state->uint32State.buf), state->uint32State.buf);
-            meta->network_id = state->uint32State.val;
+            meta->network_id = parse_network_id(state->uint32State.val);
             INIT_SUBPARSER(id32State, Id32);
         }
         case 2: // blockchain ID

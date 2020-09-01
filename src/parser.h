@@ -147,6 +147,19 @@ typedef enum {
     NETWORK_ID_UNITTEST = 10,
 } network_id_t;
 
+static inline network_id_t parse_network_id(uint32_t const val) {
+    switch (val) {
+        case 0: return NETWORK_ID_UNSET;
+        case 1: return NETWORK_ID_MAINNET;
+        case 2: return NETWORK_ID_CASCADE;
+        case 3: return NETWORK_ID_DENALI;
+        case 4: return NETWORK_ID_EVEREST;
+        case 12345: return NETWORK_ID_LOCAL;
+        case 10: return NETWORK_ID_UNITTEST;
+        default: THROW(EXC_PARSE_ERROR);
+    }
+}
+
 typedef struct {
     uint8_t const *src;
     size_t consumed;
