@@ -341,18 +341,12 @@ void initTransaction(struct TransactionState *const state) {
 }
 
 void update_transaction_hash(cx_sha256_t *const state, uint8_t const *const src, size_t const length) {
-    PRINTF("HASH DATA: %.*h\n", length, src);
+    PRINTF("HASH DATA: %d bytes: %.*h\n", length, length, src);
     cx_hash((cx_hash_t *const)state, 0, src, length, NULL, 0);
 }
 
 static void strcpy_prompt(char *const out, size_t const out_size, char *const in) {
     strncpy(out, in, out_size);
-}
-
-static void network_id_to_string(char *const out, size_t const out_size, uint32_t const *const in) {
-    char const *const network_name = network_id_string(*in);
-    if (network_name == NULL) THROW(EXC_SECURITY);
-    strncpy(out, network_name, out_size);
 }
 
 enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta_state_t *const meta) {
@@ -363,7 +357,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
     PRINTF("***Parse Transaction***\n");
     enum parse_rv sub_rv = PARSE_RV_INVALID;
 
-    uint8_t const *const start = &meta->input.src[meta->input.consumed];
+    size_t const start_consumed = meta->input.consumed;
 
     switch (state->state) {
         case 0: // type ID
@@ -405,7 +399,8 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             PRINTF("Done with memo; done.\n");
     }
 
-    update_transaction_hash(&state->hash_state, start, meta->input.consumed);
+    PRINTF("Consumed %d bytes of input so far\n", meta->input.consumed);
+    update_transaction_hash(&state->hash_state, &meta->input.src[start_consumed], meta->input.consumed - start_consumed);
 
     return sub_rv;
 }

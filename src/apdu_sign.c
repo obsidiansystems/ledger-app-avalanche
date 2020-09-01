@@ -174,10 +174,7 @@ static inline size_t reply_maybe_delayed(bool const is_reentry, size_t const tx)
     return tx;
 }
 
-static size_t next_parse(bool const is_reentry) {
-    PRINTF("Next parse\n");
-    enum parse_rv const rv = parseTransaction(&G.parser.state, &G.parser.meta_state);
-
+static void empty_prompt_queue(void) {
     if (G.parser.meta_state.prompt.count > 0) {
         PRINTF("Prompting for %d fields\n", G.parser.meta_state.prompt.count);
 
@@ -190,6 +187,13 @@ static size_t next_parse(bool const is_reentry) {
         }
         ui_prompt(G.parser.meta_state.prompt.labels, continue_parsing, sign_reject);
     }
+}
+
+static size_t next_parse(bool const is_reentry) {
+    PRINTF("Next parse\n");
+    enum parse_rv const rv = parseTransaction(&G.parser.state, &G.parser.meta_state);
+
+    empty_prompt_queue();
 
     if (rv == PARSE_RV_DONE || rv == PARSE_RV_NEED_MORE) {
         if (G.parser.meta_state.input.consumed != G.parser.meta_state.input.length) {
@@ -219,6 +223,7 @@ static size_t next_parse(bool const is_reentry) {
             size_t tx = 0;
             memcpy(&G_io_apdu_buffer[tx], G.final_hash, sizeof(G.final_hash));
             tx += sizeof(G.final_hash);
+
             return reply_maybe_delayed(is_reentry, finalize_successful_send(tx));
         }
     }
@@ -227,33 +232,29 @@ static size_t next_parse(bool const is_reentry) {
     THROW(EXC_PARSE_ERROR);
 }
 
-static size_t first_parse(uint8_t const *const in, uint8_t const in_size, bool const is_last_message) {
-    check_null(in);
-    PRINTF("First parse\n");
-    initTransaction(&G.parser.state);
-    G.parser.is_last_message = is_last_message;
-    G.parser.meta_state.input.src = in;
-    G.parser.meta_state.input.length = in_size;
-    return next_parse(false);
-}
-
 size_t handle_apdu_sign_transaction(void) {
-    uint8_t const *const buff = &G_io_apdu_buffer[OFFSET_CDATA];
-    uint8_t const buff_size = READ_UNALIGNED_BIG_ENDIAN(uint8_t, &G_io_apdu_buffer[OFFSET_LC]);
-    if (buff_size > MAX_APDU_SIZE)
+    uint8_t const *const in = &G_io_apdu_buffer[OFFSET_CDATA];
+    uint8_t const in_size = READ_UNALIGNED_BIG_ENDIAN(uint8_t, &G_io_apdu_buffer[OFFSET_LC]);
+    if (in_size > MAX_APDU_SIZE)
         THROW(EXC_WRONG_LENGTH_FOR_INS);
     uint8_t const p1 = READ_UNALIGNED_BIG_ENDIAN(uint8_t, &G_io_apdu_buffer[OFFSET_P1]);
 
-    bool const isFirstMessage = (p1 & P1_NEXT) == 0;
-    bool const isLastMessage = (p1 & P1_LAST) != 0;
+    bool const is_first_message = (p1 & P1_NEXT) == 0;
+    bool const is_last_message = (p1 & P1_LAST) != 0;
 
-    if (isFirstMessage) {
+    if (is_first_message) {
         clear_data();
-        read_bip32_path(&G.bip32_path_prefix, buff, buff_size);
+        read_bip32_path(&G.bip32_path_prefix, in, in_size);
+
+        initTransaction(&G.parser.state);
+
         return finalize_successful_send(0);
     }
 
-    return G.parser.meta_state.input.consumed == 0
-        ? first_parse(buff, buff_size, isLastMessage)
-        : next_parse(false);
+    G.parser.is_last_message = is_last_message;
+    G.parser.meta_state.input.consumed = 0;
+    G.parser.meta_state.input.src = in;
+    G.parser.meta_state.input.length = in_size;
+
+    return next_parse(false);
 }
