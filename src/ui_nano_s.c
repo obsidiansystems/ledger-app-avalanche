@@ -239,7 +239,6 @@ __attribute__((noreturn)) void ui_prompt_with_exception(uint16_t const exception
     size_t screen_count = i;
 
     G.switch_screen = &switch_screen;
-
     ui_display(ui_multi_screen, NUM_ELEMENTS(ui_multi_screen), ok_c, cxl_c, screen_count);
 #ifdef AVA_DEBUG
     ui_prompt_debug(screen_count);

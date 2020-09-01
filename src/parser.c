@@ -6,13 +6,15 @@
 
 #define REJECT(msg, ...) { PRINTF("Rejecting: " msg "\n", ##__VA_ARGS__); THROW(EXC_PARSE_ERROR); }
 
-#define OPEN_PROMPT(label_, in_, to_string_) { \
+#define ADD_PROMPT(label_, data_, to_string_) ({ \
+        if (meta->prompt.count > NUM_ELEMENTS(meta->prompt.entries)) THROW(EXC_MEMORY_ERROR); \
         sub_rv = PARSE_RV_PROMPT; \
-        meta->prompt.to_string = to_string_; \
-        meta->prompt.label = PROMPT(label_); \
-        meta->prompt.in = in_; \
-        break; \
-    }
+        meta->prompt.labels[meta->prompt.count] = PROMPT(label_); \
+        meta->prompt.entries[meta->prompt.count].to_string = to_string_; \
+        memcpy(&meta->prompt.entries[meta->prompt.count].data, data_, sizeof(*data_)); \
+        meta->prompt.count++; \
+        meta->prompt.count >= NUM_ELEMENTS(meta->prompt.entries); \
+    })
 
 #define CALL_SUBPARSER(subFieldName, subParser) { \
         sub_rv = parse_ ## subParser(&state->subFieldName, meta); \
@@ -70,42 +72,48 @@ void init_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const st
     INIT_SUBPARSER(uint64State, uint64_t);
 }
 
+static void address_to_string_mainnet(char *const out, size_t const out_size, public_key_hash_t const *const addr) {
+    pkh_to_string(out, out_size, "mainnet", sizeof("mainnet") - 1, addr);
+}
+
 enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
     switch (state->state) {
-        case 0:
+        case 0: {
             // Amount; Type is already handled in init_Output
             CALL_SUBPARSER(uint64State, uint64_t);
             state->state++;
             PRINTF("OUTPUT AMOUNT: %.*h\n", 8, state->uint64State.buf); // we don't seem to have longs in printf specfiers.
-            OPEN_PROMPT("Amount", &state->uint64State.val, number_to_string_indirect64);
-        case 1:
+            bool const should_break = ADD_PROMPT("Amount", &state->uint64State.val, number_to_string_indirect64);
             INIT_SUBPARSER(uint64State, uint64_t);
-            state->state++;
-        case 2:
+            if (should_break) break;
+        }
+        case 1:
             // Locktime
             CALL_SUBPARSER(uint64State, uint64_t);
             PRINTF("LOCK TIME: %.*h\n", 8, state->uint64State.buf); // we don't seem to have longs in printf specfiers.
             state->state++;
             INIT_SUBPARSER(uint32State, uint32_t);
-        case 3:
+        case 2:
             // Threshold
             CALL_SUBPARSER(uint32State, uint32_t);
             PRINTF("Threshold: %d\n", state->uint32State.val);
             state->state++;
             INIT_SUBPARSER(uint32State, uint32_t);
-        case 4: // Address Count
+        case 3: // Address Count
             CALL_SUBPARSER(uint32State, uint32_t);
             state->state++;
             state->address_n = state->uint32State.val;
             INIT_SUBPARSER(addressState, Address);
-        case 5:
+        case 4:
             while (true) {
                 CALL_SUBPARSER(addressState, Address);
                 state->address_i++;
-                PRINTF("Output address %d: %.*h\n", state->address_i, 20, state->addressState.buf);
+                PRINTF("Output address %d: %.*h\n", state->address_i, sizeof(state->addressState.buf), state->addressState.buf);
+                bool const should_break = ADD_PROMPT("To", &state->addressState.val, address_to_string_mainnet);
                 if (state->address_i == state->address_n) return PARSE_RV_DONE;
                 INIT_SUBPARSER(addressState, Address);
+                if (should_break) break;
             }
     }
     return sub_rv;
@@ -180,7 +188,7 @@ enum parse_rv parse_SECP256K1TransferInput(struct SECP256K1TransferInput_state *
             state->state++;
             INIT_SUBPARSER(uint32State, uint32_t);
         case 2: // Address indices
-            while(1) {
+            while (true) {
                 CALL_SUBPARSER(uint32State, uint32_t);
                 state->address_index_i++;
                 PRINTF("Address Index %d: %d\n", state->address_index_i, state->uint32State.val);
@@ -272,7 +280,7 @@ enum parse_rv parse_TransferableInput(struct TransferableInput_state *const stat
                 state->state++; \
                 init_ ## name(&state->item); \
             case 1: \
-                while (1) { \
+                while (true) { \
                     PRINTF(#name " %d\n", state->i + 1); \
                     CALL_SUBPARSER(item, name); \
                     state->i++; \

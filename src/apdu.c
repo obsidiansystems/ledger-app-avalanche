@@ -103,6 +103,7 @@ __attribute__((noreturn)) void main_loop(apdu_handler const *const handlers, siz
     while (true) {
         BEGIN_TRY {
             TRY {
+                PRINTF("ENTERING LOOP\n");
                 app_stack_canary = 0xdeadbeef;
                 // Process APDU of size rx
 
@@ -156,16 +157,11 @@ __attribute__((noreturn)) void main_loop(apdu_handler const *const handlers, siz
                 rx = io_exchange(CHANNEL_APDU, tx);
             }
             CATCH(ASYNC_EXCEPTION) {
+                PRINTF("Async exception\n");
 #ifdef STACK_MEASURE
                 measure_stack_max();
 #endif
                 rx = io_exchange(CHANNEL_APDU | IO_ASYNCH_REPLY, 0);
-            }
-            CATCH(ASYNC_CONTINUE_EXCEPTION) {
-#ifdef STACK_MEASURE
-                measure_stack_max();
-#endif
-                // no-op
             }
             CATCH(EXCEPTION_IO_RESET) {
                 THROW(EXCEPTION_IO_RESET);

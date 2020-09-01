@@ -201,7 +201,14 @@ void ui_prompt_with_exception(uint16_t const exception, const char *const *label
     G.ok_callback = ok_c;
     G.cxl_callback = cxl_c;
     ux_flow_init(0, &ux_prompts_flow[G.prompt.offset], NULL);
+
+#ifdef AVA_DEBUG
+    // In debug mode, the THROW below produces a PRINTF statement in an invalid position and causes the screen to blank,
+    // so instead we just directly call the equivalent longjmp for debug only.
+    longjmp(try_context_get()->jmp_buf, exception);
+#else
     THROW(exception);
+#endif
 }
 
 __attribute__((noreturn))

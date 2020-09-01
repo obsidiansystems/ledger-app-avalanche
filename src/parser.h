@@ -3,23 +3,6 @@
 #include "types.h"
 
 // some global definitions
-typedef struct {
-    uint8_t const *src;
-    size_t consumed;
-    size_t length;
-} parser_input_meta_state_t;
-
-typedef struct {
-    char const *label;
-    string_generation_callback to_string;
-    void const *in;
-} prompt_entry_t;
-
-typedef struct {
-    parser_input_meta_state_t input;
-    prompt_entry_t prompt;
-} parser_meta_state_t;
-
 enum parse_rv {
     PARSE_RV_INVALID = 0,
     PARSE_RV_NEED_MORE,
@@ -66,7 +49,7 @@ typedef struct {
 DEFINE_FIXED(Id32);
 
 typedef struct {
-    uint8_t val[20];
+    public_key_hash_t val;
 } Address;
 
 DEFINE_FIXED(Address);
@@ -154,8 +137,30 @@ struct TransactionState {
     cx_sha256_t hash_state;
 };
 
+typedef struct {
+    uint8_t const *src;
+    size_t consumed;
+    size_t length;
+} parser_input_meta_state_t;
+
+typedef struct {
+    string_generation_callback to_string;
+    union {
+        uint64_t uint64;
+        Address address;
+    } data;
+} prompt_entry_t;
+
+#define TRANSACTION_PROMPT_BATCH_SIZE 1
+typedef struct {
+    parser_input_meta_state_t input;
+    struct {
+        size_t count;
+        char const *labels[TRANSACTION_PROMPT_BATCH_SIZE + 1]; // For NULL at end
+        prompt_entry_t entries[TRANSACTION_PROMPT_BATCH_SIZE];
+    } prompt;
+} parser_meta_state_t;
+
 void initTransaction(struct TransactionState *const state);
 
 enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta_state_t *const meta);
-
-

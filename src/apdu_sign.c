@@ -31,6 +31,7 @@ static bool sign_ok(void) {
 }
 
 static bool sign_reject(void) {
+    PRINTF("Sign reject\n");
     clear_data();
     delay_reject();
     return true; // Return to idle
@@ -146,8 +147,23 @@ size_t handle_apdu_sign_hash(void) {
 static size_t next_parse(bool const is_reentry);
 
 static bool continue_parsing(void) {
+    PRINTF("Continue parsing\n");
     memset(&G.parser.meta_state.prompt, 0, sizeof(G.parser.meta_state.prompt));
-    next_parse(true);
+
+    BEGIN_TRY {
+        TRY {
+            next_parse(true);
+        }
+        CATCH(ASYNC_EXCEPTION) {
+            // requested another prompt
+            PRINTF("Caught nested ASYNC exception\n");
+        }
+        CATCH_OTHER(e) {
+            THROW(e);
+        }
+        FINALLY {}
+    }
+    END_TRY;
     return true;
 }
 
@@ -162,16 +178,17 @@ static size_t next_parse(bool const is_reentry) {
     PRINTF("Next parse\n");
     enum parse_rv const rv = parseTransaction(&G.parser.state, &G.parser.meta_state);
 
-    if (rv == PARSE_RV_PROMPT) {
-        check_null(G.parser.meta_state.prompt.to_string);
+    if (G.parser.meta_state.prompt.count > 0) {
+        PRINTF("Prompting for %d fields\n", G.parser.meta_state.prompt.count);
 
-        PRINTF("Prompting for %s\n", G.parser.meta_state.prompt.label);
-        static char const *prompts[2];
-        prompts[0] = G.parser.meta_state.prompt.label;
-        prompts[1] = NULL;
-        register_ui_callback(0, G.parser.meta_state.prompt.to_string, G.parser.meta_state.prompt.in);
-
-        ui_prompt_with_exception(is_reentry ? ASYNC_CONTINUE_EXCEPTION : ASYNC_EXCEPTION, prompts, continue_parsing, sign_reject);
+        for (size_t i = 0; i < G.parser.meta_state.prompt.count; i++) {
+            register_ui_callback(
+                i,
+                G.parser.meta_state.prompt.entries[i].to_string,
+                &G.parser.meta_state.prompt.entries[i].data
+            );
+        }
+        ui_prompt(G.parser.meta_state.prompt.labels, continue_parsing, sign_reject);
     }
 
     if (rv == PARSE_RV_DONE || rv == PARSE_RV_NEED_MORE) {
