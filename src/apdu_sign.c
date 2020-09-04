@@ -37,7 +37,8 @@ static bool sign_reject(void) {
     return true; // Return to idle
 }
 
-static size_t sign_complete(void) {
+__attribute__((noreturn))
+static size_t sign_hash_complete(void) {
     static uint32_t const TYPE_INDEX = 0;
     static uint32_t const DRV_PREFIX_INDEX = 1;
     static uint32_t const HASH_INDEX = 2;
@@ -60,22 +61,53 @@ static size_t sign_complete(void) {
     ui_prompt(transaction_prompts, sign_ok, sign_reject);
 }
 
+static size_t sign_hash_with_suffix(uint8_t *const out, bool const is_last_signature, uint8_t const *const in, size_t const in_size) {
+    PRINTF("Signing hash: num_signatures_left = %d of requested_num_signatures = %d%s\n", G.num_signatures_left, G.requested_num_signatures, is_last_signature ? ", last signature" : "");
+    if (G.num_signatures_left == 0 || G.num_signatures_left > G.requested_num_signatures) THROW(EXC_SECURITY);
+    G.num_signatures_left = is_last_signature ? 0 : G.num_signatures_left - 1;
+
+    bip32_path_t bip32_path_suffix;
+    memset(&bip32_path_suffix, 0, sizeof(bip32_path_suffix));
+    read_bip32_path(&bip32_path_suffix, in, in_size);
+
+    // TODO: Ensure the suffix path is the right length, etc.
+    bip32_path_t bip32_path;
+    memcpy(&bip32_path, &G.bip32_path_prefix, sizeof(G.bip32_path_prefix));
+    concat_bip32_path(&bip32_path, &bip32_path_suffix);
+
+#if defined(AVA_DEBUG)
+    char path_str[100];
+    bip32_path_to_string(path_str, sizeof(path_str), &bip32_path);
+    PRINTF("Signing hash %.*h with %s\n", sizeof(G.final_hash), G.final_hash, path_str);
+#endif
+
+    size_t const tx = WITH_EXTENDED_KEY_PAIR(bip32_path, it, size_t, ({
+        sign(out, MAX_SIGNATURE_SIZE, &it->key_pair, G.final_hash, sizeof(G.final_hash));
+    }));
+
+    if (G.num_signatures_left == 0) {
+        clear_data();
+    }
+
+    return tx;
+}
+
 static size_t sign_hash_impl(
     uint8_t const *const in,
     uint8_t const in_size,
-    bool const isFirstMessage,
-    bool const isLastMessage
+    bool const is_first_message,
+    bool const is_last_message
 ) {
-    if (isFirstMessage) {
+    if (is_first_message) {
         size_t ix = 0;
 
         // 1 byte - requested_num_signatures
+        if (ix + sizeof(uint8_t) > in_size) THROW_(EXC_WRONG_LENGTH, "Input too small");
         G.requested_num_signatures = CONSUME_UNALIGNED_BIG_ENDIAN(ix, uint8_t, &in[ix]);
+        if (G.requested_num_signatures == 0) THROW_(EXC_WRONG_PARAM, "Sender requested 0 signatures");
 
         // sizeof(G.final_hash) bytes - hash to sign
-        if (ix + sizeof(G.final_hash) > in_size) {
-            THROW(EXC_WRONG_LENGTH);
-        }
+        if (ix + sizeof(G.final_hash) > in_size) THROW_(EXC_WRONG_LENGTH, "Input too small");
         memmove(G.final_hash, &in[ix], sizeof(G.final_hash));
         ix += sizeof(G.final_hash);
 
@@ -83,44 +115,15 @@ static size_t sign_hash_impl(
         ix += read_bip32_path(&G.bip32_path_prefix, &in[ix], in_size - ix);
 
         // TODO: Make sure the prefix actually starts with the thing we care about
-        if (G.bip32_path_prefix.length < 3) {
-            THROW(EXC_SECURITY);
-        }
+        if (G.bip32_path_prefix.length < 3) THROW(EXC_SECURITY);
 
         PRINTF("First signing message: requested_num_signatures = %d\n", G.requested_num_signatures);
 
-        return sign_complete();
+        return sign_hash_complete();
     } else {
-        PRINTF("Next signing message: num_signatures_left = %d of requested_num_signatures = %d\n", G.num_signatures_left, G.requested_num_signatures);
-        if (G.num_signatures_left == 0 || G.num_signatures_left > G.requested_num_signatures) {
-            THROW(EXC_SECURITY);
-        }
-        G.num_signatures_left = isLastMessage ? 0 : G.num_signatures_left - 1;
-
-        bip32_path_t bip32_path_suffix;
-        memset(&bip32_path_suffix, 0, sizeof(bip32_path_suffix));
-        read_bip32_path(&bip32_path_suffix, in, in_size);
-
-        // TODO: Ensure the suffix path is the right length, etc.
-        bip32_path_t bip32_path;
-        memcpy(&bip32_path, &G.bip32_path_prefix, sizeof(G.bip32_path_prefix));
-        concat_bip32_path(&bip32_path, &bip32_path_suffix);
-
-#if defined(AVA_DEBUG)
-        char pathstr[100];
-        bip32_path_to_string(pathstr, sizeof(pathstr), &bip32_path);
-        PRINTF("Signing with %s\n", pathstr);
-        PRINTF("Signing hash = %.*h\n", sizeof(G.final_hash), G.final_hash);
-#endif
-
-        size_t const tx = WITH_EXTENDED_KEY_PAIR(bip32_path, it, size_t, ({
-            sign(G_io_apdu_buffer, MAX_SIGNATURE_SIZE, &it->key_pair, G.final_hash, sizeof(G.final_hash));
-        }));
-
-        if (G.num_signatures_left == 0) {
-            clear_data();
-        }
-        return finalize_successful_send(tx);
+        return finalize_successful_send(
+            sign_hash_with_suffix(G_io_apdu_buffer, is_last_message, in, in_size)
+        );
     }
 }
 
@@ -232,6 +235,12 @@ static size_t next_parse(bool const is_reentry) {
     THROW(EXC_PARSE_ERROR);
 }
 
+#define SIGN_TRANSACTION_SECTION_PREAMBLE            0x00
+#define SIGN_TRANSACTION_SECTION_PAYLOAD_CHUNK       0x01
+#define SIGN_TRANSACTION_SECTION_PAYLOAD_CHUNK_LAST  0x81
+#define SIGN_TRANSACTION_SECTION_SIGN_WITH_PATH      0x02
+#define SIGN_TRANSACTION_SECTION_SIGN_WITH_PATH_LAST 0x82
+
 size_t handle_apdu_sign_transaction(void) {
     uint8_t const *const in = &G_io_apdu_buffer[OFFSET_CDATA];
     uint8_t const in_size = READ_UNALIGNED_BIG_ENDIAN(uint8_t, &G_io_apdu_buffer[OFFSET_LC]);
@@ -239,22 +248,38 @@ size_t handle_apdu_sign_transaction(void) {
         THROW(EXC_WRONG_LENGTH_FOR_INS);
     uint8_t const p1 = READ_UNALIGNED_BIG_ENDIAN(uint8_t, &G_io_apdu_buffer[OFFSET_P1]);
 
-    bool const is_first_message = (p1 & P1_NEXT) == 0;
-    bool const is_last_message = (p1 & P1_LAST) != 0;
+    switch (p1) {
+        case SIGN_TRANSACTION_SECTION_PREAMBLE: {
+            clear_data();
 
-    if (is_first_message) {
-        clear_data();
-        read_bip32_path(&G.bip32_path_prefix, in, in_size);
+            size_t ix = 0;
+            if (ix + sizeof(uint8_t) > in_size) THROW_(EXC_WRONG_LENGTH, "Input too small");
+            G.requested_num_signatures = CONSUME_UNALIGNED_BIG_ENDIAN(ix, uint8_t, &in[ix]);
+            if (G.requested_num_signatures == 0) THROW_(EXC_WRONG_PARAM, "Sender requested 0 signatures");
 
-        initTransaction(&G.parser.state);
+            read_bip32_path(&G.bip32_path_prefix, &in[ix], in_size - ix);
+            if (G.bip32_path_prefix.length < 3) THROW_(EXC_SECURITY, "Signing prefix path not long enough");
 
-        return finalize_successful_send(0);
+            initTransaction(&G.parser.state);
+            return finalize_successful_send(0);
+        }
+
+        case SIGN_TRANSACTION_SECTION_PAYLOAD_CHUNK_LAST:
+        case SIGN_TRANSACTION_SECTION_PAYLOAD_CHUNK:
+            if (G.num_signatures_left > 0) THROW_(EXC_SECURITY, "Sender broke protocol order by going backward");
+            if (G.requested_num_signatures == 0) THROW_(EXC_WRONG_PARAM, "Sender broke protocol order by going forward");
+            G.parser.is_last_message = p1 == SIGN_TRANSACTION_SECTION_PAYLOAD_CHUNK_LAST;
+            G.parser.meta_state.input.consumed = 0;
+            G.parser.meta_state.input.src = in;
+            G.parser.meta_state.input.length = in_size;
+            return next_parse(false);
+
+        case SIGN_TRANSACTION_SECTION_SIGN_WITH_PATH_LAST:
+        case SIGN_TRANSACTION_SECTION_SIGN_WITH_PATH:
+            return finalize_successful_send(
+                sign_hash_with_suffix(G_io_apdu_buffer, p1 == SIGN_TRANSACTION_SECTION_SIGN_WITH_PATH_LAST, in, in_size)
+            );
+
+        default: THROW_(EXC_WRONG_PARAM, "Unrecognized P1 %d", p1);
     }
-
-    G.parser.is_last_message = is_last_message;
-    G.parser.meta_state.input.consumed = 0;
-    G.parser.meta_state.input.src = in;
-    G.parser.meta_state.input.length = in_size;
-
-    return next_parse(false);
 }
