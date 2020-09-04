@@ -169,6 +169,7 @@ typedef struct {
 typedef struct {
     string_generation_callback to_string;
     union {
+        char const *str; // pointer to static null-terminated string
         uint32_t uint32; //network
         uint64_t uint64; //amount
         Address address;

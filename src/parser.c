@@ -345,7 +345,7 @@ void update_transaction_hash(cx_sha256_t *const state, uint8_t const *const src,
     cx_hash((cx_hash_t *const)state, 0, src, length, NULL, 0);
 }
 
-static void strcpy_prompt(char *const out, size_t const out_size, char *const in) {
+static void strcpy_prompt(char *const out, size_t const out_size, char const *const in) {
     strncpy(out, in, out_size);
 }
 
