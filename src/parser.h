@@ -186,7 +186,8 @@ typedef struct {
     network_id_t network_id;
 } parser_meta_state_t;
 
-char const *network_id_string(network_id_t network_id);
+char const *network_id_string(network_id_t const network_id);
+Id32 const *blockchain_id_for_network(network_id_t const network_id);
 
 void initTransaction(struct TransactionState *const state);
 

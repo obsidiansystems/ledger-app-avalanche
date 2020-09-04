@@ -382,6 +382,10 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
         case 2: // blockchain ID
             CALL_SUBPARSER(id32State, Id32);
             PRINTF("Blockchain ID: %.*h\n", 32, state->id32State.buf);
+            Id32 const *const blockchain_id = blockchain_id_for_network(meta->network_id);
+            if (blockchain_id == NULL) REJECT("Blockchain ID for given network ID not found");
+            if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
+                REJECT("Blockchain ID did not match expected value for network ID");
             state->state++;
             INIT_SUBPARSER(outputsState, TransferableOutputs);
         case 3: // outputs
@@ -416,6 +420,24 @@ char const *network_id_string(network_id_t const network_id) {
         default: return NULL;
     }
 }
+
+Id32 const *blockchain_id_for_network(network_id_t const network_id) {
+    switch (network_id) {
+        case NETWORK_ID_DENALI: {
+            static Id32 const id = {
+                .val = {
+                    0xff, 0xff, 0xff, 0xff, 0xee, 0xee, 0xee, 0xee,
+                    0xdd, 0xdd, 0xdd, 0xdd, 0xcc, 0xcc, 0xcc, 0xcc,
+                    0xbb, 0xbb, 0xbb, 0xbb, 0xaa, 0xaa, 0xaa, 0xaa,
+                    0x99, 0x99, 0x99, 0x99, 0x88, 0x88, 0x88, 0x88,
+                }
+            };
+            return &id;
+        }
+        default: return NULL;
+    }
+}
+
 
 /*
 parse_rv parseSomeObject(struct SomeObjectState *const state, parser_meta_state_t *const metafer) {
