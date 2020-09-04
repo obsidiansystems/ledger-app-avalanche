@@ -44,6 +44,7 @@ typedef struct {
     struct {
         ui_callback_t ok_callback;
         ui_callback_t cxl_callback;
+        char accept_prompt_str[PROMPT_WIDTH + 1];
 
         uint32_t ux_step;
         uint32_t ux_step_count;

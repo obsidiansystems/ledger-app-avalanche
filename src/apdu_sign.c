@@ -177,6 +177,18 @@ static bool continue_parsing(void) {
     return true;
 }
 
+static void transaction_complete_prompt(void) {
+    static uint32_t const TYPE_INDEX = 0;
+
+    static char const *const transaction_prompts[] = {
+        PROMPT("Finalize"),
+        NULL,
+    };
+    REGISTER_STATIC_UI_VALUE(TYPE_INDEX, "Transaction");
+
+    ui_prompt(transaction_prompts, sign_ok, sign_reject);
+}
+
 static inline size_t reply_maybe_delayed(bool const is_reentry, size_t const tx) {
     if (is_reentry) {
         delayed_send(tx);
@@ -195,7 +207,7 @@ static void empty_prompt_queue(void) {
                 &G.parser.meta_state.prompt.entries[i].data
             );
         }
-        ui_prompt(G.parser.meta_state.prompt.labels, continue_parsing, sign_reject);
+        ui_prompt_with(ASYNC_EXCEPTION, "Next", G.parser.meta_state.prompt.labels, continue_parsing, sign_reject);
     }
 }
 
@@ -226,15 +238,9 @@ static size_t next_parse(bool const is_reentry) {
                 THROW(EXC_PARSE_ERROR);
             }
 
-            PRINTF("Parser signaled done; sending final hash\n");
+            PRINTF("Parser signaled done; sending final prompt\n");
             cx_hash((cx_hash_t *const)&G.parser.state.hash_state, CX_LAST, NULL, 0, G.final_hash, sizeof(G.final_hash));
-            G.num_signatures_left = G.requested_num_signatures;
-
-            size_t tx = 0;
-            memcpy(&G_io_apdu_buffer[tx], G.final_hash, sizeof(G.final_hash));
-            tx += sizeof(G.final_hash);
-
-            return reply_maybe_delayed(is_reentry, finalize_successful_send(tx));
+            transaction_complete_prompt();
         }
     }
 

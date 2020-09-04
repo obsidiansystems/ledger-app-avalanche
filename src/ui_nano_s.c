@@ -226,8 +226,9 @@ void ui_prompt_debug(size_t screen_count) {
     }
 }
 
-__attribute__((noreturn)) void ui_prompt_with_exception(uint16_t const exception, const char *const *labels, ui_callback_t ok_c, ui_callback_t cxl_c) {
+__attribute__((noreturn)) void ui_prompt_with(uint16_t const exception, char const *const accept_str, char const *const *labels, ui_callback_t ok_c, ui_callback_t cxl_c) {
     check_null(labels);
+    check_null(accept_str);
     global.ui.prompt.prompts = labels;
 
     size_t i;
@@ -239,6 +240,7 @@ __attribute__((noreturn)) void ui_prompt_with_exception(uint16_t const exception
     size_t screen_count = i;
 
     G.switch_screen = &switch_screen;
+    strncpy(&G.accept_prompt_str, accept_str, sizeof(G.accept_prompt_str));
     ui_display(ui_multi_screen, NUM_ELEMENTS(ui_multi_screen), ok_c, cxl_c, screen_count);
 #ifdef AVA_DEBUG
     ui_prompt_debug(screen_count);
@@ -251,7 +253,7 @@ __attribute__((noreturn)) void ui_prompt_with_exception(uint16_t const exception
 }
 
 __attribute__((noreturn)) void ui_prompt(const char *const *labels, ui_callback_t ok_c, ui_callback_t cxl_c) {
-    ui_prompt_with_exception(ASYNC_EXCEPTION, labels, ok_c, cxl_c);
+    ui_prompt_with(ASYNC_EXCEPTION, "Accept", labels, ok_c, cxl_c);
 }
 
 __attribute__((noreturn)) void ui_prompt_with_cb(void (*switch_screen_cb)(uint32_t), size_t screen_count, ui_callback_t ok_c, ui_callback_t cxl_c) {
