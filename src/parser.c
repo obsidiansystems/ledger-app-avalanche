@@ -117,7 +117,7 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                 state->address_i++;
                 PRINTF("Output address %d: %.*h\n", state->address_i, sizeof(state->addressState.buf), state->addressState.buf);
                 bool const should_break = ADD_PROMPT(
-                    "To",
+                    "To Address",
                     &state->addressState.val, sizeof(state->addressState.val),
                     address_to_string_on_network
                 );

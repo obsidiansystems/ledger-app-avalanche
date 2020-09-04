@@ -40,16 +40,21 @@ static bool sign_reject(void) {
 __attribute__((noreturn))
 static size_t sign_hash_complete(void) {
     static uint32_t const TYPE_INDEX = 0;
-    static uint32_t const DRV_PREFIX_INDEX = 1;
-    static uint32_t const HASH_INDEX = 2;
+    static uint32_t const DANGER_INDEX = 1;
+    static uint32_t const DRV_PREFIX_INDEX = 2;
+    static uint32_t const HASH_INDEX = 3;
+    static uint32_t const ARE_YOU_SURE_INDEX = 4;
 
     static char const *const transaction_prompts[] = {
         PROMPT("Sign"),
+        PROMPT("DANGER!"),
         PROMPT("Derivation Prefix"),
         PROMPT("Hash"),
-        NULL
+        PROMPT("Are you sure?"),
+        NULL,
     };
     REGISTER_STATIC_UI_VALUE(TYPE_INDEX, "Hash");
+    REGISTER_STATIC_UI_VALUE(DANGER_INDEX, "YOU MUST verify this manually!!!");
 
     register_ui_callback(DRV_PREFIX_INDEX, bip32_path_to_string, &G.bip32_path_prefix);
 
@@ -57,6 +62,8 @@ static size_t sign_hash_complete(void) {
     G.final_hash_as_buffer.length = sizeof(G.final_hash);
     G.final_hash_as_buffer.size = sizeof(G.final_hash);
     register_ui_callback(HASH_INDEX, buffer_to_hex, &G.final_hash_as_buffer);
+
+    REGISTER_STATIC_UI_VALUE(ARE_YOU_SURE_INDEX, "This is very dangerous!");
 
     ui_prompt(transaction_prompts, sign_ok, sign_reject);
 }
