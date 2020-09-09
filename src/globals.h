@@ -1,8 +1,8 @@
 #pragma once
 
-#include "types.h"
 #include "bolos_target.h"
 #include "parser.h"
+#include "types.h"
 
 // Zeros out all globals that can keep track of APDU instruction state.
 // Notably this does *not* include UI state.
@@ -116,9 +116,6 @@ static inline void throw_stack_size() {
         body;                                                                                         \
         nvm_write((void *)&N_data, &global.new_data, sizeof(N_data));                                 \
     })
-
-void switch_network();
-void switch_sign_hash();
 
 #ifdef AVA_DEBUG
 // Aid for tracking down app crashes
