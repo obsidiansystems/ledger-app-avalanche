@@ -124,7 +124,7 @@ UX_STEP_CB(
     prompt_response(true),
     {
         &C_icon_validate_14,
-        &G.accept_prompt_str
+        G.accept_prompt_str
     });
 
 UX_STEP_CB(
@@ -196,7 +196,7 @@ void ui_prompt_with(uint16_t const exception, char const *const accept_str, char
 
     G.switch_screen = switch_screen;
     G.prompt.offset = MAX_SCREEN_COUNT - screen_count;
-    strncpy(&G.accept_prompt_str, accept_str, sizeof(G.accept_prompt_str));
+    strncpy(G.accept_prompt_str, accept_str, sizeof(G.accept_prompt_str));
 
     ui_prompt_debug(screen_count);
 
