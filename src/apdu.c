@@ -107,6 +107,8 @@ __attribute__((noreturn)) void main_loop(apdu_handler const *const handlers, siz
                 // Process APDU of size rx
 
                 size_t const rx = io_exchange(next_io_exchange_flag, next_io_exchange_tx);
+                next_io_exchange_flag = CHANNEL_APDU;
+                next_io_exchange_tx = 0;
 
                 if (rx == 0) {
                     // no apdu received, well, reset the session, and reset the
