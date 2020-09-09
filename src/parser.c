@@ -60,6 +60,7 @@ enum parse_rv parseFixed(struct FixedState *const state, parser_meta_state_t *co
         return initFixed((struct FixedState *const)state, sizeof(state)); \
     }
 
+IMPL_FIXED_BE(uint16_t);
 IMPL_FIXED_BE(uint32_t);
 IMPL_FIXED_BE(uint64_t);
 IMPL_FIXED(Id32);
@@ -360,7 +361,13 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
     size_t const start_consumed = meta->input.consumed;
 
     switch (state->state) {
-        case 0: // type ID
+        case 0: // codec ID
+            CALL_SUBPARSER(uint16State, uint16_t);
+            PRINTF("Codec ID: %d\n", state->uint16State.val);
+            if (state->uint16State.val != 0) REJECT("Only codec ID 0 is supported");
+            state->state++;
+            INIT_SUBPARSER(uint32State, uint32_t);
+        case 1: // type ID
             CALL_SUBPARSER(uint32State, uint32_t);
             // Keep this so we can switch on it for supporting more than BaseTx
             state->type = state->uint32State.val;
@@ -372,14 +379,14 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
                 static char const transactionLabel[] = "Transaction";
                 if (ADD_PROMPT("Sign", transactionLabel, sizeof(transactionLabel), strcpy_prompt)) break;
             }
-        case 1: { // Network ID
+        case 2: { // Network ID
             CALL_SUBPARSER(uint32State, uint32_t);
             state->state++;
             PRINTF("Network ID: %.*h\n", sizeof(state->uint32State.buf), state->uint32State.buf);
             meta->network_id = parse_network_id(state->uint32State.val);
             INIT_SUBPARSER(id32State, Id32);
         }
-        case 2: // blockchain ID
+        case 3: // blockchain ID
             CALL_SUBPARSER(id32State, Id32);
             PRINTF("Blockchain ID: %.*h\n", 32, state->id32State.buf);
             Id32 const *const blockchain_id = blockchain_id_for_network(meta->network_id);
@@ -388,17 +395,17 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
                 REJECT("Blockchain ID did not match expected value for network ID");
             state->state++;
             INIT_SUBPARSER(outputsState, TransferableOutputs);
-        case 3: // outputs
+        case 4: // outputs
             CALL_SUBPARSER(outputsState, TransferableOutputs);
             PRINTF("Done with outputs\n");
             state->state++;
             INIT_SUBPARSER(inputsState, TransferableInputs);
-        case 4: // inputs
+        case 5: // inputs
             CALL_SUBPARSER(inputsState, TransferableInputs);
             PRINTF("Done with inputs\n");
             state->state++;
             INIT_SUBPARSER(memoState, Memo);
-        case 5: // memo
+        case 6: // memo
             CALL_SUBPARSER(memoState, Memo);
             PRINTF("Done with memo; done.\n");
     }

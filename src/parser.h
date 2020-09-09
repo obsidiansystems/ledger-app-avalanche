@@ -39,6 +39,7 @@ struct FixedState {
         }; \
     };
 
+DEFINE_FIXED_BE(uint16_t);
 DEFINE_FIXED_BE(uint32_t);
 DEFINE_FIXED_BE(uint64_t);
 
@@ -128,6 +129,7 @@ struct TransactionState {
     int state;
     uint32_t type;
     union {
+        struct uint16_t_state uint16State;
         struct uint32_t_state uint32State;
         struct Id32_state id32State;
         struct TransferableOutputs_state outputsState;
