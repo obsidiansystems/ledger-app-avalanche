@@ -125,20 +125,6 @@ struct Memo_state {
     };
 };
 
-struct TransactionState {
-    int state;
-    uint32_t type;
-    union {
-        struct uint16_t_state uint16State;
-        struct uint32_t_state uint32State;
-        struct Id32_state id32State;
-        struct TransferableOutputs_state outputsState;
-        struct TransferableInputs_state inputsState;
-        struct Memo_state memoState;
-    };
-    cx_sha256_t hash_state;
-};
-
 typedef enum {
     NETWORK_ID_UNSET    = 0,
     NETWORK_ID_MAINNET  = 1,
@@ -161,6 +147,21 @@ static inline network_id_t parse_network_id(uint32_t const val) {
         default: THROW(EXC_PARSE_ERROR);
     }
 }
+
+struct TransactionState {
+    int state;
+    uint32_t type;
+    network_id_t network_id;
+    union {
+        struct uint16_t_state uint16State;
+        struct uint32_t_state uint32State;
+        struct Id32_state id32State;
+        struct TransferableOutputs_state outputsState;
+        struct TransferableInputs_state inputsState;
+        struct Memo_state memoState;
+    };
+    cx_sha256_t hash_state;
+};
 
 typedef struct {
     uint8_t const *src;
@@ -186,7 +187,6 @@ typedef struct {
         char const *labels[TRANSACTION_PROMPT_BATCH_SIZE + 1]; // For NULL at end
         prompt_entry_t entries[TRANSACTION_PROMPT_BATCH_SIZE];
     } prompt;
-    network_id_t network_id;
 } parser_meta_state_t;
 
 char const *network_id_string(network_id_t const network_id);

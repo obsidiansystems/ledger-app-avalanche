@@ -74,7 +74,7 @@ void init_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const st
 }
 
 static void address_to_string_on_network(char *const out, size_t const out_size, public_key_hash_t const *const addr) {
-    char const *const network_name = network_id_string(global.apdu.u.sign.parser.meta_state.network_id); // TODO: We have tried to avoid globals in this file.
+    char const *const network_name = network_id_string(global.apdu.u.sign.parser.state.network_id); // TODO: We have tried to avoid globals in this file.
     if (network_name == NULL) REJECT("Can't determine network HRP for addresses");
     pkh_to_string(out, out_size, network_name, strlen(network_name), addr);
 }
@@ -383,13 +383,13 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             CALL_SUBPARSER(uint32State, uint32_t);
             state->state++;
             PRINTF("Network ID: %.*h\n", sizeof(state->uint32State.buf), state->uint32State.buf);
-            meta->network_id = parse_network_id(state->uint32State.val);
+            state->network_id = parse_network_id(state->uint32State.val);
             INIT_SUBPARSER(id32State, Id32);
         }
         case 3: // blockchain ID
             CALL_SUBPARSER(id32State, Id32);
             PRINTF("Blockchain ID: %.*h\n", 32, state->id32State.buf);
-            Id32 const *const blockchain_id = blockchain_id_for_network(meta->network_id);
+            Id32 const *const blockchain_id = blockchain_id_for_network(state->network_id);
             if (blockchain_id == NULL) REJECT("Blockchain ID for given network ID not found");
             if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
                 REJECT("Blockchain ID did not match expected value for network ID");
