@@ -79,7 +79,6 @@ size_t handle_apdu_get_wallet_id(void) {
 
 #ifdef STACK_MEASURE
 __attribute__((noinline)) void stack_sentry_fill() {
-  uint32_t* p;
   volatile int top;
   top = 5;
   memset((void*)(&app_stack_canary + 1), 42, ((uint8_t*)(&top - 10)) - ((uint8_t*)&app_stack_canary));
@@ -99,12 +98,15 @@ void measure_stack_max() {
 #define CLA 0x80
 
 __attribute__((noreturn)) void main_loop(apdu_handler const *const handlers, size_t const handlers_size) {
-    volatile size_t rx = io_exchange(CHANNEL_APDU, 0);
+    uint8_t volatile next_io_exchange_flag = CHANNEL_APDU;
+    size_t volatile next_io_exchange_tx = 0;
     while (true) {
         BEGIN_TRY {
             TRY {
                 app_stack_canary = 0xdeadbeef;
                 // Process APDU of size rx
+
+                size_t const rx = io_exchange(next_io_exchange_flag, next_io_exchange_tx);
 
                 if (rx == 0) {
                     // no apdu received, well, reset the session, and reset the
@@ -153,14 +155,16 @@ __attribute__((noreturn)) void main_loop(apdu_handler const *const handlers, siz
                 measure_stack_max();
 #endif
 
-                rx = io_exchange(CHANNEL_APDU, tx);
+                next_io_exchange_flag = CHANNEL_APDU;
+                next_io_exchange_tx = tx;
             }
             CATCH(ASYNC_EXCEPTION) {
                 PRINTF("Async exception\n");
 #ifdef STACK_MEASURE
                 measure_stack_max();
 #endif
-                rx = io_exchange(CHANNEL_APDU | IO_ASYNCH_REPLY, 0);
+                next_io_exchange_flag = CHANNEL_APDU | IO_ASYNCH_REPLY;
+                next_io_exchange_tx = 0;
             }
             CATCH(EXCEPTION_IO_RESET) {
                 THROW(EXCEPTION_IO_RESET);
@@ -171,26 +175,28 @@ __attribute__((noreturn)) void main_loop(apdu_handler const *const handlers, siz
                 uint16_t sw = e;
                 PRINTF("Error caught at top level, number: %x\n", sw);
                 switch (sw) {
-                default:
-                    sw = 0x6800 | (e & 0x7FF);
-                    // FALL THROUGH
-                case 0x6000 ... 0x6FFF:
-                case 0x9000 ... 0x9FFF: {
-                    PRINTF("Line number: %d\n", sw & 0x0FFF);
-                    size_t tx = 0;
-                    G_io_apdu_buffer[tx++] = sw >> 8;
-                    G_io_apdu_buffer[tx++] = sw;
-                    rx = io_exchange(CHANNEL_APDU, tx);
-                    break;
-                }
-                case 0xA000 ... 0xAFFF: {
-                    PRINTF("Other error: %x\n", sw);
-                    size_t tx = 0;
-                    G_io_apdu_buffer[tx++] = sw >> 8;
-                    G_io_apdu_buffer[tx++] = sw;
-                    rx = io_exchange(CHANNEL_APDU, tx);
-                    break;
-                }
+                    default:
+                        sw = 0x6800 | (e & 0x7FF);
+                        // FALL THROUGH
+                    case 0x6000 ... 0x6FFF:
+                    case 0x9000 ... 0x9FFF: {
+                        PRINTF("Line number: %d\n", sw & 0x0FFF);
+                        size_t tx = 0;
+                        G_io_apdu_buffer[tx++] = sw >> 8;
+                        G_io_apdu_buffer[tx++] = sw;
+                        next_io_exchange_flag = CHANNEL_APDU;
+                        next_io_exchange_tx = tx;
+                        break;
+                    }
+                    case 0xA000 ... 0xAFFF: {
+                        PRINTF("Other error: %x\n", sw);
+                        size_t tx = 0;
+                        G_io_apdu_buffer[tx++] = sw >> 8;
+                        G_io_apdu_buffer[tx++] = sw;
+                        next_io_exchange_flag = CHANNEL_APDU;
+                        next_io_exchange_tx = tx;
+                        break;
+                    }
                 }
             }
             FINALLY {}
