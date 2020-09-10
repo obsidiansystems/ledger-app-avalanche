@@ -1,13 +1,14 @@
+#include "exception.h"
 #include "globals.h"
 #include "parser.h"
 #include "protocol.h"
 #include "to_string.h"
 #include "types.h"
 
-#define REJECT(msg, ...) { PRINTF("Rejecting: " msg "\n", ##__VA_ARGS__); THROW(EXC_PARSE_ERROR); }
+#define REJECT(msg, ...) { PRINTF("Rejecting: " msg "\n", ##__VA_ARGS__); THROW_(EXC_PARSE_ERROR, "Rejected"); }
 
 #define ADD_PROMPT(label_, data_, size_, to_string_) ({ \
-        if (meta->prompt.count > NUM_ELEMENTS(meta->prompt.entries)) THROW(EXC_MEMORY_ERROR); \
+        if (meta->prompt.count >= NUM_ELEMENTS(meta->prompt.entries)) THROW_(EXC_MEMORY_ERROR, "Tried to add a prompt to full queue"); \
         sub_rv = PARSE_RV_PROMPT; \
         meta->prompt.labels[meta->prompt.count] = PROMPT(label_); \
         meta->prompt.entries[meta->prompt.count].to_string = to_string_; \
@@ -112,20 +113,28 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
             state->state++;
             state->address_n = state->uint32State.val;
             INIT_SUBPARSER(addressState, Address);
-        case 4:
-            while (true) {
+        case 4: {
+            bool should_break = false;
+            while (state->state == 4 && !should_break) {
                 CALL_SUBPARSER(addressState, Address);
                 state->address_i++;
                 PRINTF("Output address %d: %.*h\n", state->address_i, sizeof(state->addressState.buf), state->addressState.buf);
-                bool const should_break = ADD_PROMPT(
+                should_break = ADD_PROMPT(
                     "To Address",
                     &state->addressState.val, sizeof(state->addressState.val),
                     address_to_string_on_network
                 );
-                if (state->address_i == state->address_n) return PARSE_RV_DONE;
-                INIT_SUBPARSER(addressState, Address);
-                if (should_break) break;
+                if (state->address_i == state->address_n) {
+                    state->state++;
+                } else {
+                    INIT_SUBPARSER(addressState, Address);
+                }
             }
+            if (should_break) break;
+        }
+        case 5:
+            sub_rv = PARSE_RV_DONE;
+            break;
     }
     return sub_rv;
 }
