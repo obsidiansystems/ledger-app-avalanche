@@ -86,20 +86,21 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
         case 0: {
             // Amount; Type is already handled in init_Output
             CALL_SUBPARSER(uint64State, uint64_t);
-            state->state++;
-            PRINTF("OUTPUT AMOUNT: %.*h\n", 8, state->uint64State.buf); // we don't seem to have longs in printf specfiers.
+            PRINTF("OUTPUT AMOUNT: %.*h\n", sizeof(state->uint64State.buf), state->uint64State.buf); // we don't seem to have longs in printf specfiers.
+            if (__builtin_uaddll_overflow(state->uint64State.val, meta->sum_of_outputs, &meta->sum_of_outputs)) THROW_(EXC_MEMORY_ERROR, "Sum of outputs overflowed");
             bool const should_break = ADD_PROMPT(
                 "Amount",
                 &state->uint64State.val, sizeof(state->uint64State.val),
                 number_to_string_indirect64
             );
+            state->state++;
             INIT_SUBPARSER(uint64State, uint64_t);
             if (should_break) break;
         }
         case 1:
             // Locktime
             CALL_SUBPARSER(uint64State, uint64_t);
-            PRINTF("LOCK TIME: %.*h\n", 8, state->uint64State.buf); // we don't seem to have longs in printf specfiers.
+            PRINTF("LOCK TIME: %.*h\n", sizeof(state->uint64State.buf), state->uint64State.buf); // we don't seem to have longs in printf specfiers.
             state->state++;
             INIT_SUBPARSER(uint32State, uint32_t);
         case 2:
@@ -200,7 +201,8 @@ enum parse_rv parse_SECP256K1TransferInput(struct SECP256K1TransferInput_state *
         case 0: // Amount
             CALL_SUBPARSER(uint64State, uint64_t);
             state->state++;
-            PRINTF("Amount: %.*h\n", sizeof(uint64_t), state->uint64State.buf);
+            PRINTF("INPUT AMOUNT: %.*h\n", sizeof(uint64_t), state->uint64State.buf);
+            if (__builtin_uaddll_overflow(state->uint64State.val, meta->sum_of_inputs, &meta->sum_of_inputs)) THROW_(EXC_MEMORY_ERROR, "Sum of inputs overflowed");
             INIT_SUBPARSER(uint32State, uint32_t);
         case 1: // Number of address indices
             CALL_SUBPARSER(uint32State, uint32_t);
@@ -376,7 +378,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             if (state->uint16State.val != 0) REJECT("Only codec ID 0 is supported");
             state->state++;
             INIT_SUBPARSER(uint32State, uint32_t);
-        case 1: // type ID
+        case 1: { // type ID
             CALL_SUBPARSER(uint32State, uint32_t);
             // Keep this so we can switch on it for supporting more than BaseTx
             state->type = state->uint32State.val;
@@ -384,10 +386,10 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             state->state++;
             PRINTF("Type ID: %.*h\n", sizeof(state->uint32State.buf), state->uint32State.buf);
             INIT_SUBPARSER(uint32State, uint32_t);
-            {
-                static char const transactionLabel[] = "Transaction";
-                if (ADD_PROMPT("Sign", transactionLabel, sizeof(transactionLabel), strcpy_prompt)) break;
-            }
+
+            static char const transactionLabel[] = "Transaction";
+            if (ADD_PROMPT("Sign", transactionLabel, sizeof(transactionLabel), strcpy_prompt)) break;
+        }
         case 2: { // Network ID
             CALL_SUBPARSER(uint32State, uint32_t);
             state->state++;
@@ -409,11 +411,22 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             PRINTF("Done with outputs\n");
             state->state++;
             INIT_SUBPARSER(inputsState, TransferableInputs);
-        case 5: // inputs
+        case 5: { // inputs
             CALL_SUBPARSER(inputsState, TransferableInputs);
             PRINTF("Done with inputs\n");
+
+            uint64_t fee = -1; // if this is unset this should be obviously wrong
+            if (__builtin_usubll_overflow(meta->sum_of_inputs, meta->sum_of_outputs, &fee)) THROW_(EXC_MEMORY_ERROR, "Difference of outputs from inputs overflowed");
+            bool const should_break = ADD_PROMPT(
+                "Fee",
+                &fee, sizeof(fee),
+                number_to_string_indirect64
+            );
+
             state->state++;
             INIT_SUBPARSER(memoState, Memo);
+            if (should_break) break;
+        }
         case 6: // memo
             CALL_SUBPARSER(memoState, Memo);
             PRINTF("Done with memo; done.\n");

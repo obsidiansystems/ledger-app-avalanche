@@ -173,8 +173,8 @@ typedef struct {
     string_generation_callback to_string;
     union {
         char const *str; // pointer to static null-terminated string
-        uint32_t uint32; //network
-        uint64_t uint64; //amount
+        uint32_t uint32; // network
+        uint64_t uint64; // amount / fee
         Address address;
     } data;
 } prompt_entry_t;
@@ -187,6 +187,8 @@ typedef struct {
         char const *labels[TRANSACTION_PROMPT_BATCH_SIZE + 1]; // For NULL at end
         prompt_entry_t entries[TRANSACTION_PROMPT_BATCH_SIZE];
     } prompt;
+    uint64_t sum_of_inputs;
+    uint64_t sum_of_outputs;
 } parser_meta_state_t;
 
 char const *network_id_string(network_id_t const network_id);
