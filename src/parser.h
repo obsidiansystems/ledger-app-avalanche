@@ -187,6 +187,8 @@ typedef struct {
         char const *labels[TRANSACTION_PROMPT_BATCH_SIZE + 1]; // For NULL at end
         prompt_entry_t entries[TRANSACTION_PROMPT_BATCH_SIZE];
     } prompt;
+    bool first_asset_id_found;
+    Id32 first_asset_id;
     uint64_t sum_of_inputs;
     uint64_t sum_of_outputs;
 } parser_meta_state_t;

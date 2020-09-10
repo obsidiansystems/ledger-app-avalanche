@@ -25,6 +25,17 @@
 #define INIT_SUBPARSER(subFieldName, subParser) \
     init_ ## subParser(&state->subFieldName);
 
+static void check_asset_id(Id32 const *const asset_id, parser_meta_state_t *const meta) {
+    check_null(asset_id);
+    check_null(meta);
+    if (meta->first_asset_id_found) {
+        if (memcmp(&meta->first_asset_id, asset_id, sizeof(meta->first_asset_id)) != 0) REJECT("All asset IDs must be identical");
+    } else {
+        memcpy(&meta->first_asset_id, asset_id, sizeof(meta->first_asset_id));
+        meta->first_asset_id_found = true;
+    }
+}
+
 void initFixed(struct FixedState *const state, size_t const len) {
     state->filledTo = 0;
     memset(&state->buffer, 0, len);
@@ -178,8 +189,9 @@ enum parse_rv parse_TransferableOutput(struct TransferableOutput_state *const st
     switch (state->state) {
         case 0: // asset ID
             CALL_SUBPARSER(id32State, Id32);
-            state->state++;
             PRINTF("Asset ID: %.*h\n", 32, state->id32State.buf);
+            check_asset_id(&state->id32State.val, meta);
+            state->state++;
             INIT_SUBPARSER(outputState, Output);
         case 1:
             CALL_SUBPARSER(outputState, Output);
@@ -278,6 +290,7 @@ enum parse_rv parse_TransferableInput(struct TransferableInput_state *const stat
         case 2: // asset_id
             CALL_SUBPARSER(id32State, Id32);
             PRINTF("ASSET ID: %u\n", state->uint32State.val);
+            check_asset_id(&state->id32State.val, meta);
             state->state++;
             INIT_SUBPARSER(inputState, Input);
         case 3: // Input
