@@ -24,7 +24,7 @@
 
 // Like THROW but with PRINTF debugging built in.
 #define THROW_(exc, str, ...) { \
-        PRINTF("THROWING %d on line %d: ", exc, __LINE__); PRINTF(str "\n", ##__VA_ARGS__); \
+        PRINTF("THROWING %s (0x%02x) on line %d: ", #exc, exc, __LINE__); PRINTF(str "\n", ##__VA_ARGS__); \
         THROW(exc); \
     }
 
