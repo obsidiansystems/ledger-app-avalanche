@@ -12,8 +12,6 @@ let
       then pkgs.fetchFromGitHub { inherit (builtins.fromJSON (builtins.readFile (p + /github.json))) owner repo rev sha256; }
     else p;
 
-  blake2_simd = import ./nix/dep/b2sum.nix { };
-
   usbtool = import ./nix/dep/usbtool.nix { };
 
   patchSDKBinBash = sdk: pkgs.stdenv.mkDerivation {
@@ -61,11 +59,14 @@ let
       };
     };
 
-  src = let glyphsFilter = (p: _: let p' = baseNameOf p; in p' != "glyphs.c" && p' != "glyphs.h");
-      in (pkgs.lib.sources.sourceFilesBySuffices
-          (pkgs.lib.sources.cleanSourceWith { src = ./.; filter = glyphsFilter; }) [".c" ".h" ".gif" "Makefile" ".sh" ".json" ".bats" ".txt" ".der"]);
+  src = pkgs.nix-gitignore.gitignoreSource [] ./.;
+  # src = foo: ./.;
+  # src = let glyphsFilter = (p: _: let p' = baseNameOf p; in p' != "glyphs.c" && p' != "glyphs.h");
+  #    in (pkgs.lib.sources.sourceFilesBySuffices
+  #        (pkgs.lib.sources.cleanSourceWith { src = ./.; filter = glyphsFilter; }) [".c" ".h" ".gif" "Makefile" ".sh" ".json" ".bats" ".txt" ".der" ".js" ".lock"]);
 
   speculos = pkgs.callPackage ./nix/dep/speculos { };
+  tests = import ./tests { inherit pkgs; };
 
   build = bolos:
     let
@@ -83,14 +84,14 @@ let
           pkgs.bats
           pkgs.xxd
           pkgs.openssl
-          blake2_simd
-          usbtool
+          # usbtool
           bolos.env.clang
           pkgs.yarn
           pkgs.nodejs
           pkgs.gdb
           pkgs.python2
           pkgs.entr
+          tests
         ];
         TARGET = bolos.target;
         GIT_DESCRIBE = gitDescribe;
@@ -271,5 +272,5 @@ in rec {
     inherit (bolos) sdk;
   });
   inherit speculos;
-  tests = import ./tests { inherit pkgs; };
+  inherit tests;
 }
