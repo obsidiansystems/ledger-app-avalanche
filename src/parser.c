@@ -164,11 +164,13 @@ enum parse_rv parse_Output(struct Output_state *const state, parser_meta_state_t
             state->type = state->uint32State.val;
             state->state++;
             switch (state->type) {
+                default: REJECT("Unrecognized ouput type");
                 case 0x00000007:
                     INIT_SUBPARSER(secp256k1TransferOutput, SECP256K1TransferOutput);
             }
         case 1:
             switch (state->type) {
+                default: REJECT("Unrecognized ouput type");
                 case 0x00000007:
                     PRINTF("SECP256K1TransferOutput\n");
                     CALL_SUBPARSER(secp256k1TransferOutput, SECP256K1TransferOutput);
@@ -254,11 +256,13 @@ enum parse_rv parse_Input(struct Input_state *const state, parser_meta_state_t *
             state->type = state->uint32State.val;
             state->state++;
             switch (state->type) {
+                default: REJECT("Unrecognized input type");
                 case 0x00000005: // SECP256K1 transfer input
-                  INIT_SUBPARSER(secp256k1TransferInput, SECP256K1TransferInput);
+                    INIT_SUBPARSER(secp256k1TransferInput, SECP256K1TransferInput);
             }
         case 1:
             switch (state->type) {
+                default: REJECT("Unrecognized input type");
                 case 0x00000005: // SECP256K1 transfer input
                     PRINTF("SECP256K1 Input\n");
                     CALL_SUBPARSER(secp256k1TransferInput, SECP256K1TransferInput);
