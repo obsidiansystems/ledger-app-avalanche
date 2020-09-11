@@ -85,10 +85,22 @@ void init_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const st
     INIT_SUBPARSER(uint64State, uint64_t);
 }
 
-static void address_to_string_on_network(char *const out, size_t const out_size, public_key_hash_t const *const addr) {
-    char const *const network_name = network_id_string(global.apdu.u.sign.parser.state.network_id); // TODO: We have tried to avoid globals in this file.
+static void output_prompt_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
+    check_null(out);
+    check_null(in);
+    char const *const network_name = network_id_string(in->network_id);
     if (network_name == NULL) REJECT("Can't determine network HRP for addresses");
-    pkh_to_string(out, out_size, network_name, strlen(network_name), addr);
+
+    size_t ix = 0;
+    if (ix + MAX_INT_DIGITS > out_size) THROW_(EXC_MEMORY_ERROR, "Can't fit amount into prompt value string");
+    ix += number_to_string(&out[ix], in->amount);
+
+    static char const to[] = " to ";
+    if (ix + sizeof(to) > out_size) THROW_(EXC_MEMORY_ERROR, "Can't fit ' to ' into prompt value string");
+    memcpy(&out[ix], to, sizeof(to));
+    ix += sizeof(to) - 1;
+
+    ix += pkh_to_string(&out[ix], out_size - ix, network_name, strlen(network_name), &in->address.val);
 }
 
 enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const state, parser_meta_state_t *const meta) {
@@ -99,14 +111,9 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
             CALL_SUBPARSER(uint64State, uint64_t);
             PRINTF("OUTPUT AMOUNT: %.*h\n", sizeof(state->uint64State.buf), state->uint64State.buf); // we don't seem to have longs in printf specfiers.
             if (__builtin_uaddll_overflow(state->uint64State.val, meta->sum_of_outputs, &meta->sum_of_outputs)) THROW_(EXC_MEMORY_ERROR, "Sum of outputs overflowed");
-            bool const should_break = ADD_PROMPT(
-                "Amount",
-                &state->uint64State.val, sizeof(state->uint64State.val),
-                number_to_string_indirect64
-            );
+            meta->last_output_amount = state->uint64State.val;
             state->state++;
             INIT_SUBPARSER(uint64State, uint64_t);
-            if (should_break) break;
         }
         case 1:
             // Locktime
@@ -132,11 +139,18 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                 CALL_SUBPARSER(addressState, Address);
                 state->address_i++;
                 PRINTF("Output address %d: %.*h\n", state->address_i, sizeof(state->addressState.buf), state->addressState.buf);
+
+                output_prompt_t output_prompt;
+                memset(&output_prompt, 0, sizeof(output_prompt));
+                output_prompt.amount = meta->last_output_amount;
+                output_prompt.network_id = meta->network_id;
+                memcpy(&output_prompt.address, &state->addressState.val, sizeof(output_prompt.address));
                 should_break = ADD_PROMPT(
-                    "To Address",
-                    &state->addressState.val, sizeof(state->addressState.val),
-                    address_to_string_on_network
+                    "Transfer",
+                    &output_prompt, sizeof(output_prompt),
+                    output_prompt_to_string
                 );
+
                 if (state->address_i == state->address_n) {
                     state->state++;
                 } else {
@@ -240,7 +254,6 @@ enum parse_rv parse_SECP256K1TransferInput(struct SECP256K1TransferInput_state *
 
     return sub_rv;
 }
-
 
 
 void init_Input(struct Input_state *const state) {
@@ -412,13 +425,13 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             CALL_SUBPARSER(uint32State, uint32_t);
             state->state++;
             PRINTF("Network ID: %.*h\n", sizeof(state->uint32State.buf), state->uint32State.buf);
-            state->network_id = parse_network_id(state->uint32State.val);
+            meta->network_id = parse_network_id(state->uint32State.val);
             INIT_SUBPARSER(id32State, Id32);
         }
         case 3: // blockchain ID
             CALL_SUBPARSER(id32State, Id32);
             PRINTF("Blockchain ID: %.*h\n", 32, state->id32State.buf);
-            Id32 const *const blockchain_id = blockchain_id_for_network(state->network_id);
+            Id32 const *const blockchain_id = blockchain_id_for_network(meta->network_id);
             if (blockchain_id == NULL) REJECT("Blockchain ID for given network ID not found");
             if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
                 REJECT("Blockchain ID did not match expected value for network ID");

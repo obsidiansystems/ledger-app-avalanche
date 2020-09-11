@@ -151,7 +151,6 @@ static inline network_id_t parse_network_id(uint32_t const val) {
 struct TransactionState {
     int state;
     uint32_t type;
-    network_id_t network_id;
     union {
         struct uint16_t_state uint16State;
         struct uint32_t_state uint32State;
@@ -168,6 +167,12 @@ typedef struct {
     size_t consumed;
     size_t length;
 } parser_input_meta_state_t;
+
+typedef struct {
+    uint64_t amount;
+    network_id_t network_id;
+    Address address;
+} output_prompt_t;
 
 typedef struct {
     string_generation_callback to_string;
@@ -187,6 +192,8 @@ typedef struct {
         char const *labels[TRANSACTION_PROMPT_BATCH_SIZE + 1]; // For NULL at end
         prompt_entry_t entries[TRANSACTION_PROMPT_BATCH_SIZE];
     } prompt;
+    uint64_t last_output_amount;
+    network_id_t network_id;
     bool first_asset_id_found;
     Id32 first_asset_id;
     uint64_t sum_of_inputs;
