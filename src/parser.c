@@ -124,6 +124,7 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
             CALL_SUBPARSER(uint32State, uint32_t);
             state->state++;
             state->address_n = state->uint32State.val;
+            if (state->address_n =! 1) REJECT("Multi-address outputs are not supported");
             INIT_SUBPARSER(addressState, Address);
         case 4: {
             bool should_break = false;
