@@ -10,7 +10,7 @@
 
 #define BIP32_HARDENED_PATH_BIT 0x80000000
 
-void pkh_to_string(char *const out, size_t const out_size, char const *const hrp, size_t const hrp_size,
+size_t pkh_to_string(char *const out, size_t const out_size, char const *const hrp, size_t const hrp_size,
                    public_key_hash_t const *const payload)
 {
     uint8_t base32_enc[32];
@@ -24,6 +24,7 @@ void pkh_to_string(char *const out, size_t const out_size, char const *const hrp
     if (!bech32_encode(out, &bech32_out_size, hrp, hrp_size, base32_enc, base32_size)) {
         THROW(EXC_MEMORY_ERROR);
     }
+    return bech32_out_size;
 }
 
 static inline void bound_check_buffer(size_t const counter, size_t const size) {

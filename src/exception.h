@@ -22,6 +22,12 @@
 #define EXC_MEMORY_ERROR              0x9200
 #define EXC_STACK_ERROR               0xA000
 
+// Like THROW but with PRINTF debugging built in.
+#define THROW_(exc, str, ...) { \
+        PRINTF("THROWING %s (0x%02x) on line %d: ", #exc, exc, __LINE__); PRINTF(str "\n", ##__VA_ARGS__); \
+        THROW(exc); \
+    }
+
 // Crashes can be harder to debug than exceptions and latency isn't a big concern
 static inline void check_null(void volatile const *const ptr) {
     if (ptr == NULL) {

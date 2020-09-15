@@ -79,19 +79,21 @@ let
         '';
         nativeBuildInputs = [
           (pkgs.python3.withPackages (ps: [ps.pillow ps.ledgerblue]))
-          pkgs.jq
-          speculos.speculos
-          pkgs.bats
-          pkgs.xxd
-          pkgs.openssl
-          # usbtool
           bolos.env.clang
-          pkgs.yarn
-          pkgs.nodejs
-          pkgs.gdb
-          pkgs.python2
+          pkgs.bats
           pkgs.entr
+          pkgs.gdb
+          pkgs.jq
+          pkgs.libusb
+          pkgs.nodejs
+          pkgs.openssl
+          pkgs.pkg-config
+          pkgs.python2
+          pkgs.xxd
+          pkgs.yarn
+          speculos.speculos
           tests
+          # usbtool
         ];
         TARGET = bolos.target;
         GIT_DESCRIBE = gitDescribe;

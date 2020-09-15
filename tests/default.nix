@@ -14,10 +14,8 @@ let
   localOverrides = self: super:
       let
         registries = {
-          yarn = n:
-            v:
-              "https://registry.yarnpkg.com/${n}/-/${n}-${v}.tgz";
-          };
+          yarn = n: v: "https://registry.yarnpkg.com/${n}/-/${n}-${v}.tgz";
+        };
         y = registries.yarn;
         s = self;
       in {
@@ -29,7 +27,7 @@ let
             sha1 = "d2d7d8a808b5efeb09fe529034a30bd772902d84";
           };
           buildPhase = ''
-          ${pkgs.nodePackages.node-gyp}/bin/node-gyp rebuild --nodedir=${pkgs.lib.getDev pkgs.nodejs} # /include/node
+            ${pkgs.nodePackages.node-gyp}/bin/node-gyp rebuild --nodedir=${pkgs.lib.getDev pkgs.nodejs} # /include/node
           '';
          nativeBuildInputs = [ pkgs.python ];
           nodeBuildInputs = [
@@ -63,32 +61,33 @@ let
         };
 
         "hw-app-avalanche@0.1.0" = super._buildNodePackage rec {
-          key="hw-app-avalanche";
-          version="0.1.0";
+          key = "hw-app-avalanche";
+          version = "0.1.0";
           src = getThunkSrc ./hw-app-avalanche;
           buildPhase = ''
-          echo "NODE_GYP TYME"
-          echo $nodeModules
-          node $nodeModules/.bin/babel --source-maps -d lib src
+            echo "NODE_GYP TYME"
+            echo $nodeModules
+            node $nodeModules/.bin/babel --source-maps -d lib src
           '';
-          nodeModules=nixLib.linkNodeDeps { name = "hw-app-avalanche"; dependencies = nodeBuildInputs; };
-          passthru={ inherit nodeModules; };
-          NODE_PATH=nodeModules;
+          nodeModules = nixLib.linkNodeDeps { name = "hw-app-avalanche"; dependencies = nodeBuildInputs; };
+          passthru = { inherit nodeModules; };
+          NODE_PATH = nodeModules;
           nodeBuildInputs = [
             (s."@ledgerhq/hw-transport@^5.9.0")
             (s."bip32-path@0.4.2")
-          (s."babel-cli@^6.26.0")
-          (s."babel-eslint@^8.0.2")
-          (s."babel-preset-env@^1.7.0")
-          (s."babel-preset-flow@^6.23.0")
-          (s."babel-preset-react@^6.24.1")
-          (s."babel-preset-stage-0@^6.24.1")
-          (s."flow-bin@^0.109.0")
-          (s."flow-copy-source@^2.0.8")
-          (s."flow-mono-cli@^1.5.0")
-          (s."flow-typed@^2.6.1")
-          (s."prettier@^1.18.2")
-          (s."uglify-js@^3.6.1")
+            (s."babel-cli@^6.26.0")
+            (s."babel-eslint@^8.0.2")
+            (s."babel-preset-env@^1.7.0")
+            (s."babel-preset-flow@^6.23.0")
+            (s."babel-preset-react@^6.24.1")
+            (s."babel-preset-stage-0@^6.24.1")
+            (s."flow-bin@^0.109.0")
+            (s."flow-copy-source@^2.0.8")
+            (s."flow-mono-cli@^1.5.0")
+            (s."flow-typed@^2.6.1")
+            (s."prettier@^1.18.2")
+            (s."uglify-js@^3.6.1")
+            (s."create-hash@1.2.0")
           ];
         };
       };

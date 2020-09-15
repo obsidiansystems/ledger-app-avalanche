@@ -11,7 +11,7 @@ GIT_DESCRIBE ?= $(shell git describe --tags --abbrev=8 --always --long --dirty 2
 
 VERSION_TAG ?= $(shell echo "$(GIT_DESCRIBE)" | cut -f1 -d-)
 APPVERSION_M=0
-APPVERSION_N=2
+APPVERSION_N=1
 APPVERSION_P=0
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 
@@ -139,11 +139,8 @@ SDK_SOURCE_PATH  += lib_u2f lib_stusb_impl
 
 DEFINES   += USB_SEGMENT_SIZE=64
 
-DEFINES   += U2F_PROXY_MAGIC=\"Avalanche\"
+DEFINES   += U2F_PROXY_MAGIC=\"XTZ\"
 DEFINES   += HAVE_IO_U2F HAVE_U2F
-
-### WebUSB support
-DEFINES   += HAVE_WEBUSB WEBUSB_URL_SIZE_B=0 WEBUSB_URL=""
 
 load: all
 	python -m ledgerblue.loadApp $(APP_LOAD_PARAMS)

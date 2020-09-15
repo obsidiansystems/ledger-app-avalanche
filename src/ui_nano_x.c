@@ -51,8 +51,7 @@ unsigned char io_event(__attribute__((unused)) unsigned char channel) {
         break;
 
     case SEPROXYHAL_TAG_TICKER_EVENT:
-	UX_TICKER_EVENT(G_io_seproxyhal_spi_buffer, {});
-
+        UX_TICKER_EVENT(G_io_seproxyhal_spi_buffer, {});
         break;
     }
 
@@ -96,7 +95,7 @@ UX_FLOW(ux_idle_flow,
     EVAL(UX_STEP_NOCB_INIT BLANK() ( \
         PROMPT_SCREEN_NAME(idx), \
         bnnn_paging, \
-	G.switch_screen(idx-G.prompt.offset),\
+        G.switch_screen(idx-G.prompt.offset),\
         { \
             .title = G.prompt.active_prompt, \
             .text = G.prompt.active_value, \
@@ -125,7 +124,7 @@ UX_STEP_CB(
     prompt_response(true),
     {
         &C_icon_validate_14,
-        "Accept"
+        G.accept_prompt_str
     });
 
 UX_STEP_CB(
@@ -153,7 +152,7 @@ _Static_assert(NUM_ELEMENTS(ux_prompts_flow) - 3 /*reject + accept + end*/ == MA
 void ui_initial_screen(void) {
 
     // reserve a display stack slot if none yet
-    if(G_ux.stack_count == 0) {
+    if (G_ux.stack_count == 0) {
         ux_stack_push();
     }
     ux_flow_init(0, ux_idle_flow, NULL);
@@ -172,15 +171,16 @@ void switch_screen(uint32_t which) {
 }
 
 void ui_prompt_debug(size_t screen_count) {
-    for(uint32_t i=0; i<screen_count; i++) {
+    for(uint32_t i = 0; i < screen_count; i++) {
         G.switch_screen(i);
         PRINTF("Prompt %d:\n%s\n%s\n", i, global.ui.prompt.active_prompt, global.ui.prompt.active_value);
     }
 }
 
 __attribute__((noreturn))
-void ui_prompt(const char *const *labels, ui_callback_t ok_c, ui_callback_t cxl_c) {
+void ui_prompt_with(uint16_t const exception, char const *const accept_str, char const *const *labels, ui_callback_t ok_c, ui_callback_t cxl_c) {
     check_null(labels);
+    check_null(accept_str);
     global.ui.prompt.prompts = labels;
 
     size_t const screen_count = ({
@@ -189,27 +189,40 @@ void ui_prompt(const char *const *labels, ui_callback_t ok_c, ui_callback_t cxl_
         i;
     });
 
-    G.switch_screen=switch_screen;
+    G.switch_screen = switch_screen;
     // We fill the destination buffers at the end instead of the beginning so we can
     // use the same array for any number of screens.
     // size_t const offset = MAX_SCREEN_COUNT - screen_count;
 
-    G.switch_screen=switch_screen;
-    G.prompt.offset=MAX_SCREEN_COUNT-screen_count;
+    G.switch_screen = switch_screen;
+    G.prompt.offset = MAX_SCREEN_COUNT - screen_count;
+    strncpy(G.accept_prompt_str, accept_str, sizeof(G.accept_prompt_str));
 
     ui_prompt_debug(screen_count);
 
     G.ok_callback = ok_c;
     G.cxl_callback = cxl_c;
     ux_flow_init(0, &ux_prompts_flow[G.prompt.offset], NULL);
-    THROW(ASYNC_EXCEPTION);
+
+#ifdef AVA_DEBUG
+    // In debug mode, the THROW below produces a PRINTF statement in an invalid position and causes the screen to blank,
+    // so instead we just directly call the equivalent longjmp for debug only.
+    longjmp(try_context_get()->jmp_buf, exception);
+#else
+    THROW(exception);
+#endif
+}
+
+__attribute__((noreturn))
+void ui_prompt(const char *const *labels, ui_callback_t ok_c, ui_callback_t cxl_c) {
+    ui_prompt_with(ASYNC_EXCEPTION, "Accept", labels, ok_c, cxl_c);
 }
 
 __attribute__((noreturn)) void ui_prompt_with_cb(void (*switch_screen_cb)(uint32_t), size_t screen_count, ui_callback_t ok_c, ui_callback_t cxl_c) {
     check_null(switch_screen_cb);
 
-    G.switch_screen=switch_screen_cb;
-    G.prompt.offset=MAX_SCREEN_COUNT-screen_count;
+    G.switch_screen = switch_screen_cb;
+    G.prompt.offset = MAX_SCREEN_COUNT - screen_count;
 
     G.ok_callback = ok_c;
     G.cxl_callback = cxl_c;
@@ -224,4 +237,3 @@ __attribute__((noreturn)) void ui_prompt_with_cb(void (*switch_screen_cb)(uint32
     THROW(ASYNC_EXCEPTION);
 #endif
 }
-

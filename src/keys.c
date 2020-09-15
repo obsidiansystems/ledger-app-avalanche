@@ -164,11 +164,11 @@ void generate_pkh_for_pubkey(const cx_ecfp_public_key_t *const key, public_key_h
     //     0x04  uncompressed public keys, (i.e. an point on the curve with the full X and Y coordinates)
     //     0x02  compressed public key, with LSB bit of Y = 0
     //     0x03  compressed public key, with LSB bit of Y = 1
-    uint8_t tag_byte=(key->W[64]&1) ? 0x03 : 0x02;
+    uint8_t tag_byte = (key->W[64]&1) ? 0x03 : 0x02;
 
     cx_sha256_init(&hash_state.sha256);
     cx_hash((cx_hash_t *)&hash_state.sha256, 0, &tag_byte, 1, NULL, 0);
-    cx_hash((cx_hash_t *)&hash_state.sha256, CX_LAST, key->W+1, 32, temp_sha256_hash, CX_SHA256_SIZE);
+    cx_hash((cx_hash_t *)&hash_state.sha256, CX_LAST, key->W + 1, 32, temp_sha256_hash, CX_SHA256_SIZE);
     cx_ripemd160_init(&hash_state.ripemd160);
     cx_hash((cx_hash_t *)&hash_state.ripemd160, CX_LAST, temp_sha256_hash, CX_SHA256_SIZE, (uint8_t *)dest, sizeof(public_key_hash_t));
 }

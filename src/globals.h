@@ -1,7 +1,8 @@
 #pragma once
 
-#include "types.h"
 #include "bolos_target.h"
+#include "parser.h"
+#include "types.h"
 
 // Zeros out all globals that can keep track of APDU instruction state.
 // Notably this does *not* include UI state.
@@ -21,6 +22,12 @@ typedef struct {
     buffer_t final_hash_as_buffer;
 
     uint8_t num_signatures_left;
+
+    struct {
+        struct TransactionState state;
+        parser_meta_state_t meta_state;
+        bool is_last_message;
+    } parser;
 } apdu_sign_state_t;
 
 typedef struct {
@@ -37,6 +44,7 @@ typedef struct {
     struct {
         ui_callback_t ok_callback;
         ui_callback_t cxl_callback;
+        char accept_prompt_str[PROMPT_WIDTH + 1];
 
         uint32_t ux_step;
         uint32_t ux_step_count;
@@ -100,17 +108,14 @@ static inline void throw_stack_size() {
 // Properly updates NVRAM data to prevent any clobbering of data.
 // 'out_param' defines the name of a pointer to the nvram_data struct
 // that 'body' can change to apply updates.
-#define UPDATE_NVRAM(out_name, body)                                                                                   \
-    ({                                                                                                                 \
+#define UPDATE_NVRAM(out_name, body)                                                                  \
+    ({                                                                                                \
         nvram_data *const out_name = &global.new_data;                                                \
         memcpy(&global.new_data, (nvram_data const *const) & N_data,                                  \
                sizeof(global.new_data));                                                              \
-        body;                                                                                                          \
+        body;                                                                                         \
         nvm_write((void *)&N_data, &global.new_data, sizeof(N_data));                                 \
     })
-
-void switch_network();
-void switch_sign_hash();
 
 #ifdef AVA_DEBUG
 // Aid for tracking down app crashes
