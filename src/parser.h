@@ -175,6 +175,11 @@ typedef struct {
 } output_prompt_t;
 
 typedef struct {
+    network_id_t network_id;
+    Address address;
+} swap_prompt_t;
+
+typedef struct {
     string_generation_callback to_string;
     union {
         char const *str; // pointer to static null-terminated string
@@ -185,6 +190,13 @@ typedef struct {
 } prompt_entry_t;
 
 #define TRANSACTION_PROMPT_BATCH_SIZE 1
+
+enum transaction_type_id_t {
+    TRANACTION_TYPE_ID_BASE = 0,
+    TRANACTION_TYPE_ID_EXPORT = 4,
+    /* TRANACTION_TYPE_ID_IMPORT = 0, */
+};
+
 typedef struct {
     parser_input_meta_state_t input;
     struct {
@@ -192,6 +204,8 @@ typedef struct {
         char const *labels[TRANSACTION_PROMPT_BATCH_SIZE + 1]; // For NULL at end
         prompt_entry_t entries[TRANSACTION_PROMPT_BATCH_SIZE];
     } prompt;
+    enum transaction_type_id_t type_id;
+    bool swap_output;
     uint64_t last_output_amount;
     network_id_t network_id;
     bool first_asset_id_found;

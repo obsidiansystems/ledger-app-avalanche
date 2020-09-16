@@ -41,6 +41,14 @@ void initFixed(struct FixedState *const state, size_t const len) {
     memset(&state->buffer, 0, len);
 }
 
+enum transaction_type_id_t convert_type_id_to_type(uint32_t type_id) {
+  switch (type_id) {
+      case 0: return TRANACTION_TYPE_ID_BASE;
+      case 4: return TRANACTION_TYPE_ID_EXPORT;
+      default: REJECT("Invalid transaction type_id; Must be base, export, or import");
+  }
+}
+
 enum parse_rv parseFixed(struct FixedState *const state, parser_meta_state_t *const meta, size_t const len) {
     size_t const available = meta->input.length - meta->input.consumed;
     size_t const needed = len - state->filledTo;
@@ -83,6 +91,20 @@ void init_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const st
     state->address_n = 0;
     state->address_i = 0;
     INIT_SUBPARSER(uint64State, uint64_t);
+}
+
+static void swap_prompt_to_string(char *const out, size_t const out_size, swap_prompt_t const *const in) {
+    check_null(out);
+    check_null(in);
+    char const *const network_name = network_id_string(in->network_id);
+    if (network_name == NULL) REJECT("Can't determine network HRP for addresses");
+
+    size_t ix = 0;
+    static char const to[] = " to ";
+    if (ix + sizeof(to) > out_size) THROW_(EXC_MEMORY_ERROR, "Can't fit ' to ' into prompt value string");
+    memcpy(&out[ix], to, sizeof(to));
+    ix += sizeof(to) - 1;
+    ix += pkh_to_string(&out[ix], out_size - ix, network_name, strlen(network_name), &in->address.val);
 }
 
 static void output_prompt_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
@@ -145,11 +167,19 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                 output_prompt.amount = meta->last_output_amount;
                 output_prompt.network_id = meta->network_id;
                 memcpy(&output_prompt.address, &state->addressState.val, sizeof(output_prompt.address));
-                should_break = ADD_PROMPT(
-                    "Transfer",
-                    &output_prompt, sizeof(output_prompt),
-                    output_prompt_to_string
-                );
+                if(meta->type_id == TRANACTION_TYPE_ID_EXPORT && meta->swap_output) {
+                  should_break = ADD_PROMPT(
+                      "PChain Export",
+                      &output_prompt, sizeof(output_prompt),
+                      output_prompt_to_string
+                  );
+                } else {
+                  should_break = ADD_PROMPT(
+                      "Transfer",
+                      &output_prompt, sizeof(output_prompt),
+                      output_prompt_to_string
+                  );
+                }
 
                 if (state->address_i == state->address_n) {
                     state->state++;
@@ -411,9 +441,11 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             INIT_SUBPARSER(uint32State, uint32_t);
         case 1: { // type ID
             CALL_SUBPARSER(uint32State, uint32_t);
-            // Keep this so we can switch on it for supporting more than BaseTx
             state->type = state->uint32State.val;
-            if (state->type != 0) REJECT("Only Base Tx is supported");
+            meta->type_id = convert_type_id_to_type(state->type);
+
+            // Is this necessary given that the converter above throws exc?
+            if (state->type != 0 && state->type != 4) REJECT("Only Base Tx and Export Tx are supported");
             state->state++;
             PRINTF("Type ID: %.*h\n", sizeof(state->uint32State.buf), state->uint32State.buf);
             INIT_SUBPARSER(uint32State, uint32_t);
@@ -432,9 +464,14 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             CALL_SUBPARSER(id32State, Id32);
             PRINTF("Blockchain ID: %.*h\n", 32, state->id32State.buf);
             Id32 const *const blockchain_id = blockchain_id_for_network(meta->network_id);
-            if (blockchain_id == NULL) REJECT("Blockchain ID for given network ID not found");
-            if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
+
+            // TODO: Check that if local, the blockchain_id in id32State is not one of either everest or mainnet
+            if(meta->network_id != NETWORK_ID_LOCAL) {
+              if (blockchain_id == NULL) 
+                REJECT("Blockchain ID for given network ID not found");
+              if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
                 REJECT("Blockchain ID did not match expected value for network ID");
+            }
             state->state++;
             INIT_SUBPARSER(outputsState, TransferableOutputs);
         case 4: // outputs
@@ -460,7 +497,28 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
         }
         case 6: // memo
             CALL_SUBPARSER(memoState, Memo);
-            PRINTF("Done with memo; done.\n");
+            PRINTF("Done with memo;\n");
+            if(meta->type_id != TRANACTION_TYPE_ID_BASE) {
+              state->state++;
+              INIT_SUBPARSER(outputsState, TransferableOutputs);
+            }
+            else
+              PRINTF("Done\n");
+
+        case 7: // ChainID
+            CALL_SUBPARSER(id32State, Id32);
+            uint8_t pchain_id[32];
+            // Pchain ID is 32 0x00s
+            memset(pchain_id, 0, 32);
+            if(memcmp(state->id32State.buf, pchain_id, 32) != 0) REJECT("Invalid PCHAIN ID");
+            state->state++;
+            INIT_SUBPARSER(outputsState, TransferableOutputs);
+            PRINTF("Done with ChainID;\n");
+
+        case 8: // PChain Dst
+            meta->swap_output = true;
+            CALL_SUBPARSER(outputsState, TransferableOutputs);
+            PRINTF("Done with ChainID;\n");
     }
 
     PRINTF("Consumed %d bytes of input so far\n", meta->input.consumed);
@@ -500,6 +558,11 @@ Id32 const *blockchain_id_for_network(network_id_t const network_id) {
         }
         case NETWORK_ID_EVEREST: {
             // jnUjZSRt16TcRnZzmh5aMhavwVHz3zBrSN8GfFMTQkzUnoBxC
+            static Id32 const id = { .val = { 0x61, 0x25, 0x84, 0x21, 0x39, 0x7c, 0x02, 0x35, 0xbd, 0x6d, 0x67, 0x81, 0x2a, 0x8b, 0x2c, 0x1c, 0xf3, 0x39, 0x29, 0x50, 0x0a, 0x7f, 0x69, 0x16, 0xbb, 0x2f, 0xc4, 0xac, 0x64, 0x6a, 0xc0, 0x91 } };
+            return &id;
+        }
+        case NETWORK_ID_LOCAL: {
+            // TODO: THIS IS JUST A COPY OF EVEREST! FIX THIS !!!!
             static Id32 const id = { .val = { 0x61, 0x25, 0x84, 0x21, 0x39, 0x7c, 0x02, 0x35, 0xbd, 0x6d, 0x67, 0x81, 0x2a, 0x8b, 0x2c, 0x1c, 0xf3, 0x39, 0x29, 0x50, 0x0a, 0x7f, 0x69, 0x16, 0xbb, 0x2f, 0xc4, 0xac, 0x64, 0x6a, 0xc0, 0x91 } };
             return &id;
         }
