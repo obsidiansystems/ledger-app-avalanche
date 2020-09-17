@@ -43,8 +43,8 @@ void initFixed(struct FixedState *const state, size_t const len) {
 
 enum transaction_type_id_t convert_type_id_to_type(uint32_t type_id) {
   switch (type_id) {
-      case 0: return TRANACTION_TYPE_ID_BASE;
-      case 4: return TRANACTION_TYPE_ID_EXPORT;
+      case 0: return TRANSACTION_TYPE_ID_BASE;
+      case 4: return TRANSACTION_TYPE_ID_EXPORT;
       default: REJECT("Invalid transaction type_id; Must be base, export, or import");
   }
 }
@@ -91,20 +91,6 @@ void init_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const st
     state->address_n = 0;
     state->address_i = 0;
     INIT_SUBPARSER(uint64State, uint64_t);
-}
-
-static void swap_prompt_to_string(char *const out, size_t const out_size, swap_prompt_t const *const in) {
-    check_null(out);
-    check_null(in);
-    char const *const network_name = network_id_string(in->network_id);
-    if (network_name == NULL) REJECT("Can't determine network HRP for addresses");
-
-    size_t ix = 0;
-    static char const to[] = " to ";
-    if (ix + sizeof(to) > out_size) THROW_(EXC_MEMORY_ERROR, "Can't fit ' to ' into prompt value string");
-    memcpy(&out[ix], to, sizeof(to));
-    ix += sizeof(to) - 1;
-    ix += pkh_to_string(&out[ix], out_size - ix, network_name, strlen(network_name), &in->address.val);
 }
 
 static void output_prompt_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
@@ -167,7 +153,8 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                 output_prompt.amount = meta->last_output_amount;
                 output_prompt.network_id = meta->network_id;
                 memcpy(&output_prompt.address, &state->addressState.val, sizeof(output_prompt.address));
-                if(meta->type_id == TRANACTION_TYPE_ID_EXPORT && meta->swap_output) {
+                // TODO: We can get rid of this if we add back the P/X- in front of an address
+                if(meta->type_id == TRANSACTION_TYPE_ID_EXPORT && meta->swap_output) {
                   should_break = ADD_PROMPT(
                       "PChain Export",
                       &output_prompt, sizeof(output_prompt),
@@ -422,6 +409,19 @@ static void strcpy_prompt(char *const out, size_t const out_size, char const *co
     strncpy(out, in, out_size);
 }
 
+static bool prompt_fee(parser_meta_state_t *const meta) {
+    uint64_t fee = -1; // if this is unset this should be obviously wrong
+    if (__builtin_usubll_overflow(meta->sum_of_inputs, meta->sum_of_outputs, &fee)) THROW_(EXC_MEMORY_ERROR, "Difference of outputs from inputs overflowed");
+    if (meta->prompt.count >= NUM_ELEMENTS(meta->prompt.entries)) THROW_(EXC_MEMORY_ERROR, "Tried to add a prompt to full queue");
+          /* sub_rv = PARSE_RV_PROMPT; \ */
+    meta->prompt.labels[meta->prompt.count] = PROMPT("Fee");
+    meta->prompt.entries[meta->prompt.count].to_string = number_to_string_indirect64;
+    memcpy(&meta->prompt.entries[meta->prompt.count].data, &fee, sizeof(fee));
+    meta->prompt.count++;
+    bool should_break = meta->prompt.count >= NUM_ELEMENTS(meta->prompt.entries);
+    return should_break;
+}
+
 enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta_state_t *const meta) {
     check_null(state);
     check_null(meta);
@@ -464,7 +464,6 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             CALL_SUBPARSER(id32State, Id32);
             PRINTF("Blockchain ID: %.*h\n", 32, state->id32State.buf);
             Id32 const *const blockchain_id = blockchain_id_for_network(meta->network_id);
-
             // TODO: Check that if local, the blockchain_id in id32State is not one of either everest or mainnet
             if(meta->network_id != NETWORK_ID_LOCAL) {
               if (blockchain_id == NULL) 
@@ -483,14 +482,12 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             CALL_SUBPARSER(inputsState, TransferableInputs);
             PRINTF("Done with inputs\n");
 
-            uint64_t fee = -1; // if this is unset this should be obviously wrong
-            if (__builtin_usubll_overflow(meta->sum_of_inputs, meta->sum_of_outputs, &fee)) THROW_(EXC_MEMORY_ERROR, "Difference of outputs from inputs overflowed");
-            bool const should_break = ADD_PROMPT(
-                "Fee",
-                &fee, sizeof(fee),
-                number_to_string_indirect64
-            );
-
+            //Note the scope blocks, for should_break
+            bool should_break = false;
+            if(meta->type_id == TRANSACTION_TYPE_ID_BASE) {
+              should_break = prompt_fee(meta);
+              sub_rv = PARSE_RV_PROMPT;
+            }
             state->state++;
             INIT_SUBPARSER(memoState, Memo);
             if (should_break) break;
@@ -498,7 +495,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
         case 6: // memo
             CALL_SUBPARSER(memoState, Memo);
             PRINTF("Done with memo;\n");
-            if(meta->type_id != TRANACTION_TYPE_ID_BASE) {
+            if(meta->type_id != TRANSACTION_TYPE_ID_BASE) {
               state->state++;
               INIT_SUBPARSER(outputsState, TransferableOutputs);
             }
@@ -515,15 +512,23 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             INIT_SUBPARSER(outputsState, TransferableOutputs);
             PRINTF("Done with ChainID;\n");
 
-        case 8: // PChain Dst
+        case 8: {// PChain Dst
             meta->swap_output = true;
             CALL_SUBPARSER(outputsState, TransferableOutputs);
-            PRINTF("Done with ChainID;\n");
+
+            state->state++;
+            if(meta->type_id == TRANSACTION_TYPE_ID_EXPORT) {
+              prompt_fee(meta);
+              // TODO: Is this ok to do here?
+              sub_rv = PARSE_RV_DONE;
+            }
+            PRINTF("Done with PChain Address;\n");
+            break;
+        }
     }
 
     PRINTF("Consumed %d bytes of input so far\n", meta->input.consumed);
     update_transaction_hash(&state->hash_state, &meta->input.src[start_consumed], meta->input.consumed - start_consumed);
-
     return sub_rv;
 }
 
