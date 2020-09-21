@@ -157,13 +157,13 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                 // TODO: We can get rid of this if we add back the P/X- in front of an address
                 if(meta->type_id == TRANSACTION_TYPE_ID_EXPORT && meta->swap_output) {
                   should_break = ADD_PROMPT(
-                      "PChain Export",
+                      "X to P chain",
                       &output_prompt, sizeof(output_prompt),
                       output_prompt_to_string
                   );
-                } else if(meta->type_id == TRANSACTION_TYPE_ID_IMPORT && meta->swap_output) {
+                } else if(meta->type_id == TRANSACTION_TYPE_ID_IMPORT ) {
                   should_break = ADD_PROMPT(
-                      "PChain Import",
+                      "From P chain",
                       &output_prompt, sizeof(output_prompt),
                       output_prompt_to_string
                   );
@@ -611,6 +611,20 @@ enum parse_rv parseExportTransaction(struct TransactionState *const state, parse
     return sub_rv;
 }
 
+static char const transactionLabel[] = "Transaction";
+static char const importLabel[] = "Import";
+static char const exportLabel[] = "Export";
+
+typedef struct { char const* label; size_t label_size; } label_t;
+
+static label_t type_id_to_label(enum transaction_type_id_t type_id) {
+  switch (type_id) {
+    case TRANSACTION_TYPE_ID_BASE: return (label_t) { .label = transactionLabel, .label_size = sizeof(transactionLabel) };
+    case TRANSACTION_TYPE_ID_IMPORT: return (label_t) { .label = importLabel, .label_size = sizeof(importLabel) };
+    case TRANSACTION_TYPE_ID_EXPORT: return (label_t) { .label = exportLabel, .label_size = sizeof(exportLabel) };
+  }
+}
+
 enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta_state_t *const meta) {
     check_null(state);
     check_null(meta);
@@ -635,11 +649,8 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             state->state++;
             PRINTF("Type ID: %.*h\n", sizeof(state->uint32State.buf), state->uint32State.buf);
 
-            static char const transactionLabel[] = "Transaction";
-            static char const importLabel[] = "Import";
-            const char *label = meta->type_id == TRANSACTION_TYPE_ID_IMPORT ? importLabel : transactionLabel;
-            size_t labelSize = meta->type_id == TRANSACTION_TYPE_ID_IMPORT ? sizeof(importLabel) : sizeof(transactionLabel);
-            if (ADD_PROMPT("Sign", label, labelSize, strcpy_prompt)) break;
+            label_t label = type_id_to_label(meta->type_id);
+            if (ADD_PROMPT("Sign", label.label, label.label_size, strcpy_prompt)) break;
         }
         default:
             switch (meta->type_id) {
