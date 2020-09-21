@@ -427,10 +427,13 @@ static bool prompt_fee(parser_meta_state_t *const meta) {
     return should_break;
 }
 
+static bool unknown_network_has_unknown_id(Id32 const *blockchain_id) {
+
+}
+
 enum parse_rv parseBaseTransaction(struct TransactionState *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
     switch (state->state) {
-      //State should start at 2
         case 2: { // Network ID
             INIT_SUBPARSER(uint32State, uint32_t);
             CALL_SUBPARSER(uint32State, uint32_t);
@@ -443,13 +446,10 @@ enum parse_rv parseBaseTransaction(struct TransactionState *const state, parser_
             CALL_SUBPARSER(id32State, Id32);
             PRINTF("Blockchain ID: %.*h\n", 32, state->id32State.buf);
             Id32 const *const blockchain_id = blockchain_id_for_network(meta->network_id);
-            // TODO: Check that if local, the blockchain_id in id32State is not one of either everest or mainnet
-            if(meta->network_id != NETWORK_ID_LOCAL) {
-              if (blockchain_id == NULL) 
-                REJECT("Blockchain ID for given network ID not found");
-              if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
-                REJECT("Blockchain ID did not match expected value for network ID");
-            }
+            if (blockchain_id == NULL) 
+              REJECT("Blockchain ID for given network ID not found");
+            if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
+              REJECT("Blockchain ID did not match expected value for network ID");
             state->state++;
             INIT_SUBPARSER(outputsState, TransferableOutputs);
         case 4: // outputs
@@ -488,7 +488,6 @@ static bool is_pchain(const uint8_t *buff) {
 enum parse_rv parseImportTransaction(struct TransactionState *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
       switch (state->state) {
-      //State should start at 2
         case 2: { // Network ID
             INIT_SUBPARSER(uint32State, uint32_t);
             CALL_SUBPARSER(uint32State, uint32_t);
@@ -501,13 +500,10 @@ enum parse_rv parseImportTransaction(struct TransactionState *const state, parse
             CALL_SUBPARSER(id32State, Id32);
             PRINTF("Blockchain ID: %.*h\n", 32, state->id32State.buf);
             Id32 const *const blockchain_id = blockchain_id_for_network(meta->network_id);
-            // TODO: Check that if local, the blockchain_id in id32State is not one of either everest or mainnet
-            if(meta->network_id != NETWORK_ID_LOCAL) {
-              if (blockchain_id == NULL) 
-                REJECT("Blockchain ID for given network ID not found");
-              if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
-                REJECT("Blockchain ID did not match expected value for network ID");
-            }
+            if (blockchain_id == NULL) 
+              REJECT("Blockchain ID for given network ID not found");
+            if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
+              REJECT("Blockchain ID did not match expected value for network ID");
             state->state++;
             INIT_SUBPARSER(outputsState, TransferableOutputs);
         case 4: // outputs
@@ -555,7 +551,6 @@ enum parse_rv parseImportTransaction(struct TransactionState *const state, parse
 enum parse_rv parseExportTransaction(struct TransactionState *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
     switch (state->state) {
-      //State should start at 2
         case 2: { // Network ID
             INIT_SUBPARSER(uint32State, uint32_t);
             CALL_SUBPARSER(uint32State, uint32_t);
@@ -568,7 +563,6 @@ enum parse_rv parseExportTransaction(struct TransactionState *const state, parse
             CALL_SUBPARSER(id32State, Id32);
             PRINTF("Blockchain ID: %.*h\n", 32, state->id32State.buf);
             Id32 const *const blockchain_id = blockchain_id_for_network(meta->network_id);
-            // TODO: Check that if local, the blockchain_id in id32State is not one of either everest or mainnet
             if(meta->network_id != NETWORK_ID_LOCAL) {
               if (blockchain_id == NULL) 
                 REJECT("Blockchain ID for given network ID not found");
@@ -704,8 +698,8 @@ Id32 const *blockchain_id_for_network(network_id_t const network_id) {
             return &id;
         }
         case NETWORK_ID_LOCAL: {
-            // TODO: THIS IS JUST A COPY OF EVEREST! FIX THIS !!!!
-            static Id32 const id = { .val = { 0x61, 0x25, 0x84, 0x21, 0x39, 0x7c, 0x02, 0x35, 0xbd, 0x6d, 0x67, 0x81, 0x2a, 0x8b, 0x2c, 0x1c, 0xf3, 0x39, 0x29, 0x50, 0x0a, 0x7f, 0x69, 0x16, 0xbb, 0x2f, 0xc4, 0xac, 0x64, 0x6a, 0xc0, 0x91 } };
+            // v4hFSZTNNVdyomeMoXa77dAz4CdxU3cziSb45TB7mfXUmy7C7
+            static Id32 const id = { .val = { 0x78, 0x7c, 0xd3, 0x24, 0x3c, 0x00, 0x2e, 0x9b, 0xf5, 0xbb, 0xba, 0xea, 0x8a, 0x42, 0xa1, 0x6c, 0x1a, 0x19, 0xcc, 0x10, 0x50, 0x47, 0xc6, 0x69, 0x96, 0x80, 0x7c, 0xbf, 0x16, 0xac, 0xee, 0x10} };
             return &id;
         }
         default: return NULL;
