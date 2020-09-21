@@ -182,7 +182,6 @@ typedef struct {
         uint32_t uint32; // network
         uint64_t uint64; // amount / fee
         Address address;
-
         //TODO: Now that weve added this, do we need the ones above?
         output_prompt_t output_prompt;
     } data;
@@ -192,8 +191,8 @@ typedef struct {
 
 enum transaction_type_id_t {
     TRANSACTION_TYPE_ID_BASE = 0,
+    TRANSACTION_TYPE_ID_IMPORT = 3,
     TRANSACTION_TYPE_ID_EXPORT = 4,
-    /* TRANSACTION_TYPE_ID_IMPORT = 0, */
 };
 
 typedef struct {
