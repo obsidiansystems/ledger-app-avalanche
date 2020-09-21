@@ -285,7 +285,6 @@ size_t handle_apdu_sign_transaction(void) {
             G.parser.meta_state.input.consumed = 0;
             G.parser.meta_state.input.src = in;
             G.parser.meta_state.input.length = in_size;
-            PRINTF("\n ------------------------- NEW APDU: STARTING FRESH NEXTPARSE  \n");
             return next_parse(false);
 
         case SIGN_TRANSACTION_SECTION_SIGN_WITH_PATH_LAST:

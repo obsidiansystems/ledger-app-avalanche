@@ -510,7 +510,6 @@ enum parse_rv parseImportTransaction(struct TransactionState *const state, parse
             CALL_SUBPARSER(outputsState, TransferableOutputs);
             PRINTF("Done with outputs\n");
             state->state++;
-            PRINTF("INPUT START!!! \n" );
             INIT_SUBPARSER(inputsState, TransferableInputs);
         case 5: { // inputs
             CALL_SUBPARSER(inputsState, TransferableInputs);
