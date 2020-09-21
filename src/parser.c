@@ -142,6 +142,7 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
 
                 output_prompt_t output_prompt;
                 memset(&output_prompt, 0, sizeof(output_prompt));
+                if (!(meta->last_output_amount > 0)) REJECT("Assertion failed: last_output_amount > 0");
                 output_prompt.amount = meta->last_output_amount;
                 output_prompt.network_id = meta->network_id;
                 memcpy(&output_prompt.address, &state->addressState.val, sizeof(output_prompt.address));
