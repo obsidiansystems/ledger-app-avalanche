@@ -1,11 +1,16 @@
 { pkgs ? import ./nix/dep/nixpkgs {}
 , gitDescribe ? "TEST-dirty"
-, nanoXSdk ? null
 , debug ? false
 , runTest ? true
 }:
 let
+  # TODO: Replace this with hackGet for added safety checking once hackGet is separated from reflex-platform
   fetchThunk = p:
+    if builtins.pathExists (p + /thunk.nix)
+      then (import (p + /thunk.nix))
+    else fetchThunkBackup p;
+
+  fetchThunkBackup = p:
     if builtins.pathExists (p + /git.json)
       then pkgs.fetchgit { inherit (builtins.fromJSON (builtins.readFile (p + /git.json))) url rev sha256; }
     else if builtins.pathExists (p + /github.json)
@@ -14,10 +19,10 @@ let
 
   usbtool = import ./nix/dep/usbtool.nix { };
 
-  patchSDKBinBash = sdk: pkgs.stdenv.mkDerivation {
+  patchSDKBinBash = name: sdk: pkgs.stdenv.mkDerivation {
     # Replaces SDK's Makefile instances of /bin/bash with Nix's bash
-    name = sdk.name + "_patched_bin_bash";
-    src = sdk.out;
+    name = name + "_patched_bin_bash";
+    src = sdk;
     dontBuild = true;
     installPhase = ''
       mkdir -p $out
@@ -29,7 +34,7 @@ let
     {
       s = rec {
         name = "s";
-        sdk = patchSDKBinBash (fetchThunk ./nix/dep/nanos-secure-sdk);
+        sdk = patchSDKBinBash "nanos-secure-sdk" (fetchThunk ./nix/dep/nanos-secure-sdk);
         env = pkgs.callPackage ./nix/bolos-env.nix { clangVersion = 4; };
         target = "TARGET_NANOS";
         targetId = "0x31100004";
@@ -42,11 +47,7 @@ let
       };
       x = rec {
         name = "x";
-        sdk = if nanoXSdk == null
-          then throw "No NanoX SDK"
-          else assert builtins.typeOf nanoXSdk == "path";
-            # Use the attrset to mock up the derivation that fetch thunk returns
-            patchSDKBinBash { name = "nanox-secure-sdk"; out = nanoXSdk; };
+        sdk = patchSDKBinBash "ledger-nanox-sdk" (fetchThunk ./nix/dep/ledger-nanox-sdk);
         env = pkgs.callPackage ./nix/bolos-env.nix { clangVersion = 7; };
         target = "TARGET_NANOX";
         targetId = "0x33000004";
