@@ -89,7 +89,7 @@ extern ux_state_t ux;
 #endif
 extern unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
 
-static inline void throw_stack_size() {
+static inline void throw_stack_size(void) {
     uint8_t st;
     // uint32_t tmp1 = (uint32_t)&st - (uint32_t)&app_stack_canary;
     uint32_t tmp2 = (uint32_t)global.stack_root - (uint32_t)&st;
