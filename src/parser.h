@@ -131,6 +131,7 @@ typedef enum {
     NETWORK_ID_CASCADE  = 2,
     NETWORK_ID_DENALI   = 3,
     NETWORK_ID_EVEREST  = 4,
+    NETWORK_ID_FUJI     = 5,
     NETWORK_ID_LOCAL    = 12345,
     NETWORK_ID_UNITTEST = 10,
 } network_id_t;
@@ -142,6 +143,7 @@ static inline network_id_t parse_network_id(uint32_t const val) {
         case 2: return NETWORK_ID_CASCADE;
         case 3: return NETWORK_ID_DENALI;
         case 4: return NETWORK_ID_EVEREST;
+        case 5: return NETWORK_ID_FUJI;
         case 12345: return NETWORK_ID_LOCAL;
         case 10: return NETWORK_ID_UNITTEST;
         default: THROW(EXC_PARSE_ERROR);

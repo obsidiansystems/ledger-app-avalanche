@@ -680,6 +680,7 @@ char const *network_id_string(network_id_t const network_id) {
         case NETWORK_ID_CASCADE: return "cascade";
         case NETWORK_ID_DENALI: return "denali";
         case NETWORK_ID_EVEREST: return "everest";
+        case NETWORK_ID_FUJI: return "fuji";
         case NETWORK_ID_LOCAL: return "local";
         case NETWORK_ID_UNITTEST: return "unittest";
         default: return NULL;
@@ -706,6 +707,11 @@ Id32 const *blockchain_id_for_network(network_id_t const network_id) {
         case NETWORK_ID_EVEREST: {
             // jnUjZSRt16TcRnZzmh5aMhavwVHz3zBrSN8GfFMTQkzUnoBxC
             static Id32 const id = { .val = { 0x61, 0x25, 0x84, 0x21, 0x39, 0x7c, 0x02, 0x35, 0xbd, 0x6d, 0x67, 0x81, 0x2a, 0x8b, 0x2c, 0x1c, 0xf3, 0x39, 0x29, 0x50, 0x0a, 0x7f, 0x69, 0x16, 0xbb, 0x2f, 0xc4, 0xac, 0x64, 0x6a, 0xc0, 0x91 } };
+            return &id;
+        }
+        case NETWORK_ID_FUJI: {
+            // 2JVSBoinj9C2J33VntvzYtVJNZdN2NKiwwKjcumHUWEb5DbBrm
+            static Id32 const id = { .val = { 0xab, 0x68, 0xeb, 0x1e, 0xe1, 0x42, 0xa0, 0x5c, 0xfe, 0x76, 0x8c, 0x36, 0xe1, 0x1f, 0x0b, 0x59, 0x6d, 0xb5, 0xa3, 0xc6, 0xc7, 0x7a, 0xab, 0xe6, 0x65, 0xda, 0xd9, 0xe6, 0x38, 0xca, 0x94, 0xf7 } };
             return &id;
         }
         case NETWORK_ID_LOCAL: {
