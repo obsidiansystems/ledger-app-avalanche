@@ -174,6 +174,7 @@ typedef struct {
     Address address;
 } output_prompt_t;
 
+
 typedef struct {
     string_generation_callback to_string;
     union {
@@ -181,10 +182,19 @@ typedef struct {
         uint32_t uint32; // network
         uint64_t uint64; // amount / fee
         Address address;
+        //TODO: Now that weve added this, do we need the ones above?
+        output_prompt_t output_prompt;
     } data;
 } prompt_entry_t;
 
 #define TRANSACTION_PROMPT_BATCH_SIZE 1
+
+enum transaction_type_id_t {
+    TRANSACTION_TYPE_ID_BASE = 0,
+    TRANSACTION_TYPE_ID_IMPORT = 3,
+    TRANSACTION_TYPE_ID_EXPORT = 4,
+};
+
 typedef struct {
     parser_input_meta_state_t input;
     struct {
@@ -192,6 +202,8 @@ typedef struct {
         char const *labels[TRANSACTION_PROMPT_BATCH_SIZE + 1]; // For NULL at end
         prompt_entry_t entries[TRANSACTION_PROMPT_BATCH_SIZE];
     } prompt;
+    enum transaction_type_id_t type_id;
+    bool swap_output;
     uint64_t last_output_amount;
     network_id_t network_id;
     bool first_asset_id_found;

@@ -162,6 +162,7 @@ static bool continue_parsing(void) {
 
     BEGIN_TRY {
         TRY {
+          // Call next_parse, which calls this function recursively...
             next_parse(true);
         }
         CATCH(ASYNC_EXCEPTION) {
@@ -214,7 +215,6 @@ static void empty_prompt_queue(void) {
 static size_t next_parse(bool const is_reentry) {
     PRINTF("Next parse\n");
     enum parse_rv const rv = parseTransaction(&G.parser.state, &G.parser.meta_state);
-
     empty_prompt_queue();
 
     if (rv == PARSE_RV_DONE || rv == PARSE_RV_NEED_MORE) {
