@@ -17,7 +17,7 @@ let
       then pkgs.fetchFromGitHub { inherit (builtins.fromJSON (builtins.readFile (p + /github.json))) owner repo rev sha256; }
     else p;
 
-  usbtool = import ./nix/dep/usbtool.nix { };
+  usbtool = import ./nix/dep/usbtool.nix { inherit pkgs; };
 
   patchSDKBinBash = name: sdk: pkgs.stdenv.mkDerivation {
     # Replaces SDK's Makefile instances of /bin/bash with Nix's bash
@@ -66,7 +66,7 @@ let
   #    in (pkgs.lib.sources.sourceFilesBySuffices
   #        (pkgs.lib.sources.cleanSourceWith { src = ./.; filter = glyphsFilter; }) [".c" ".h" ".gif" "Makefile" ".sh" ".json" ".bats" ".txt" ".der" ".js" ".lock"]);
 
-  speculos = pkgs.callPackage ./nix/dep/speculos { };
+  speculos = pkgs.callPackage ./nix/dep/speculos { inherit pkgs; };
   tests = import ./tests { inherit pkgs; };
 
   build = bolos:
