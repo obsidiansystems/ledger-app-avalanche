@@ -447,10 +447,12 @@ enum parse_rv parseBaseTransaction(struct TransactionState *const state, parser_
             CALL_SUBPARSER(id32State, Id32);
             PRINTF("Blockchain ID: %.*h\n", 32, state->id32State.buf);
             Id32 const *const blockchain_id = blockchain_id_for_network(meta->network_id);
-            if (blockchain_id == NULL) 
-              REJECT("Blockchain ID for given network ID not found");
-            if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
-              REJECT("Blockchain ID did not match expected value for network ID");
+            if (meta->network_id != NETWORK_ID_LOCAL) {
+              if (blockchain_id == NULL)
+                REJECT("Blockchain ID for given network ID not found");
+              if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
+                REJECT("Blockchain ID did not match expected value for network ID");
+            }
             state->state++;
             INIT_SUBPARSER(outputsState, TransferableOutputs);
         case 4: // outputs
@@ -501,10 +503,12 @@ enum parse_rv parseImportTransaction(struct TransactionState *const state, parse
             CALL_SUBPARSER(id32State, Id32);
             PRINTF("Blockchain ID: %.*h\n", 32, state->id32State.buf);
             Id32 const *const blockchain_id = blockchain_id_for_network(meta->network_id);
-            if (blockchain_id == NULL) 
-              REJECT("Blockchain ID for given network ID not found");
-            if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
-              REJECT("Blockchain ID did not match expected value for network ID");
+            if (meta->network_id != NETWORK_ID_LOCAL) {
+              if (blockchain_id == NULL)
+                REJECT("Blockchain ID for given network ID not found");
+              if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
+                REJECT("Blockchain ID did not match expected value for network ID");
+            }
             state->state++;
             INIT_SUBPARSER(outputsState, TransferableOutputs);
         case 4: // outputs
