@@ -108,8 +108,8 @@ describe("Basic Tests", () => {
       const pathSuffixes = ["0/0", "0/1", "100/100"];
       const ui = await flowMultiPrompt(this.speculos, [
         [{header:"Sign",body:"Transaction"}],
-        [{header:"Transfer",body:"12345 to denali12yp9cc0melq83a5nxnurf0nd6fk4t224dtg0lx"}],
-        [{header:"Fee",body:"123444444"}],
+        [{header:"Transfer",body:"0.000012345 to denali12yp9cc0melq83a5nxnurf0nd6fk4t224dtg0lx"}],
+        [{header:"Fee",body:"0.123444444"}],
         [{header:"Finalize",body:"Transaction"}],
       ]);
       const sigPromise = signTransaction(this.ava, pathPrefix, pathSuffixes);
@@ -198,9 +198,9 @@ describe("Basic Tests", () => {
       const pathSuffixes = ["0/0", "0/1", "100/100"];
       const ui = await flowMultiPrompt(this.speculos, [
         [{header:"Sign",body:"Transaction"}],
-        [{header:"Transfer",body:"1000 to everest10an3cucdfqru984pnvv6y0rspvvclz63qnegnr"}],
-        [{header:"Transfer",body:"6999000 to everest15jh6hlessx2jtxvs48jnr0vzxrg34x32ef0ckt"}],
-        [{header:"Fee",body:"1000000"}],
+        [{header:"Transfer",body:"0.000001 to everest10an3cucdfqru984pnvv6y0rspvvclz63qnegnr"}],
+        [{header:"Transfer",body:"0.006999 to everest15jh6hlessx2jtxvs48jnr0vzxrg34x32ef0ckt"}],
+        [{header:"Fee",body:"0.001"}],
         [{header:"Finalize",body:"Transaction"}],
       ]);
       const sigPromise = this.ava.signTransaction(
@@ -216,8 +216,8 @@ describe("Basic Tests", () => {
       try {
         const ui = await flowMultiPrompt(this.speculos, [
           [{header:"Sign",body:"Transaction"}],
-          [{header:"Transfer",body:"12345 to denali12yp9cc0melq83a5nxnurf0nd6fk4t224dtg0lx"}],
-          [{header:"Fee",body:"123444444"}],
+          [{header:"Transfer",body:"0.000012345 to denali12yp9cc0melq83a5nxnurf0nd6fk4t224dtg0lx"}],
+          [{header:"Fee",body:"0.123444444"}],
         ], "Next", "Next");
         await signTransaction(this.ava, "44'/9000'/1'", ["0/0"], {
           extraEndBytes: Buffer.from([0x00])
@@ -272,7 +272,7 @@ describe("Basic Tests", () => {
         { inputTypeId: Buffer.from([0x01, 0x00, 0x00, 0x00]) },
         [
           [{header:"Sign",body:"Transaction"}],
-          [{header:"Transfer",body:"12345 to denali12yp9cc0melq83a5nxnurf0nd6fk4t224dtg0lx"}],
+          [{header:"Transfer",body:"0.000012345 to denali12yp9cc0melq83a5nxnurf0nd6fk4t224dtg0lx"}],
         ],
       );
     });
@@ -303,7 +303,7 @@ describe("Basic Tests", () => {
           o,
           [
             [{header:"Sign",body:"Transaction"}],
-            [{header:"Transfer",body:"12345 to denali12yp9cc0melq83a5nxnurf0nd6fk4t224dtg0lx"}],
+            [{header:"Transfer",body:"0.000012345 to denali12yp9cc0melq83a5nxnurf0nd6fk4t224dtg0lx"}],
           ],
         );
       }
