@@ -5,6 +5,8 @@ const spawn = require('child_process').spawn;
 const fc = require('fast-check');
 const chai = require('chai');
 const { expect } = chai.use(require('chai-bytes'));
+const { recover } = require('bcrypto/lib/secp256k1')
+const BIPPath = require("bip32-path");
 
 const APDU_PORT = 9999;
 const BUTTON_PORT = 8888;
@@ -235,6 +237,19 @@ function acceptPrompts(expectedPrompts, selectPrompt) {
   }
 }
 
+async function flowMultiPrompt(speculos, prompts, nextPrompt="Next", finalPrompt="Accept") {
+  return await automationStart(speculos, async (speculos, screens) => {
+    for (p of prompts.slice(0,-1)) {
+      const rp = (await acceptPrompts(undefined, nextPrompt)(speculos, screens)).promptList;
+      // Only looking at the last prompt, because we bounce off the home screen sometimes during this process:
+      expect([ rp[rp.length-1] ]).to.deep.equal(p);
+    }
+    const rp = (await acceptPrompts(undefined, finalPrompt)(speculos, screens)).promptList;
+    expect([ rp[rp.length-1] ]).to.deep.equal(prompts[prompts.length-1]);
+    return true;
+  });
+}
+
 const fcConfig = {
   interruptAfterTimeLimit: parseInt(process.env.GEN_TIME_LIMIT || 1000),
   markInterruptAsFailure: false,
@@ -255,3 +270,7 @@ global.signHashPrompts = (hash, pathPrefix) => {
     {header:"Are you sure?",body:"This is very dangerous!"},
   ];
 };
+global.BIPPath = BIPPath;
+global.recover = recover;
+global.expect = expect;
+global.flowMultiPrompt = flowMultiPrompt;

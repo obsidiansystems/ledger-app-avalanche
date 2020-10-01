@@ -22,8 +22,12 @@
         if (sub_rv != PARSE_RV_DONE) break; \
     }
 
+#define BUBBLE_SWITCH_BREAK if (sub_rv != PARSE_RV_DONE) break
+
 #define INIT_SUBPARSER(subFieldName, subParser) \
     init_ ## subParser(&state->subFieldName);
+
+static bool is_pchain(const uint8_t *blockchain_id);
 
 static void check_asset_id(Id32 const *const asset_id, parser_meta_state_t *const meta) {
     check_null(asset_id);
@@ -46,7 +50,9 @@ enum transaction_type_id_t convert_type_id_to_type(uint32_t type_id) {
       case 0: return TRANSACTION_TYPE_ID_BASE;
       case 3: return TRANSACTION_TYPE_ID_IMPORT;
       case 4: return TRANSACTION_TYPE_ID_EXPORT;
-      default: REJECT("Invalid transaction type_id; Must be base, export, or import");
+      case 0x11: return TRANSACTION_TYPE_ID_PLATFORM_IMPORT;
+      case 0x12: return TRANSACTION_TYPE_ID_PLATFORM_EXPORT;
+      default: REJECT("Invalid transaction type_id; Must be base, export, or import; found %d", type_id);
   }
 }
 
@@ -156,24 +162,55 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                 output_prompt.network_id = meta->network_id;
                 memcpy(&output_prompt.address, &state->addressState.val, sizeof(output_prompt.address));
                 // TODO: We can get rid of this if we add back the P/X- in front of an address
-                if(meta->type_id == TRANSACTION_TYPE_ID_EXPORT && meta->swap_output) {
-                  should_break = ADD_PROMPT(
-                      "X to P chain",
-                      &output_prompt, sizeof(output_prompt),
-                      output_prompt_to_string
-                  );
-                } else if(meta->type_id == TRANSACTION_TYPE_ID_IMPORT ) {
-                  should_break = ADD_PROMPT(
-                      "From P chain",
-                      &output_prompt, sizeof(output_prompt),
-                      output_prompt_to_string
-                  );
-                } else {
-                  should_break = ADD_PROMPT(
-                      "Transfer",
-                      &output_prompt, sizeof(output_prompt),
-                      output_prompt_to_string
-                  );
+                bool is_base_output = false;
+                switch(meta->type_id) {
+                  case TRANSACTION_TYPE_ID_EXPORT:
+                    if(meta->swap_output) {
+                      should_break = ADD_PROMPT(
+                          "X to P chain",
+                          &output_prompt, sizeof(output_prompt),
+                          output_prompt_to_string
+                          );
+                      break;
+                    } else {
+                      is_base_output = 1;
+                      break;
+                    }
+                  case TRANSACTION_TYPE_ID_IMPORT:
+                    should_break = ADD_PROMPT(
+                        "From P chain",
+                        &output_prompt, sizeof(output_prompt),
+                        output_prompt_to_string
+                        );
+                    break;
+                  case TRANSACTION_TYPE_ID_PLATFORM_EXPORT:
+                    if(meta->swap_output) {
+                      should_break = ADD_PROMPT(
+                          "P to X chain",
+                          &output_prompt, sizeof(output_prompt),
+                          output_prompt_to_string
+                          );
+                      break;
+                    } else {
+                      is_base_output = 1;
+                      break;
+                    }
+                  case TRANSACTION_TYPE_ID_PLATFORM_IMPORT:
+                    should_break = ADD_PROMPT(
+                        "From X chain",
+                        &output_prompt, sizeof(output_prompt),
+                        output_prompt_to_string
+                        );
+                    break;
+                  default:
+                    is_base_output = 1;
+                }
+                if(is_base_output) {
+                    should_break = ADD_PROMPT(
+                        "Transfer",
+                        &output_prompt, sizeof(output_prompt),
+                        output_prompt_to_string
+                        );
                 }
 
                 if (state->address_i == state->address_n) {
@@ -329,8 +366,11 @@ enum parse_rv parse_TransferableInput(struct TransferableInput_state *const stat
             PRINTF("UTXO_INDEX: %u\n", state->uint32State.val);
             state->state++;
             INIT_SUBPARSER(id32State, Id32);
+            PRINTF("INIT\n");
         case 2: // asset_id
+            PRINTF("INIT\n");
             CALL_SUBPARSER(id32State, Id32);
+            PRINTF("FOO\n");
             PRINTF("ASSET ID: %u\n", state->uint32State.val);
             check_asset_id(&state->id32State.val, meta);
             state->state++;
@@ -418,6 +458,7 @@ static void strcpy_prompt(char *const out, size_t const out_size, char const *co
 
 static bool prompt_fee(parser_meta_state_t *const meta) {
     uint64_t fee = -1; // if this is unset this should be obviously wrong
+    PRINTF("inputs: %.*h outpfts: %.*h\n", 8, &meta->sum_of_inputs, 8, &meta->sum_of_outputs);
     if (__builtin_usubll_overflow(meta->sum_of_inputs, meta->sum_of_outputs, &fee)) THROW_(EXC_MEMORY_ERROR, "Difference of outputs from inputs overflowed");
     if (meta->prompt.count >= NUM_ELEMENTS(meta->prompt.entries)) THROW_(EXC_MEMORY_ERROR, "Tried to add a prompt to full queue");
     meta->prompt.labels[meta->prompt.count] = PROMPT("Fee");
@@ -428,52 +469,67 @@ static bool prompt_fee(parser_meta_state_t *const meta) {
     return should_break;
 }
 
-static bool unknown_network_has_unknown_id(Id32 const *blockchain_id) {
-
+void init_BaseTransaction(struct BaseTransactionState *const state) {
+  state->state = 0;
+  INIT_SUBPARSER(uint32State, uint32_t);
 }
 
-enum parse_rv parseBaseTransaction(struct TransactionState *const state, parser_meta_state_t *const meta) {
+static bool is_pchain_transaction(enum transaction_type_id_t type) {
+  switch(type) {
+    case TRANSACTION_TYPE_ID_PLATFORM_IMPORT:
+      return true;
+    case TRANSACTION_TYPE_ID_PLATFORM_EXPORT:
+      return true;
+    default:
+      return false;
+  }
+}
+
+enum parse_rv parse_BaseTransaction(struct BaseTransactionState *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
     switch (state->state) {
-        case 2: { // Network ID
-            INIT_SUBPARSER(uint32State, uint32_t);
+        case 0: { // Network ID
             CALL_SUBPARSER(uint32State, uint32_t);
             state->state++;
             PRINTF("Network ID: %.*h\n", sizeof(state->uint32State.buf), state->uint32State.buf);
             meta->network_id = parse_network_id(state->uint32State.val);
             INIT_SUBPARSER(id32State, Id32);
         }
-        case 3: // blockchain ID
+        case 1: // blockchain ID
             CALL_SUBPARSER(id32State, Id32);
             PRINTF("Blockchain ID: %.*h\n", 32, state->id32State.buf);
             Id32 const *const blockchain_id = blockchain_id_for_network(meta->network_id);
             if (meta->network_id != NETWORK_ID_LOCAL) {
               if (blockchain_id == NULL)
                 REJECT("Blockchain ID for given network ID not found");
-              if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
-                REJECT("Blockchain ID did not match expected value for network ID");
+              if (is_pchain_transaction(meta->type_id)) {
+                PRINTF("Is pchain transaction\n");
+                if (!is_pchain(&state->id32State.val))
+                  REJECT("Transaction ID indicates P-chain but blockchain ID is is not 0");
+              } else {
+                PRINTF("type_id: %x\n", meta->type_id);
+                if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
+                  REJECT("Blockchain ID did not match expected value for network ID");
+              }
             }
             state->state++;
             INIT_SUBPARSER(outputsState, TransferableOutputs);
-        case 4: // outputs
+        case 2: // outputs
             CALL_SUBPARSER(outputsState, TransferableOutputs);
             PRINTF("Done with outputs\n");
             state->state++;
             INIT_SUBPARSER(inputsState, TransferableInputs);
-        case 5: { // inputs
+        case 3: { // inputs
             CALL_SUBPARSER(inputsState, TransferableInputs);
             PRINTF("Done with inputs\n");
-            bool should_break = prompt_fee(meta);
-            sub_rv = PARSE_RV_PROMPT;
             state->state++;
             INIT_SUBPARSER(memoState, Memo);
-            if (should_break) break;
         }
-        case 6: // memo
+        case 4: // memo
             CALL_SUBPARSER(memoState, Memo);
             PRINTF("Done with memo;\n");
             state->state++;
-        case 7:
+        case 5:
             PRINTF("Done\n");
             sub_rv = PARSE_RV_DONE;
     }
@@ -488,62 +544,34 @@ static bool is_pchain(const uint8_t *buff) {
   return memcmp(buff, pchain_id, chain_size) == 0;
 }
 
-enum parse_rv parseImportTransaction(struct TransactionState *const state, parser_meta_state_t *const meta) {
+void init_ImportTransaction(struct ImportTransactionState *const state) {
+  state->state = 0;
+  INIT_SUBPARSER(uint32State, uint32_t);
+}
+
+enum parse_rv parse_ImportTransaction(struct ImportTransactionState *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
       switch (state->state) {
-        case 2: { // Network ID
-            INIT_SUBPARSER(uint32State, uint32_t);
-            CALL_SUBPARSER(uint32State, uint32_t);
-            state->state++;
-            PRINTF("Network ID: %.*h\n", sizeof(state->uint32State.buf), state->uint32State.buf);
-            meta->network_id = parse_network_id(state->uint32State.val);
-            INIT_SUBPARSER(id32State, Id32);
-        }
-        case 3: // blockchain ID
+        case 0: // ChainID
             CALL_SUBPARSER(id32State, Id32);
-            PRINTF("Blockchain ID: %.*h\n", 32, state->id32State.buf);
-            Id32 const *const blockchain_id = blockchain_id_for_network(meta->network_id);
-            if (meta->network_id != NETWORK_ID_LOCAL) {
-              if (blockchain_id == NULL)
-                REJECT("Blockchain ID for given network ID not found");
-              if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
-                REJECT("Blockchain ID did not match expected value for network ID");
+            if(is_pchain_transaction(meta->type_id)) {
+              if(memcmp(blockchain_id_for_network(meta->network_id), state->id32State.buf, 32))
+                REJECT("Invalid XChain ID");
+            } else {
+              if(! is_pchain(state->id32State.buf)) REJECT("Invalid PChain ID");
             }
-            state->state++;
-            INIT_SUBPARSER(outputsState, TransferableOutputs);
-        case 4: // outputs
-            CALL_SUBPARSER(outputsState, TransferableOutputs);
-            PRINTF("Done with outputs\n");
-            state->state++;
-            INIT_SUBPARSER(inputsState, TransferableInputs);
-        case 5: { // inputs
-            CALL_SUBPARSER(inputsState, TransferableInputs);
-            PRINTF("Done with inputs\n");
-            state->state++;
-            INIT_SUBPARSER(memoState, Memo);
-        }
-        case 6: // memo
-            CALL_SUBPARSER(memoState, Memo);
-            PRINTF("Done with memo;\n");
-            state->state++;
-            INIT_SUBPARSER(id32State, Id32);
-        case 7: // ChainID
-            CALL_SUBPARSER(id32State, Id32);
-            if(! is_pchain(state->id32State.buf)) REJECT("Invalid PChain ID");
             state->state++;
             INIT_SUBPARSER(inputsState, TransferableInputs);
             PRINTF("Done with ChainID;\n");
 
-        case 8: {// PChain
+        case 1: { // PChain
             meta->swap_output = true;
             CALL_SUBPARSER(inputsState, TransferableInputs);
             state->state++;
-            // Dont set sub_rv
-            prompt_fee(meta);
             PRINTF("Done with PChain Address\n");
             break;
         }
-        case 9:
+        case 2:
              // This is bc we call the parser recursively, and, at the end, it gets called with
              // nothing to parse...But it exits without unwinding the stack, so if we are here,
              // we need to set this in order to exit properly
@@ -552,62 +580,29 @@ enum parse_rv parseImportTransaction(struct TransactionState *const state, parse
     return sub_rv;
 }
 
-enum parse_rv parseExportTransaction(struct TransactionState *const state, parser_meta_state_t *const meta) {
+void init_ExportTransaction(struct ExportTransactionState *const state) {
+  state->state = 0;
+  INIT_SUBPARSER(uint32State, uint32_t);
+}
+
+enum parse_rv parse_ExportTransaction(struct ExportTransactionState *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
     switch (state->state) {
-        case 2: { // Network ID
-            INIT_SUBPARSER(uint32State, uint32_t);
-            CALL_SUBPARSER(uint32State, uint32_t);
-            state->state++;
-            PRINTF("Network ID: %.*h\n", sizeof(state->uint32State.buf), state->uint32State.buf);
-            meta->network_id = parse_network_id(state->uint32State.val);
-            INIT_SUBPARSER(id32State, Id32);
-        }
-        case 3: // blockchain ID
-            CALL_SUBPARSER(id32State, Id32);
-            PRINTF("Blockchain ID: %.*h\n", 32, state->id32State.buf);
-            Id32 const *const blockchain_id = blockchain_id_for_network(meta->network_id);
-            if(meta->network_id != NETWORK_ID_LOCAL) {
-              if (blockchain_id == NULL) 
-                REJECT("Blockchain ID for given network ID not found");
-              if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
-                REJECT("Blockchain ID did not match expected value for network ID");
-            }
-            state->state++;
-            INIT_SUBPARSER(outputsState, TransferableOutputs);
-        case 4: // outputs
-            CALL_SUBPARSER(outputsState, TransferableOutputs);
-            PRINTF("Done with outputs\n");
-            state->state++;
-            INIT_SUBPARSER(inputsState, TransferableInputs);
-        case 5: { // inputs
-            CALL_SUBPARSER(inputsState, TransferableInputs);
-            PRINTF("Done with inputs\n");
-            state->state++;
-            INIT_SUBPARSER(memoState, Memo);
-        }
-        case 6: // memo
-            CALL_SUBPARSER(memoState, Memo);
-            PRINTF("Done with memo;\n");
-            state->state++;
-            INIT_SUBPARSER(id32State, Id32);
-        case 7: // ChainID
+        case 0: // ChainID
             CALL_SUBPARSER(id32State, Id32);
             if(!is_pchain(state->id32State.buf)) REJECT("Invalid PChain ID");
             state->state++;
             INIT_SUBPARSER(outputsState, TransferableOutputs);
             PRINTF("Done with ChainID;\n");
 
-        case 8: {// PChain Dst
+        case 1: {// PChain Dst
             meta->swap_output = true;
             CALL_SUBPARSER(outputsState, TransferableOutputs);
             state->state++;
-            // Dont set sub_rv
-            prompt_fee(meta);
             PRINTF("Done with PChain Address\n");
             break;
         }
-        case 9:
+        case 2:
              // This is bc we call the parser recursively, and, at the end, it gets called with
              // nothing to parse...But it exits without unwinding the stack, so if we are here,
              // we need to set this in order to exit properly
@@ -627,6 +622,8 @@ static label_t type_id_to_label(enum transaction_type_id_t type_id) {
     case TRANSACTION_TYPE_ID_BASE: return (label_t) { .label = transactionLabel, .label_size = sizeof(transactionLabel) };
     case TRANSACTION_TYPE_ID_IMPORT: return (label_t) { .label = importLabel, .label_size = sizeof(importLabel) };
     case TRANSACTION_TYPE_ID_EXPORT: return (label_t) { .label = exportLabel, .label_size = sizeof(exportLabel) };
+    case TRANSACTION_TYPE_ID_PLATFORM_IMPORT: return (label_t) { .label = importLabel, .label_size = sizeof(importLabel) };
+    case TRANSACTION_TYPE_ID_PLATFORM_EXPORT: return (label_t) { .label = exportLabel, .label_size = sizeof(exportLabel) };
   }
 }
 
@@ -655,23 +652,62 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             PRINTF("Type ID: %.*h\n", sizeof(state->uint32State.buf), state->uint32State.buf);
 
             label_t label = type_id_to_label(meta->type_id);
+            INIT_SUBPARSER(baseTxState, BaseTransaction);
             if (ADD_PROMPT("Sign", label.label, label.label_size, strcpy_prompt)) break;
         }
-        default:
-            switch (meta->type_id) {
+        case 2: { // Base transaction
+            CALL_SUBPARSER(baseTxState, BaseTransaction);
+            state->state++;
+            switch(meta->type_id) {
               case TRANSACTION_TYPE_ID_BASE:
-                sub_rv = parseBaseTransaction(state, meta);
                 break;
               case TRANSACTION_TYPE_ID_IMPORT:
-                sub_rv = parseImportTransaction(state, meta);
+                INIT_SUBPARSER(importTxState, ImportTransaction);
                 break;
               case TRANSACTION_TYPE_ID_EXPORT:
-                sub_rv = parseExportTransaction(state, meta);
+                INIT_SUBPARSER(exportTxState, ExportTransaction);
                 break;
-
+              case TRANSACTION_TYPE_ID_PLATFORM_IMPORT:
+                INIT_SUBPARSER(importTxState, ImportTransaction);
+                break;
+              case TRANSACTION_TYPE_ID_PLATFORM_EXPORT:
+                INIT_SUBPARSER(exportTxState, ExportTransaction);
+                break;
               default:
                 REJECT("Only base, export, and import transactions are supported");
             }
+        }
+        case 3: {
+            switch (meta->type_id) {
+              case TRANSACTION_TYPE_ID_BASE:
+                sub_rv = PARSE_RV_DONE;
+                break;
+              case TRANSACTION_TYPE_ID_IMPORT:
+                CALL_SUBPARSER(importTxState, ImportTransaction);
+                break;
+              case TRANSACTION_TYPE_ID_EXPORT:
+                CALL_SUBPARSER(exportTxState, ExportTransaction);
+                break;
+              case TRANSACTION_TYPE_ID_PLATFORM_IMPORT:
+                CALL_SUBPARSER(importTxState, ImportTransaction);
+                break;
+              case TRANSACTION_TYPE_ID_PLATFORM_EXPORT:
+                CALL_SUBPARSER(exportTxState, ExportTransaction);
+                break;
+              default:
+                REJECT("Only base, export, and import transactions are supported");
+            }
+            BUBBLE_SWITCH_BREAK;
+            state->state++;
+                }
+        case 4: {
+                  bool should_break = prompt_fee(meta);
+                  sub_rv = PARSE_RV_PROMPT;
+                  state->state++;
+                  if (should_break) break;
+                }
+        case 5:
+                return PARSE_RV_DONE;
     }
     PRINTF("Consumed %d bytes of input so far\n", meta->input.consumed);
     update_transaction_hash(&state->hash_state, &meta->input.src[start_consumed], meta->input.consumed - start_consumed);
@@ -693,36 +729,36 @@ char const *network_id_string(network_id_t const network_id) {
 
 Id32 const *blockchain_id_for_network(network_id_t const network_id) {
     switch (network_id) {
-        case NETWORK_ID_MAINNET: {
-            // 2oYMBNV4eNHyqk2fjjV5nVQLDbtmNJzq5s3qs3Lo6ftnC6FByM
-            static Id32 const id = { .val = { 0xed, 0x5f, 0x38, 0x34, 0x1e, 0x43, 0x6e, 0x5d, 0x46, 0xe2, 0xbb, 0x00, 0xb4, 0x5d, 0x62, 0xae, 0x97, 0xd1, 0xb0, 0x50, 0xc6, 0x4b, 0xc6, 0x34, 0xae, 0x10, 0x62, 0x67, 0x39, 0xe3, 0x5c, 0x4b } };
-            return &id;
-        }
-        case NETWORK_ID_CASCADE: {
-            // 4ktRjsAKxgMr2aEzv9SWmrU7Xk5FniHUrVCX4P1TZSfTLZWFM
-            static Id32 const id = { .val = { 0x08, 0x87, 0xac, 0x30, 0x54, 0xb7, 0x8f, 0xc7, 0x78, 0x79, 0x0d, 0xf1, 0x22, 0x4e, 0x3b, 0xc5, 0xb4, 0xdc, 0x16, 0x91, 0x6f, 0xda, 0xc2, 0x3b, 0xb1, 0x3b, 0x9a, 0xf1, 0x7b, 0x4c, 0x06, 0xa9 } };
-            return &id;
-        }
-        case NETWORK_ID_DENALI: {
-            // rrEWX7gc7D9mwcdrdBxBTdqh1a7WDVsMuadhTZgyXfFcRz45L
-            static Id32 const id = { .val = { 0x71, 0x30, 0x1a, 0x03, 0x75, 0x0a, 0x14, 0x8a, 0xb5, 0x1e, 0xad, 0x71, 0x8c, 0x20, 0x89, 0xda, 0xd3, 0x8a, 0x28, 0x54, 0x5e, 0xdb, 0xe0, 0xc7, 0xe0, 0xc3, 0xfe, 0x1d, 0x25, 0xdc, 0x7f, 0x03 } };
-            return &id;
-        }
-        case NETWORK_ID_EVEREST: {
-            // jnUjZSRt16TcRnZzmh5aMhavwVHz3zBrSN8GfFMTQkzUnoBxC
-            static Id32 const id = { .val = { 0x61, 0x25, 0x84, 0x21, 0x39, 0x7c, 0x02, 0x35, 0xbd, 0x6d, 0x67, 0x81, 0x2a, 0x8b, 0x2c, 0x1c, 0xf3, 0x39, 0x29, 0x50, 0x0a, 0x7f, 0x69, 0x16, 0xbb, 0x2f, 0xc4, 0xac, 0x64, 0x6a, 0xc0, 0x91 } };
-            return &id;
-        }
-        case NETWORK_ID_FUJI: {
-            // 2JVSBoinj9C2J33VntvzYtVJNZdN2NKiwwKjcumHUWEb5DbBrm
-            static Id32 const id = { .val = { 0xab, 0x68, 0xeb, 0x1e, 0xe1, 0x42, 0xa0, 0x5c, 0xfe, 0x76, 0x8c, 0x36, 0xe1, 0x1f, 0x0b, 0x59, 0x6d, 0xb5, 0xa3, 0xc6, 0xc7, 0x7a, 0xab, 0xe6, 0x65, 0xda, 0xd9, 0xe6, 0x38, 0xca, 0x94, 0xf7 } };
-            return &id;
-        }
-        case NETWORK_ID_LOCAL: {
-            // v4hFSZTNNVdyomeMoXa77dAz4CdxU3cziSb45TB7mfXUmy7C7
-            static Id32 const id = { .val = { 0x78, 0x7c, 0xd3, 0x24, 0x3c, 0x00, 0x2e, 0x9b, 0xf5, 0xbb, 0xba, 0xea, 0x8a, 0x42, 0xa1, 0x6c, 0x1a, 0x19, 0xcc, 0x10, 0x50, 0x47, 0xc6, 0x69, 0x96, 0x80, 0x7c, 0xbf, 0x16, 0xac, 0xee, 0x10} };
-            return &id;
-        }
+      /* X-macro invocation; see network_blockchain_ids.h */
+#define NET_AND_CHAIN_ID(net_id, ...) \
+      case net_id: { \
+                     static Id32 const id = { . val = { __VA_ARGS__ } }; \
+                     return &id; \
+                   }
+#include "network_blockchain_ids.h"
+#undef NET_AND_CHAIN_ID
         default: return NULL;
     }
+}
+
+static network_id_t network_id_from_chain_id(const uint8_t *buff) {
+  /* If this ever collides, we'll get a compile error; at that point, most
+   * likely we just need to extend to the first two bytes of buff, but in the
+   * worst case we might just need to do something fancier than this lookup. */
+  switch(buff[0]){
+    /* X-macro invocation; see network_blockchain_ids.h */
+#define NET_AND_CHAIN_ID(net_id, chain_id_first_byte, ...) \
+    case chain_id_first_byte: { \
+                                static const uint8_t cmp_buff[] = { __VA_ARGS__ }; \
+                                if(!memcmp(&buff[1], PIC(cmp_buff), 31)) { \
+                                  return net_id; \
+                                } else { \
+                                  THROW(EXC_PARSE_ERROR); \
+                                } \
+                                break; \
+                              }
+#include "network_blockchain_ids.h"
+#undef NET_AND_CHAIN_ID
+    default: THROW(EXC_PARSE_ERROR);
+  }
 }
