@@ -97,8 +97,10 @@ size_t number_to_string(char *const dest, uint64_t number) {
 #define NANO_AVAX_SCALE 1000000000
 
 // Display avax in human readable form
-size_t nano_avax_to_string(char *const dest, uint64_t nano_avax) {
+size_t nano_avax_to_string(char *const dest, size_t const buff_size, uint64_t nano_avax) {
     check_null(dest);
+    if (buff_size < MAX_INT_DIGITS + 2)
+      THROW(EXC_WRONG_LENGTH); // terminating null
     uint64_t whole_avax = nano_avax / NANO_AVAX_SCALE;
     uint64_t fractional_avax = nano_avax % NANO_AVAX_SCALE;
     size_t off = number_to_string(dest, whole_avax);
@@ -128,11 +130,8 @@ size_t nano_avax_to_string(char *const dest, uint64_t nano_avax) {
 }
 
 void nano_avax_to_string_indirect64(char *const dest, size_t const buff_size, uint64_t const *const number) {
-    check_null(dest);
     check_null(number);
-    if (buff_size < MAX_INT_DIGITS + 1)
-        THROW(EXC_WRONG_LENGTH); // terminating null
-    nano_avax_to_string(dest, *number);
+    nano_avax_to_string(dest, buff_size, *number);
 }
 
 void copy_string(char *const dest, size_t const buff_size, char const *const src) {

@@ -100,9 +100,7 @@ static void output_prompt_to_string(char *const out, size_t const out_size, outp
     char const *const network_name = network_id_string(in->network_id);
     if (network_name == NULL) REJECT("Can't determine network HRP for addresses");
 
-    size_t ix = 0;
-    if (ix + MAX_INT_DIGITS > out_size) THROW_(EXC_MEMORY_ERROR, "Can't fit amount into prompt value string");
-    ix += nano_avax_to_string(&out[ix], in->amount);
+    size_t ix = nano_avax_to_string(out, out_size, in->amount);
 
     static char const to[] = " to ";
     if (ix + sizeof(to) > out_size) THROW_(EXC_MEMORY_ERROR, "Can't fit ' to ' into prompt value string");
@@ -568,7 +566,7 @@ enum parse_rv parseExportTransaction(struct TransactionState *const state, parse
             PRINTF("Blockchain ID: %.*h\n", 32, state->id32State.buf);
             Id32 const *const blockchain_id = blockchain_id_for_network(meta->network_id);
             if(meta->network_id != NETWORK_ID_LOCAL) {
-              if (blockchain_id == NULL) 
+              if (blockchain_id == NULL)
                 REJECT("Blockchain ID for given network ID not found");
               if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
                 REJECT("Blockchain ID did not match expected value for network ID");
