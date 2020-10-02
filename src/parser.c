@@ -100,9 +100,7 @@ static void output_prompt_to_string(char *const out, size_t const out_size, outp
     char const *const network_name = network_id_string(in->network_id);
     if (network_name == NULL) REJECT("Can't determine network HRP for addresses");
 
-    size_t ix = 0;
-    if (ix + MAX_INT_DIGITS > out_size) THROW_(EXC_MEMORY_ERROR, "Can't fit amount into prompt value string");
-    ix += number_to_string(&out[ix], in->amount);
+    size_t ix = nano_avax_to_string(out, out_size, in->amount);
 
     static char const to[] = " to ";
     if (ix + sizeof(to) > out_size) THROW_(EXC_MEMORY_ERROR, "Can't fit ' to ' into prompt value string");
@@ -421,7 +419,7 @@ static bool prompt_fee(parser_meta_state_t *const meta) {
     if (__builtin_usubll_overflow(meta->sum_of_inputs, meta->sum_of_outputs, &fee)) THROW_(EXC_MEMORY_ERROR, "Difference of outputs from inputs overflowed");
     if (meta->prompt.count >= NUM_ELEMENTS(meta->prompt.entries)) THROW_(EXC_MEMORY_ERROR, "Tried to add a prompt to full queue");
     meta->prompt.labels[meta->prompt.count] = PROMPT("Fee");
-    meta->prompt.entries[meta->prompt.count].to_string = number_to_string_indirect64;
+    meta->prompt.entries[meta->prompt.count].to_string = nano_avax_to_string_indirect64;
     memcpy(&meta->prompt.entries[meta->prompt.count].data, &fee, sizeof(fee));
     meta->prompt.count++;
     bool should_break = meta->prompt.count >= NUM_ELEMENTS(meta->prompt.entries);
@@ -568,7 +566,7 @@ enum parse_rv parseExportTransaction(struct TransactionState *const state, parse
             PRINTF("Blockchain ID: %.*h\n", 32, state->id32State.buf);
             Id32 const *const blockchain_id = blockchain_id_for_network(meta->network_id);
             if(meta->network_id != NETWORK_ID_LOCAL) {
-              if (blockchain_id == NULL) 
+              if (blockchain_id == NULL)
                 REJECT("Blockchain ID for given network ID not found");
               if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
                 REJECT("Blockchain ID did not match expected value for network ID");

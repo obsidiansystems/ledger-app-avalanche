@@ -73,14 +73,6 @@ static inline size_t convert_number(char dest[MAX_INT_DIGITS], uint64_t number, 
     return 0;
 }
 
-void number_to_string_indirect64(char *const dest, size_t const buff_size, uint64_t const *const number) {
-    check_null(dest);
-    check_null(number);
-    if (buff_size < MAX_INT_DIGITS + 1)
-        THROW(EXC_WRONG_LENGTH); // terminating null
-    number_to_string(dest, *number);
-}
-
 void number_to_string_indirect32(char *const dest, size_t const buff_size, uint32_t const *const number) {
     check_null(dest);
     check_null(number);
@@ -101,7 +93,46 @@ size_t number_to_string(char *const dest, uint64_t number) {
     return length;
 }
 
-#define DECIMAL_DIGITS 8
+#define DECIMAL_DIGITS 9
+#define NANO_AVAX_SCALE 1000000000
+
+// Display avax in human readable form
+size_t nano_avax_to_string(char *const dest, size_t const buff_size, uint64_t nano_avax) {
+    check_null(dest);
+    if (buff_size < MAX_INT_DIGITS + 2)
+      THROW(EXC_WRONG_LENGTH); // terminating null
+    uint64_t whole_avax = nano_avax / NANO_AVAX_SCALE;
+    uint64_t fractional_avax = nano_avax % NANO_AVAX_SCALE;
+    size_t off = number_to_string(dest, whole_avax);
+    if (fractional_avax == 0) {
+        return off;
+    }
+    dest[off++] = '.';
+
+    char tmp[MAX_INT_DIGITS];
+    convert_number(tmp, fractional_avax, true);
+
+    // Eliminate trailing 0s
+    char *start = tmp + MAX_INT_DIGITS - DECIMAL_DIGITS;
+    char *end;
+    for (end = tmp + MAX_INT_DIGITS - 1; end >= start; end--) {
+        if (*end != '0') {
+            end++;
+            break;
+        }
+    }
+
+    size_t length = end - start;
+    memcpy(dest + off, start, length);
+    off += length;
+    dest[off] = '\0';
+    return off;
+}
+
+void nano_avax_to_string_indirect64(char *const dest, size_t const buff_size, uint64_t const *const number) {
+    check_null(number);
+    nano_avax_to_string(dest, buff_size, *number);
+}
 
 void copy_string(char *const dest, size_t const buff_size, char const *const src) {
     check_null(dest);
