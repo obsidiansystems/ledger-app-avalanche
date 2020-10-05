@@ -108,7 +108,7 @@ describe("Basic Tests", () => {
       const pathSuffixes = ["0/0", "0/1", "100/100"];
       const ui = await flowMultiPrompt(this.speculos, [
         [{header:"Sign",body:"Transaction"}],
-        [{header:"Transfer",body:"0.000012345 to denali12yp9cc0melq83a5nxnurf0nd6fk4t224dtg0lx"}],
+        [{header:"Transfer",body:"0.000012345 to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"}],
         [{header:"Fee",body:"0.123444444"}],
         [{header:"Finalize",body:"Transaction"}],
       ]);
@@ -117,19 +117,19 @@ describe("Basic Tests", () => {
       await checkSignTransactionResult(this.ava, await sigPromise, pathPrefix, pathSuffixes);
     });
 
-    it('can sign a sample everest transaction', async function () {
+    it('can sign a sample fuji transaction', async function () {
       const txn = Buffer.from([
         // Codec ID
         0x00, 0x00,
         // Type ID
         0x00, 0x00, 0x00, 0x00,
-        // Network ID (everest)
-        0x00, 0x00, 0x00, 0x04,
-        // Blockchain ID (everest)
-        0x61, 0x25, 0x84, 0x21, 0x39, 0x7C, 0x02, 0x35,
-        0xBD, 0x6D, 0x67, 0x81, 0x2A, 0x8B, 0x2C, 0x1C,
-        0xF3, 0x39, 0x29, 0x50, 0x0A, 0x7F, 0x69, 0x16,
-        0xBB, 0x2F, 0xC4, 0xAC, 0x64, 0x6A, 0xC0, 0x91,
+        // Network ID (fuji)
+        0x00, 0x00, 0x00, 0x05,
+        // Blockchain ID (fuji)
+        0xab, 0x68, 0xeb, 0x1e, 0xe1, 0x42, 0xa0, 0x5c,
+        0xfe, 0x76, 0x8c, 0x36, 0xe1, 0x1f, 0x0b, 0x59,
+        0x6d, 0xb5, 0xa3, 0xc6, 0xc7, 0x7a, 0xab, 0xe6,
+        0x65, 0xda, 0xd9, 0xe6, 0x38, 0xca, 0x94, 0xf7,
         // number of outputs
         0x00, 0x00, 0x00, 0x02,
         // transferrable output 1
@@ -198,8 +198,8 @@ describe("Basic Tests", () => {
       const pathSuffixes = ["0/0", "0/1", "100/100"];
       const ui = await flowMultiPrompt(this.speculos, [
         [{header:"Sign",body:"Transaction"}],
-        [{header:"Transfer",body:"0.000001 to everest10an3cucdfqru984pnvv6y0rspvvclz63qnegnr"}],
-        [{header:"Transfer",body:"0.006999 to everest15jh6hlessx2jtxvs48jnr0vzxrg34x32ef0ckt"}],
+        [{header:"Transfer",body:"0.000001 to fuji10an3cucdfqru984pnvv6y0rspvvclz634xwwhs"}],
+        [{header:"Transfer",body:"0.006999 to fuji15jh6hlessx2jtxvs48jnr0vzxrg34x32vuc7jc"}],
         [{header:"Fee",body:"0.001"}],
         [{header:"Finalize",body:"Transaction"}],
       ]);
@@ -216,7 +216,7 @@ describe("Basic Tests", () => {
       try {
         const ui = await flowMultiPrompt(this.speculos, [
           [{header:"Sign",body:"Transaction"}],
-          [{header:"Transfer",body:"0.000012345 to denali12yp9cc0melq83a5nxnurf0nd6fk4t224dtg0lx"}],
+          [{header:"Transfer",body:"0.000012345 to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"}],
           [{header:"Fee",body:"0.123444444"}],
         ], "Next", "Next");
         await signTransaction(this.ava, "44'/9000'/1'", ["0/0"], {
@@ -272,7 +272,7 @@ describe("Basic Tests", () => {
         { inputTypeId: Buffer.from([0x01, 0x00, 0x00, 0x00]) },
         [
           [{header:"Sign",body:"Transaction"}],
-          [{header:"Transfer",body:"0.000012345 to denali12yp9cc0melq83a5nxnurf0nd6fk4t224dtg0lx"}],
+          [{header:"Transfer",body:"0.000012345 to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"}],
         ],
       );
     });
@@ -303,7 +303,7 @@ describe("Basic Tests", () => {
           o,
           [
             [{header:"Sign",body:"Transaction"}],
-            [{header:"Transfer",body:"0.000012345 to denali12yp9cc0melq83a5nxnurf0nd6fk4t224dtg0lx"}],
+              [{header:"Transfer",body:"0.000012345 to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"}],
           ],
         );
       }
@@ -397,7 +397,7 @@ async function signTransaction(
     ...{
       codecId: Buffer.from([0x00, 0x00]),
       typeId: Buffer.from([0x00, 0x00, 0x00, 0x00]),
-      networkId: Buffer.from([0x00, 0x00, 0x00, 0x03]),
+      networkId: Buffer.from([0x00, 0x00, 0x00, 0x05]),
       extraEndBytes: Buffer.from([]),
       inputAssetId: assetId,
       inputTypeId: Buffer.from([0x00, 0x00, 0x00, 0x05]),
@@ -448,11 +448,11 @@ async function signTransaction(
     fields.typeId,
     fields.networkId,
     Buffer.from([
-      // blockchainID: (denali)
-      0x71, 0x30, 0x1a, 0x03, 0x75, 0x0a, 0x14, 0x8a,
-      0xb5, 0x1e, 0xad, 0x71, 0x8c, 0x20, 0x89, 0xda,
-      0xd3, 0x8a, 0x28, 0x54, 0x5e, 0xdb, 0xe0, 0xc7,
-      0xe0, 0xc3, 0xfe, 0x1d, 0x25, 0xdc, 0x7f, 0x03,
+      // blockchainID: (fuji)
+      0xab, 0x68, 0xeb, 0x1e, 0xe1, 0x42, 0xa0, 0x5c,
+      0xfe, 0x76, 0x8c, 0x36, 0xe1, 0x1f, 0x0b, 0x59,
+      0x6d, 0xb5, 0xa3, 0xc6, 0xc7, 0x7a, 0xab, 0xe6,
+      0x65, 0xda, 0xd9, 0xe6, 0x38, 0xca, 0x94, 0xf7,
       // number of outputs:
       0x00, 0x00, 0x00, 0x01,
     ]),
