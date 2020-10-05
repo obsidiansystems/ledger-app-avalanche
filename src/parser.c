@@ -156,7 +156,9 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                 output_prompt.network_id = meta->network_id;
                 memcpy(&output_prompt.address, &state->addressState.val, sizeof(output_prompt.address));
                 // TODO: We can get rid of this if we add back the P/X- in front of an address
-                if(meta->type_id == TRANSACTION_TYPE_ID_EXPORT && meta->swap_output) {
+                if (memcmp(state->addressState.buf, global.apdu.u.sign.change_address, sizeof(public_key_hash_t)) == 0) {
+                    // skip change address
+                } else if(meta->type_id == TRANSACTION_TYPE_ID_EXPORT && meta->swap_output) {
                   should_break = ADD_PROMPT(
                       "X to P chain",
                       &output_prompt, sizeof(output_prompt),
