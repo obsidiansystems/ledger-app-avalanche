@@ -1,8 +1,8 @@
 {
   "owner": "obsidiansystems",
   "repo": "hw-app-avalanche",
-  "branch": "eac@verbose-signing-multi",
+  "branch": "mjb@handle-change-path",
   "private": false,
-  "rev": "d00c3098d55306277c6f61c0d01edb139a86ef4d",
-  "sha256": "12cs1kxrfg4p8vpif6zgvdzixm62ahji0v1fbhqldnzpgs1vk29m"
+  "rev": "546965d1b35f3fdae743b718029bb06d43e693d3",
+  "sha256": "1j1nqacp7l41m6wz3kdryvcq0agampkinxs3kimksfksfqldyxz1"
 }
