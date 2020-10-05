@@ -123,7 +123,7 @@ describe("Basic Tests", () => {
       const ui = await flowMultiPrompt(this.speculos, [
         [{header:"Sign",body:"Transaction"}],
         [{header:"Transfer",body:"0.123456789 to denali12yp9cc0melq83a5nxnurf0nd6fk4t224dtg0lx"}],
-        [{header:"Fee",body:"0.123444444"}],
+        [{header:"Fee",body:"0"}],
         [{header:"Finalize",body:"Transaction"}],
       ]);
       const sigPromise = signTransaction(this.ava, pathPrefix, pathSuffixes, {
