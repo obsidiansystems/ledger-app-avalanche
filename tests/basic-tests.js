@@ -123,11 +123,12 @@ describe("Basic Tests", () => {
       const ui = await flowMultiPrompt(this.speculos, [
         [{header:"Sign",body:"Transaction"}],
         [{header:"Transfer",body:"0.123456789 to denali12yp9cc0melq83a5nxnurf0nd6fk4t224dtg0lx"}],
-        [{header:"Fee",body:"0"}],
+        [{header:"Fee",body:"0.876543211"}],
         [{header:"Finalize",body:"Transaction"}],
       ]);
       const sigPromise = signTransaction(this.ava, pathPrefix, pathSuffixes, {
-        "amount": Buffer.from([0x00, 0x00, 0x00, 0x00, 0x07, 0x5b, 0xcd, 0x15]),
+        "outputAmount": Buffer.from([0x00, 0x00, 0x00, 0x00, 0x07, 0x5b, 0xcd, 0x15]),
+        "inputAmount": Buffer.from([0x00, 0x00, 0x00, 0x00, 0x3b, 0x9a, 0xca, 0x00]),
       });
       await ui.promptsPromise;
       await checkSignTransactionResult(this.ava, await sigPromise, pathPrefix, pathSuffixes);
@@ -139,12 +140,12 @@ describe("Basic Tests", () => {
       const ui = await flowMultiPrompt(this.speculos, [
         [{header:"Sign",body:"Transaction"}],
         [{header:"Transfer",body:"1 to denali12yp9cc0melq83a5nxnurf0nd6fk4t224dtg0lx"}],
-        [{header:"Fee",body:"0.12344444"}],
+        [{header:"Fee",body:"1"}],
         [{header:"Finalize",body:"Transaction"}],
       ]);
       const sigPromise = signTransaction(this.ava, pathPrefix, pathSuffixes, {
-        "amount": Buffer.from([0x00, 0x00, 0x00, 0x00, 0x3b, 0x9a, 0xca, 0x00]),
-
+        "outputAmount": Buffer.from([0x00, 0x00, 0x00, 0x00, 0x3b, 0x9a, 0xca, 0x00]),
+        "inputAmount": Buffer.from([0x00, 0x00, 0x00, 0x00, 0x77, 0x35, 0x94, 0x00]),
       });
       await ui.promptsPromise;
       await checkSignTransactionResult(this.ava, await sigPromise, pathPrefix, pathSuffixes);
@@ -436,7 +437,8 @@ async function signTransaction(
       inputTypeId: Buffer.from([0x00, 0x00, 0x00, 0x05]),
       outputAssetId: assetId,
       outputTypeId: Buffer.from([0x00, 0x00, 0x00, 0x07]),
-      amount: Buffer.from([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x30, 0x39]),
+      outputAmount: Buffer.from([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x30, 0x39]),
+      inputAmount: Buffer.from([0x00, 0x00, 0x00, 0x00, 0x07, 0x5b, 0xcd, 0x15]),
     },
     ...fieldOverrides,
   }
@@ -444,7 +446,7 @@ async function signTransaction(
   const transferrableOutput = Buffer.concat([
       fields.outputAssetId,
       fields.outputTypeId,
-      fields.amount,
+      fields.outputAmount,
       Buffer.from([
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xd4, 0x31, // locktime
         0x00, 0x00, 0x00, 0x01, // threshold
@@ -469,8 +471,8 @@ async function signTransaction(
     ]),
     fields.inputAssetId,
     fields.inputTypeId,
+    fields.inputAmount,
     Buffer.from([
-      0x00, 0x00, 0x00, 0x00, 0x07, 0x5b, 0xcd, 0x15, // amount
       0x00, 0x00, 0x00, 0x02, // number of address indices
       0x00, 0x00, 0x00, 0x03, // address index 1
       0x00, 0x00, 0x00, 0x07, // address index 2
