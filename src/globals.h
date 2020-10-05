@@ -21,6 +21,8 @@ typedef struct {
     uint8_t final_hash[SIGN_HASH_SIZE];
     buffer_t final_hash_as_buffer;
 
+    public_key_hash_t change_address;
+
     uint8_t num_signatures_left;
 
     struct {
