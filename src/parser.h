@@ -67,6 +67,16 @@ struct SECP256K1TransferOutput_state {
     };
 };
 
+struct SECP256K1OutputOwners_state {
+    int state;
+    uint32_t address_n;
+    uint32_t address_i;
+    union {
+        NUMBER_STATES;
+        struct Address_state addressState;
+    };
+};
+
 struct Output_state {
     int state;
     uint32_t type;
@@ -185,6 +195,35 @@ struct ExportTransactionState {
   };
 };
 
+struct Validator_state {
+  int state;
+  union {
+    struct Address_state addressState;
+    struct uint64_t_state uint64State;
+  };
+};
+
+struct AddValidatorTransactionState {
+  int state;
+  union {
+        struct uint32_t_state uint32State;
+        struct Id32_state id32State;
+        struct TransferableOutputs_state outputsState;
+
+        struct Validator_state validatorState;
+        struct SECP256K1OutputOwners_state ownersState;
+  };
+};
+
+struct AddDelegatorTransactionState {
+  int state;
+  union {
+        struct uint32_t_state uint32State;
+        struct Id32_state id32State;
+        struct TransferableOutputs_state outputsState;
+  };
+};
+
 struct TransactionState {
   int state;
   uint32_t type;
@@ -195,6 +234,8 @@ struct TransactionState {
     struct BaseTransactionState baseTxState;
     struct ImportTransactionState importTxState;
     struct ExportTransactionState exportTxState;
+    struct AddValidatorTransactionState addValidatorTxState;
+    struct AddDelegatorTransactionState addDelegatorTxState;
   };
 };
 
@@ -210,6 +251,10 @@ typedef struct {
     Address address;
 } output_prompt_t;
 
+typedef struct {
+    network_id_t network_id;
+    Address address;
+} address_prompt_t;
 
 typedef struct {
     string_generation_callback to_string;
@@ -229,6 +274,8 @@ enum transaction_type_id_t {
     TRANSACTION_TYPE_ID_BASE = 0,
     TRANSACTION_TYPE_ID_IMPORT = 3,
     TRANSACTION_TYPE_ID_EXPORT = 4,
+    TRANSACTION_TYPE_ID_ADD_VALIDATOR = 0x0c,
+    TRANSACTION_TYPE_ID_ADD_DELEGATOR = 0x0e,
     TRANSACTION_TYPE_ID_PLATFORM_IMPORT = 0x11,
     TRANSACTION_TYPE_ID_PLATFORM_EXPORT = 0x12
 };
