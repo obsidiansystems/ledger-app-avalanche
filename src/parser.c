@@ -198,6 +198,9 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                             output_prompt_to_string
                             );
                         break;
+                    default:
+                        // If we throw here, we set swap_output somewhere _wrong_.
+                        THROW(EXC_PARSE_ERROR);
                   }
                 } else {
                   switch(meta->type_id) {
@@ -581,7 +584,7 @@ enum parse_rv parse_BaseTransaction(struct BaseTransactionState *const state, pa
                 REJECT("Blockchain ID for given network ID not found");
               if (is_pchain_transaction(meta->type_id)) {
                 PRINTF("Is pchain transaction\n");
-                if (!is_pchain(&state->id32State.val))
+                if (!is_pchain(state->id32State.val.val))
                   REJECT("Transaction ID indicates P-chain but blockchain ID is is not 0");
               } else {
                 PRINTF("type_id: %x\n", meta->type_id);
