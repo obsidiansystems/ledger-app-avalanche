@@ -268,9 +268,6 @@ typedef struct {
     uint64_t sum_of_outputs;
 } parser_meta_state_t;
 
-char const *network_id_string(network_id_t const network_id);
-Id32 const *blockchain_id_for_network(network_id_t const network_id);
-
 void initTransaction(struct TransactionState *const state);
 
 enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta_state_t *const meta);
