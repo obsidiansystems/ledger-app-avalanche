@@ -4,6 +4,7 @@
 #include "protocol.h"
 #include "to_string.h"
 #include "types.h"
+#include "network_info.h"
 
 #define REJECT(msg, ...) { PRINTF("Rejecting: " msg "\n", ##__VA_ARGS__); THROW_(EXC_PARSE_ERROR, "Rejected"); }
 
@@ -97,8 +98,9 @@ void init_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const st
 static void output_prompt_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
     check_null(out);
     check_null(in);
-    char const *const network_name = network_id_string(in->network_id);
-    if (network_name == NULL) REJECT("Can't determine network HRP for addresses");
+    network_info_t const *const network_info = network_info_from_network_id(in->network_id);
+    if (network_info == NULL) REJECT("Can't determine network HRP for addresses");
+    char const *const hrp = network_info->hrp;
 
     size_t ix = nano_avax_to_string(out, out_size, in->amount);
 
@@ -107,7 +109,7 @@ static void output_prompt_to_string(char *const out, size_t const out_size, outp
     memcpy(&out[ix], to, sizeof(to));
     ix += sizeof(to) - 1;
 
-    ix += pkh_to_string(&out[ix], out_size - ix, network_name, strlen(network_name), &in->address.val);
+    ix += pkh_to_string(&out[ix], out_size - ix, hrp, strlen(hrp), &in->address.val);
 }
 
 enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const state, parser_meta_state_t *const meta) {
@@ -428,10 +430,6 @@ static bool prompt_fee(parser_meta_state_t *const meta) {
     return should_break;
 }
 
-static bool unknown_network_has_unknown_id(Id32 const *blockchain_id) {
-
-}
-
 enum parse_rv parseBaseTransaction(struct TransactionState *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
     switch (state->state) {
@@ -446,13 +444,11 @@ enum parse_rv parseBaseTransaction(struct TransactionState *const state, parser_
         case 3: // blockchain ID
             CALL_SUBPARSER(id32State, Id32);
             PRINTF("Blockchain ID: %.*h\n", 32, state->id32State.buf);
-            Id32 const *const blockchain_id = blockchain_id_for_network(meta->network_id);
-            if (meta->network_id != NETWORK_ID_LOCAL) {
-              if (blockchain_id == NULL)
-                REJECT("Blockchain ID for given network ID not found");
-              if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
-                REJECT("Blockchain ID did not match expected value for network ID");
-            }
+            network_info_t const *const network_info = network_info_from_network_id(meta->network_id);
+            if (network_info == NULL)
+              REJECT("Blockchain ID for given network ID not found");
+            if (memcmp(network_info->blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
+              REJECT("Blockchain ID did not match expected value for network ID");
             state->state++;
             INIT_SUBPARSER(outputsState, TransferableOutputs);
         case 4: // outputs
@@ -502,13 +498,11 @@ enum parse_rv parseImportTransaction(struct TransactionState *const state, parse
         case 3: // blockchain ID
             CALL_SUBPARSER(id32State, Id32);
             PRINTF("Blockchain ID: %.*h\n", 32, state->id32State.buf);
-            Id32 const *const blockchain_id = blockchain_id_for_network(meta->network_id);
-            if (meta->network_id != NETWORK_ID_LOCAL) {
-              if (blockchain_id == NULL)
-                REJECT("Blockchain ID for given network ID not found");
-              if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
-                REJECT("Blockchain ID did not match expected value for network ID");
-            }
+            network_info_t const *const network_info = network_info_from_network_id(meta->network_id);
+            if (network_info == NULL)
+              REJECT("Blockchain ID for given network ID not found");
+            if (memcmp(network_info->blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
+              REJECT("Blockchain ID did not match expected value for network ID");
             state->state++;
             INIT_SUBPARSER(outputsState, TransferableOutputs);
         case 4: // outputs
@@ -566,13 +560,11 @@ enum parse_rv parseExportTransaction(struct TransactionState *const state, parse
         case 3: // blockchain ID
             CALL_SUBPARSER(id32State, Id32);
             PRINTF("Blockchain ID: %.*h\n", 32, state->id32State.buf);
-            Id32 const *const blockchain_id = blockchain_id_for_network(meta->network_id);
-            if(meta->network_id != NETWORK_ID_LOCAL) {
-              if (blockchain_id == NULL)
-                REJECT("Blockchain ID for given network ID not found");
-              if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
-                REJECT("Blockchain ID did not match expected value for network ID");
-            }
+            network_info_t const *const network_info = network_info_from_network_id(meta->network_id);
+            if (network_info == NULL)
+              REJECT("Blockchain ID for given network ID not found");
+            if (memcmp(network_info->blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
+              REJECT("Blockchain ID did not match expected value for network ID");
             state->state++;
             INIT_SUBPARSER(outputsState, TransferableOutputs);
         case 4: // outputs
@@ -676,53 +668,4 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
     PRINTF("Consumed %d bytes of input so far\n", meta->input.consumed);
     update_transaction_hash(&state->hash_state, &meta->input.src[start_consumed], meta->input.consumed - start_consumed);
     return sub_rv;
-}
-
-char const *network_id_string(network_id_t const network_id) {
-    switch (network_id) {
-        case NETWORK_ID_MAINNET: return "mainnet";
-        case NETWORK_ID_CASCADE: return "cascade";
-        case NETWORK_ID_DENALI: return "denali";
-        case NETWORK_ID_EVEREST: return "everest";
-        case NETWORK_ID_FUJI: return "fuji";
-        case NETWORK_ID_LOCAL: return "local";
-        case NETWORK_ID_UNITTEST: return "unittest";
-        default: return NULL;
-    }
-}
-
-Id32 const *blockchain_id_for_network(network_id_t const network_id) {
-    switch (network_id) {
-        case NETWORK_ID_MAINNET: {
-            // 2oYMBNV4eNHyqk2fjjV5nVQLDbtmNJzq5s3qs3Lo6ftnC6FByM
-            static Id32 const id = { .val = { 0xed, 0x5f, 0x38, 0x34, 0x1e, 0x43, 0x6e, 0x5d, 0x46, 0xe2, 0xbb, 0x00, 0xb4, 0x5d, 0x62, 0xae, 0x97, 0xd1, 0xb0, 0x50, 0xc6, 0x4b, 0xc6, 0x34, 0xae, 0x10, 0x62, 0x67, 0x39, 0xe3, 0x5c, 0x4b } };
-            return &id;
-        }
-        case NETWORK_ID_CASCADE: {
-            // 4ktRjsAKxgMr2aEzv9SWmrU7Xk5FniHUrVCX4P1TZSfTLZWFM
-            static Id32 const id = { .val = { 0x08, 0x87, 0xac, 0x30, 0x54, 0xb7, 0x8f, 0xc7, 0x78, 0x79, 0x0d, 0xf1, 0x22, 0x4e, 0x3b, 0xc5, 0xb4, 0xdc, 0x16, 0x91, 0x6f, 0xda, 0xc2, 0x3b, 0xb1, 0x3b, 0x9a, 0xf1, 0x7b, 0x4c, 0x06, 0xa9 } };
-            return &id;
-        }
-        case NETWORK_ID_DENALI: {
-            // rrEWX7gc7D9mwcdrdBxBTdqh1a7WDVsMuadhTZgyXfFcRz45L
-            static Id32 const id = { .val = { 0x71, 0x30, 0x1a, 0x03, 0x75, 0x0a, 0x14, 0x8a, 0xb5, 0x1e, 0xad, 0x71, 0x8c, 0x20, 0x89, 0xda, 0xd3, 0x8a, 0x28, 0x54, 0x5e, 0xdb, 0xe0, 0xc7, 0xe0, 0xc3, 0xfe, 0x1d, 0x25, 0xdc, 0x7f, 0x03 } };
-            return &id;
-        }
-        case NETWORK_ID_EVEREST: {
-            // jnUjZSRt16TcRnZzmh5aMhavwVHz3zBrSN8GfFMTQkzUnoBxC
-            static Id32 const id = { .val = { 0x61, 0x25, 0x84, 0x21, 0x39, 0x7c, 0x02, 0x35, 0xbd, 0x6d, 0x67, 0x81, 0x2a, 0x8b, 0x2c, 0x1c, 0xf3, 0x39, 0x29, 0x50, 0x0a, 0x7f, 0x69, 0x16, 0xbb, 0x2f, 0xc4, 0xac, 0x64, 0x6a, 0xc0, 0x91 } };
-            return &id;
-        }
-        case NETWORK_ID_FUJI: {
-            // 2JVSBoinj9C2J33VntvzYtVJNZdN2NKiwwKjcumHUWEb5DbBrm
-            static Id32 const id = { .val = { 0xab, 0x68, 0xeb, 0x1e, 0xe1, 0x42, 0xa0, 0x5c, 0xfe, 0x76, 0x8c, 0x36, 0xe1, 0x1f, 0x0b, 0x59, 0x6d, 0xb5, 0xa3, 0xc6, 0xc7, 0x7a, 0xab, 0xe6, 0x65, 0xda, 0xd9, 0xe6, 0x38, 0xca, 0x94, 0xf7 } };
-            return &id;
-        }
-        case NETWORK_ID_LOCAL: {
-            // v4hFSZTNNVdyomeMoXa77dAz4CdxU3cziSb45TB7mfXUmy7C7
-            static Id32 const id = { .val = { 0x78, 0x7c, 0xd3, 0x24, 0x3c, 0x00, 0x2e, 0x9b, 0xf5, 0xbb, 0xba, 0xea, 0x8a, 0x42, 0xa1, 0x6c, 0x1a, 0x19, 0xcc, 0x10, 0x50, 0x47, 0xc6, 0x69, 0x96, 0x80, 0x7c, 0xbf, 0x16, 0xac, 0xee, 0x10} };
-            return &id;
-        }
-        default: return NULL;
-    }
 }
