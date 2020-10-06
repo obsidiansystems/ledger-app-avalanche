@@ -1,6 +1,7 @@
 #pragma once
 
 #include "types.h"
+#include "network_info.h"
 
 // some global definitions
 enum parse_rv {
@@ -135,36 +136,6 @@ struct Memo_state {
     };
 };
 
-typedef enum {
-    NETWORK_ID_UNSET    = 0,
-    NETWORK_ID_MAINNET  = 1,
-    NETWORK_ID_CASCADE  = 2,
-    NETWORK_ID_DENALI   = 3,
-    NETWORK_ID_EVEREST  = 4,
-    NETWORK_ID_FUJI     = 5,
-    NETWORK_ID_LOCAL    = 12345,
-    NETWORK_ID_UNITTEST = 10,
-} network_id_t;
-
-static inline network_id_t parse_network_id(uint32_t const val) {
-    switch (val) {
-        case 0: return NETWORK_ID_UNSET;
-        case 1: return NETWORK_ID_MAINNET;
-        case 2: return NETWORK_ID_CASCADE;
-        case 3: return NETWORK_ID_DENALI;
-        case 4: return NETWORK_ID_EVEREST;
-        case 5: return NETWORK_ID_FUJI;
-        case 12345: return NETWORK_ID_LOCAL;
-        case 10: return NETWORK_ID_UNITTEST;
-        default: THROW(EXC_PARSE_ERROR);
-    }
-}
-
-typedef enum {
-  BLOCKCHAIN_P_CHAIN = 0,
-  BLOCKCHAIN_X_CHAIN = 1
-} known_chain_id_t;
-
 struct BaseTransactionState {
     int state;
     union {
@@ -296,9 +267,6 @@ typedef struct {
     uint64_t sum_of_inputs;
     uint64_t sum_of_outputs;
 } parser_meta_state_t;
-
-char const *network_id_string(network_id_t const network_id);
-Id32 const *blockchain_id_for_network(network_id_t const network_id);
 
 void initTransaction(struct TransactionState *const state);
 
