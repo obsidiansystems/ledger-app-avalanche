@@ -254,12 +254,16 @@ static size_t next_parse(bool const is_reentry) {
 #define SIGN_TRANSACTION_SECTION_SIGN_WITH_PATH      0x02
 #define SIGN_TRANSACTION_SECTION_SIGN_WITH_PATH_LAST 0x82
 
+#define P2_HAS_CHANGE_PATH 0x01
+
 size_t handle_apdu_sign_transaction(void) {
     uint8_t const *const in = &G_io_apdu_buffer[OFFSET_CDATA];
     uint8_t const in_size = READ_UNALIGNED_BIG_ENDIAN(uint8_t, &G_io_apdu_buffer[OFFSET_LC]);
     if (in_size > MAX_APDU_SIZE)
         THROW(EXC_WRONG_LENGTH_FOR_INS);
     uint8_t const p1 = READ_UNALIGNED_BIG_ENDIAN(uint8_t, &G_io_apdu_buffer[OFFSET_P1]);
+    uint8_t const p2 = READ_UNALIGNED_BIG_ENDIAN(uint8_t, &G_io_apdu_buffer[OFFSET_P2]);
+    bool const hasChangePath = (p2 & P2_HAS_CHANGE_PATH) != 0;
 
     switch (p1) {
         case SIGN_TRANSACTION_SECTION_PREAMBLE: {
@@ -270,8 +274,22 @@ size_t handle_apdu_sign_transaction(void) {
             G.requested_num_signatures = CONSUME_UNALIGNED_BIG_ENDIAN(ix, uint8_t, &in[ix]);
             if (G.requested_num_signatures == 0) THROW_(EXC_WRONG_PARAM, "Sender requested 0 signatures");
 
-            read_bip32_path(&G.bip32_path_prefix, &in[ix], in_size - ix);
+            ix += read_bip32_path(&G.bip32_path_prefix, &in[ix], in_size - ix);
             if (G.bip32_path_prefix.length < 3) THROW_(EXC_SECURITY, "Signing prefix path not long enough");
+
+            if (hasChangePath) {
+                bip32_path_t change_path;
+                memset(&change_path, 0, sizeof(change_path));
+                ix += read_bip32_path(&change_path, &in[ix], in_size - ix);
+
+                if (change_path.length != 5) {
+                    THROW(EXC_WRONG_LENGTH);
+                }
+
+                extended_public_key_t ext_public_key;
+                generate_extended_public_key(&ext_public_key, &change_path);
+                generate_pkh_for_pubkey(&ext_public_key.public_key, &G.change_address);
+            }
 
             initTransaction(&G.parser.state);
             return finalize_successful_send(0);

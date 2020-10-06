@@ -4,6 +4,7 @@
 #include "protocol.h"
 #include "to_string.h"
 #include "types.h"
+#include "network_info.h"
 
 #define REJECT(msg, ...) { PRINTF("Rejecting: " msg "\n", ##__VA_ARGS__); THROW_(EXC_PARSE_ERROR, "Rejected"); }
 
@@ -27,7 +28,7 @@
 #define INIT_SUBPARSER(subFieldName, subParser) \
     init_ ## subParser(&state->subFieldName);
 
-static bool is_pchain(const uint8_t *blockchain_id);
+static bool is_pchain(blockchain_id_t blockchain_id);
 
 static void check_asset_id(Id32 const *const asset_id, parser_meta_state_t *const meta) {
     check_null(asset_id);
@@ -105,19 +106,18 @@ void init_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const st
 static void output_prompt_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
     check_null(out);
     check_null(in);
-    char const *const network_name = network_id_string(in->network_id);
-    if (network_name == NULL) REJECT("Can't determine network HRP for addresses");
+    network_info_t const *const network_info = network_info_from_network_id(in->network_id);
+    if (network_info == NULL) REJECT("Can't determine network HRP for addresses");
+    char const *const hrp = network_info->hrp;
 
-    size_t ix = 0;
-    if (ix + MAX_INT_DIGITS > out_size) THROW_(EXC_MEMORY_ERROR, "Can't fit amount into prompt value string");
-    ix += number_to_string(&out[ix], in->amount);
+    size_t ix = nano_avax_to_string(out, out_size, in->amount);
 
     static char const to[] = " to ";
     if (ix + sizeof(to) > out_size) THROW_(EXC_MEMORY_ERROR, "Can't fit ' to ' into prompt value string");
     memcpy(&out[ix], to, sizeof(to));
     ix += sizeof(to) - 1;
 
-    ix += pkh_to_string(&out[ix], out_size - ix, network_name, strlen(network_name), &in->address.val);
+    ix += pkh_to_string(&out[ix], out_size - ix, hrp, strlen(hrp), &in->address.val);
 }
 
 static void output_address_to_string(char *const out, size_t const out_size, address_prompt_t const *const in) {
@@ -173,7 +173,9 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                 output_prompt.network_id = meta->network_id;
                 memcpy(&output_prompt.address, &state->addressState.val, sizeof(output_prompt.address));
                 // TODO: We can get rid of this if we add back the P/X- in front of an address
-                if(meta->swap_output) {
+                if (memcmp(state->addressState.buf, global.apdu.u.sign.change_address, sizeof(public_key_hash_t)) == 0) {
+                  // skip change address
+                } else if(meta->swap_output) {
                   switch(meta->type_id) {
                     case TRANSACTION_TYPE_ID_EXPORT:
                         should_break = ADD_PROMPT(
@@ -183,7 +185,6 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                             );
                         break;
                     case TRANSACTION_TYPE_ID_PLATFORM_EXPORT:
-                        PRINTF("WAT\n");
                         should_break = ADD_PROMPT(
                             "P to X chain",
                             &output_prompt, sizeof(output_prompt),
@@ -281,7 +282,7 @@ enum parse_rv parse_SECP256K1OutputOwners(struct SECP256K1OutputOwners_state *co
             bool should_break = false;
             while (state->state == 4 && !should_break) {
                 CALL_SUBPARSER(addressState, Address);
-                
+
                 PRINTF("Got an address\n");
                 state->address_i++;
 
@@ -542,7 +543,7 @@ static bool prompt_fee(parser_meta_state_t *const meta) {
     if (__builtin_usubll_overflow(meta->sum_of_inputs, meta->sum_of_outputs, &fee)) THROW_(EXC_MEMORY_ERROR, "Difference of outputs from inputs overflowed");
     if (meta->prompt.count >= NUM_ELEMENTS(meta->prompt.entries)) THROW_(EXC_MEMORY_ERROR, "Tried to add a prompt to full queue");
     meta->prompt.labels[meta->prompt.count] = PROMPT("Fee");
-    meta->prompt.entries[meta->prompt.count].to_string = number_to_string_indirect64;
+    meta->prompt.entries[meta->prompt.count].to_string = nano_avax_to_string_indirect64;
     memcpy(&meta->prompt.entries[meta->prompt.count].data, &fee, sizeof(fee));
     meta->prompt.count++;
     bool should_break = meta->prompt.count >= NUM_ELEMENTS(meta->prompt.entries);
@@ -578,19 +579,15 @@ enum parse_rv parse_BaseTransaction(struct BaseTransactionState *const state, pa
         case 1: // blockchain ID
             CALL_SUBPARSER(id32State, Id32);
             PRINTF("Blockchain ID: %.*h\n", 32, state->id32State.buf);
-            Id32 const *const blockchain_id = blockchain_id_for_network(meta->network_id);
-            if (meta->network_id != NETWORK_ID_LOCAL) {
-              if (blockchain_id == NULL)
-                REJECT("Blockchain ID for given network ID not found");
-              if (is_pchain_transaction(meta->type_id)) {
-                PRINTF("Is pchain transaction\n");
-                if (!is_pchain(state->id32State.val.val))
-                  REJECT("Transaction ID indicates P-chain but blockchain ID is is not 0");
-              } else {
-                PRINTF("type_id: %x\n", meta->type_id);
-                if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
-                  REJECT("Blockchain ID did not match expected value for network ID");
-              }
+            const blockchain_id_t *const blockchain_id = &network_info_from_network_id_not_null(meta->network_id)->blockchain_id;
+            if (is_pchain_transaction(meta->type_id)) {
+              PRINTF("Is pchain transaction\n");
+              if (!is_pchain(state->id32State.val.val))
+                REJECT("Transaction ID indicates P-chain but blockchain ID is is not 0");
+            } else {
+              PRINTF("type_id: %x\n", meta->type_id);
+              if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
+                REJECT("Blockchain ID did not match expected value for network ID");
             }
             state->state++;
             INIT_SUBPARSER(outputsState, TransferableOutputs);
@@ -616,12 +613,11 @@ enum parse_rv parse_BaseTransaction(struct BaseTransactionState *const state, pa
     return sub_rv;
 }
 
-static bool is_pchain(const uint8_t *buff) {
-  const size_t chain_size = 32;
-  uint8_t pchain_id[chain_size];
-  // pchain id is 32 0x00s
-  memset(pchain_id, 0, 32);
-  return memcmp(buff, pchain_id, chain_size) == 0;
+static bool is_pchain(blockchain_id_t blockchain_id) {
+  for (unsigned int i = 0; i < sizeof(*blockchain_id); i++)
+    if (blockchain_id[i] != 0)
+      return false;
+  return true;
 }
 
 void init_ImportTransaction(struct ImportTransactionState *const state) {
@@ -635,7 +631,7 @@ enum parse_rv parse_ImportTransaction(struct ImportTransactionState *const state
         case 0: // ChainID
             CALL_SUBPARSER(id32State, Id32);
             if(is_pchain_transaction(meta->type_id)) {
-              if(memcmp(blockchain_id_for_network(meta->network_id), state->id32State.buf, 32))
+              if(memcmp(network_info_from_network_id_not_null(meta->network_id)->blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
                 REJECT("Invalid XChain ID");
             } else {
               if(! is_pchain(state->id32State.buf)) REJECT("Invalid PChain ID");
@@ -703,7 +699,7 @@ enum parse_rv parse_Validator(struct Validator_state *const state, parser_meta_s
       CALL_SUBPARSER(addressState, Address);
       state->state++;
       PRINTF("Address: %.*h\n", 20, state->addressState.buf);
-      
+
       address_prompt_t pkh_prompt;
       pkh_prompt.network_id = meta->network_id;
       memcpy(&pkh_prompt.address, &state->addressState.val, sizeof(pkh_prompt.address));
@@ -898,56 +894,4 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
     PRINTF("Consumed %d bytes of input so far\n", meta->input.consumed);
     update_transaction_hash(&state->hash_state, &meta->input.src[start_consumed], meta->input.consumed - start_consumed);
     return sub_rv;
-}
-
-char const *network_id_string(network_id_t const network_id) {
-    switch (network_id) {
-        case NETWORK_ID_MAINNET: return "mainnet";
-        case NETWORK_ID_CASCADE: return "cascade";
-        case NETWORK_ID_DENALI: return "denali";
-        case NETWORK_ID_EVEREST: return "everest";
-        case NETWORK_ID_FUJI: return "fuji";
-        case NETWORK_ID_LOCAL: return "local";
-        case NETWORK_ID_UNITTEST: return "unittest";
-        default: return NULL;
-    }
-}
-
-Id32 const *blockchain_id_for_network(network_id_t const network_id) {
-    switch (network_id) {
-      /* X-macro invocation; see network_blockchain_ids.h */
-#define NET_AND_CHAIN_ID(net_id, ...) \
-      case net_id: { \
-                     static Id32 const id = { . val = { __VA_ARGS__ } }; \
-                     return &id; \
-                   }
-#include "network_blockchain_ids.h"
-#undef NET_AND_CHAIN_ID
-        default: return NULL;
-    }
-}
-
-static network_id_t network_id_from_chain_id(const uint8_t *buff) {
-  /* If this ever collides, we'll get a compile error; at that point, most
-   * likely we just need to extend to the first two bytes of buff, but in the
-   * worst case we might just need to do something fancier than this lookup. */
-  switch(buff[0]){
-    /* X-macro invocation; see network_blockchain_ids.h */
-#define NET_AND_CHAIN_ID(net_id, chain_id_first_byte, ...) \
-    case chain_id_first_byte: { \
-                                static const uint8_t cmp_buff[] = { __VA_ARGS__ }; \
-                                if(!memcmp(&buff[1], (uint8_t*) PIC(cmp_buff), 31)) { \
-                                  return net_id; \
-                                } else { \
-                                  PRINTF("WTF2\n"); \
-                                  THROW(EXC_PARSE_ERROR); \
-                                } \
-                                break; \
-                              }
-#include "network_blockchain_ids.h"
-#undef NET_AND_CHAIN_ID
-    default:
-      PRINTF("WTF3\n");
-      THROW(EXC_PARSE_ERROR);
-  }
 }
