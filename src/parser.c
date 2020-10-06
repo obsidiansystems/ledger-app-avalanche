@@ -281,8 +281,6 @@ enum parse_rv parse_SECP256K1OutputOwners(struct SECP256K1OutputOwners_state *co
             bool should_break = false;
             while (state->state == 4 && !should_break) {
                 CALL_SUBPARSER(addressState, Address);
-
-                PRINTF("Got an address\n");
                 state->address_i++;
 
                 address_prompt_t address_prompt;
@@ -292,10 +290,8 @@ enum parse_rv parse_SECP256K1OutputOwners(struct SECP256K1OutputOwners_state *co
                 // TODO: We can get rid of this if we add back the P/X- in front of an address
                 should_break = ADD_PROMPT("Rewards To", &address_prompt, sizeof(address_prompt_t), output_address_to_string);
                 if (state->address_i == state->address_n) {
-                  PRINTF("Done with addresses\n");
                     state->state++;
                 } else {
-                  PRINTF("%d of %d addresses", state->address_i, state->address_n);
                     INIT_SUBPARSER(addressState, Address);
                 }
             }
@@ -446,11 +442,8 @@ enum parse_rv parse_TransferableInput(struct TransferableInput_state *const stat
             PRINTF("UTXO_INDEX: %u\n", state->uint32State.val);
             state->state++;
             INIT_SUBPARSER(id32State, Id32);
-            PRINTF("INIT\n");
         case 2: // asset_id
-            PRINTF("INIT\n");
             CALL_SUBPARSER(id32State, Id32);
-            PRINTF("FOO\n");
             PRINTF("ASSET ID: %u\n", state->uint32State.val);
             check_asset_id(&state->id32State.val, meta);
             state->state++;
@@ -581,11 +574,9 @@ enum parse_rv parse_BaseTransaction(struct BaseTransactionState *const state, pa
             PRINTF("Blockchain ID: %.*h\n", 32, state->id32State.buf);
             const blockchain_id_t *const blockchain_id = &network_info_from_network_id_not_null(meta->network_id)->blockchain_id;
             if (is_pchain_transaction(meta->type_id)) {
-              PRINTF("Is pchain transaction\n");
               if (!is_pchain(state->id32State.val.val))
                 REJECT("Transaction ID indicates P-chain but blockchain ID is is not 0");
             } else {
-              PRINTF("type_id: %x\n", meta->type_id);
               if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
                 REJECT("Blockchain ID did not match expected value for network ID");
             }
@@ -703,7 +694,6 @@ enum parse_rv parse_Validator(struct Validator_state *const state, parser_meta_s
     case 0:
       CALL_SUBPARSER(addressState, Address);
       state->state++;
-      PRINTF("Address: %.*h\n", 20, state->addressState.buf);
 
       address_prompt_t pkh_prompt;
       pkh_prompt.network_id = meta->network_id;
@@ -722,7 +712,6 @@ enum parse_rv parse_Validator(struct Validator_state *const state, parser_meta_s
       if (ADD_PROMPT("End time", &state->uint64State.val, sizeof(uint64_t), number_to_string_indirect64)) break;
     case 3:
       CALL_SUBPARSER(uint64State, uint64_t);
-      PRINTF("Weight: %.*h\n", 8, state->uint64State.buf);
       state->state++;
       if (ADD_PROMPT("Weight", &state->uint64State.val, sizeof(uint64_t), number_to_string_indirect64)) break;
     case 4:
@@ -747,13 +736,11 @@ enum parse_rv parse_AddValidatorTransaction(struct AddValidatorTransactionState
           CALL_SUBPARSER(validatorState, Validator);
           state->state++;
           INIT_SUBPARSER(outputsState, TransferableOutputs);
-          PRINTF("Done with ChainID;\n");
 
         case 1: {// Value
             meta->swap_output = true;
             CALL_SUBPARSER(outputsState, TransferableOutputs);
             state->state++;
-            PRINTF("Done with PChain Address\n");
             INIT_SUBPARSER(ownersState, SECP256K1OutputOwners);
         }
         case 2: {
@@ -801,7 +788,6 @@ static label_t type_id_to_label(enum transaction_type_id_t type_id) {
     case TRANSACTION_TYPE_ID_ADD_DELEGATOR:
                                               return (label_t) { .label = delegateLabel, .label_size = sizeof(delegateLabel) };
     default:
-                                              PRINTF("WTF\n");
       THROW(EXC_PARSE_ERROR);
   }
 }
