@@ -61,9 +61,8 @@ describe("P-chain import and export tests", () => {
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
       [{header:"Sign",body:"Import"}],
-      [{header:"From X chain",body:"19999999000000 to fuji18jma8ppw3nhx5r4ap8clazz0dps7rv5u6wmu4t"}],
-      // [{header:"Transfer",body:"6999000 to everest15jh6hlessx2jtxvs48jnr0vzxrg34x32ef0ckt"}],
-      [{header:"Fee",body:"15188373088832"}],
+      [{header:"From X chain",body:"19999.999 to fuji18jma8ppw3nhx5r4ap8clazz0dps7rv5u6wmu4t"}],
+      [{header:"Fee",body:"15188.373088832"}],
       [{header:"Finalize",body:"Transaction"}],
     ]);
     const sigPromise = this.ava.signTransaction(
@@ -80,7 +79,7 @@ describe("P-chain import and export tests", () => {
       0x00, 0x00,
       // base tx:
       0x00, 0x00, 0x00, 0x12,
-      0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -141,9 +140,9 @@ describe("P-chain import and export tests", () => {
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
       [{header:"Sign",body:"Export"}],
-      [{header:"Transfer",body:'12345 to everest1cv6yz28qvqfgah34yw3y53su39p6kzzezmr8kz'}],
-      [{header:"P to X chain",body:'12345 to everest12yp9cc0melq83a5nxnurf0nd6fk4t224fxv424'}],
-      [{header:"Fee",body:"123432099"}],
+      [{header:"Transfer",body:'0.000012345 to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3'}],
+      [{header:"P to X chain",body:'0.000012345 to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx'}],
+      [{header:"Fee",body:"0.123432099"}],
       [{header:"Finalize",body:"Transaction"}],
     ]);
     const sigPromise = this.ava.signTransaction(
@@ -244,15 +243,15 @@ describe('Staking tests', async function () {
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
       [{header: 'Sign', body: 'Add Validator'}],
-      [{header: 'Transfer', body: '3999000000 to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'}],
+      [{header: 'Transfer', body: '3.999 to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'}],
       [{header: 'Validator', body: 'local1ayy57umfsqp065kfpqvmg4ael0yxd2uqvdcz77' }],
       [{header: 'Start time', body: '1596060445' }],
       [{header: 'End time', body: '1598651846' }],
       [{header: 'Weight', body: '54321' }],
-      [{header: 'Stake',body: '2000000000000 to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'}],
+      [{header: 'Stake',body: '2000 to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'}],
       [{header: 'Rewards To', body: 'local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n' }],
       [{header: 'Delegation Fee', body: '100' }],
-      [{header: 'Fee',body: '1000000'}],
+      [{header: 'Fee',body: '0.001'}],
       [{header: 'Finalize',body: 'Transaction'}],
     ]);
     const sigPromise = this.ava.signTransaction(
@@ -343,14 +342,14 @@ describe('Staking tests', async function () {
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
       [{header: 'Sign', body: 'Add Delegator'}],
-      [{header: 'Transfer', body: '3999000000 to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'}],
+      [{header: 'Transfer', body: '3.999 to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'}],
       [{header: 'Validator', body: 'local1ayy57umfsqp065kfpqvmg4ael0yxd2uqvdcz77' }],
       [{header: 'Start time', body: '1596060445' }],
       [{header: 'End time', body: '1598651846' }],
       [{header: 'Weight', body: '54321' }],
-      [{header: 'Stake', body: '2000000000000 to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'}],
+      [{header: 'Stake', body: '2000 to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'}],
       [{header: 'Rewards To', body: 'local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n' }],
-      [{header: 'Fee', body: '1000000'}],
+      [{header: 'Fee', body: '0.001'}],
       [{header: 'Finalize', body: 'Transaction'}],
     ]);
     const sigPromise = this.ava.signTransaction(

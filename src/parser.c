@@ -556,8 +556,9 @@ void init_BaseTransaction(struct BaseTransactionState *const state) {
 
 static bool is_pchain_transaction(enum transaction_type_id_t type) {
   switch(type) {
+    case TRANSACTION_TYPE_ID_ADD_VALIDATOR:
+    case TRANSACTION_TYPE_ID_ADD_DELEGATOR:
     case TRANSACTION_TYPE_ID_PLATFORM_IMPORT:
-      return true;
     case TRANSACTION_TYPE_ID_PLATFORM_EXPORT:
       return true;
     default:
@@ -665,7 +666,12 @@ enum parse_rv parse_ExportTransaction(struct ExportTransactionState *const state
     switch (state->state) {
         case 0: // ChainID
             CALL_SUBPARSER(id32State, Id32);
-            if(!is_pchain(state->id32State.buf)) REJECT("Invalid PChain ID");
+            if(is_pchain_transaction(meta->type_id)) {
+              if(memcmp(network_info_from_network_id_not_null(meta->network_id)->blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
+                REJECT("Invalid XChain ID");
+            } else {
+              if(! is_pchain(state->id32State.buf)) REJECT("Invalid PChain ID");
+            }
             state->state++;
             INIT_SUBPARSER(outputsState, TransferableOutputs);
             PRINTF("Done with ChainID;\n");
