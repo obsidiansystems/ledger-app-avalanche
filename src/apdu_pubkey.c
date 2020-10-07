@@ -92,8 +92,10 @@ __attribute__((noreturn)) size_t handle_apdu_get_public_key_impl(bool const prom
     PRINTF("public key hash: %.*h\n", 20, G.pkh);
 
     if (prompt_ext) {
+        check_bip32(&G.bip32_path, false);
         prompt_ext_pubkey();
     } else {
+        check_bip32(&G.bip32_path, true);
         prompt_address();
     }
 }

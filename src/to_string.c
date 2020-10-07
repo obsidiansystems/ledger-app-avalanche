@@ -8,8 +8,6 @@
 
 #include <string.h>
 
-#define BIP32_HARDENED_PATH_BIT 0x80000000
-
 size_t pkh_to_string(char *const out, size_t const out_size, char const *const hrp, size_t const hrp_size,
                    public_key_hash_t const *const payload)
 {

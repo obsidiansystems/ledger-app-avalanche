@@ -13,10 +13,15 @@
 #error "CX_APILEVEL 8 and below is not supported"
 #endif
 
+#define BIP32_HARDENED_PATH_BIT 0x80000000
+
 struct bip32_path_wire {
     uint8_t length;
     uint32_t components[0];
 } __attribute__((packed));
+
+// throws
+void check_bip32(bip32_path_t *const path, bool const check_full_path);
 
 // throws
 size_t read_bip32_path(bip32_path_t *const out, uint8_t const *const in, size_t const in_size);

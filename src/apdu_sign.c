@@ -275,6 +275,7 @@ size_t handle_apdu_sign_transaction(void) {
             if (G.requested_num_signatures == 0) THROW_(EXC_WRONG_PARAM, "Sender requested 0 signatures");
 
             ix += read_bip32_path(&G.bip32_path_prefix, &in[ix], in_size - ix);
+            check_bip32(&G.bip32_path_prefix, false);
             if (G.bip32_path_prefix.length < 3) THROW_(EXC_SECURITY, "Signing prefix path not long enough");
 
             if (hasChangePath) {
@@ -286,6 +287,7 @@ size_t handle_apdu_sign_transaction(void) {
                     THROW(EXC_WRONG_LENGTH);
                 }
 
+                check_bip32(&change_path, true);
                 extended_public_key_t ext_public_key;
                 generate_extended_public_key(&ext_public_key, &change_path);
                 generate_pkh_for_pubkey(&ext_public_key.public_key, &G.change_address);
