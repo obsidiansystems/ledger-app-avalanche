@@ -103,6 +103,25 @@ describe("Basic Tests", () => {
       }
     });
 
+    it('rejects signing hash when disallowed in settings', async function () {
+      this.speculos.button("RrRLrlRLrlRrRLrl");
+
+      try {
+        await checkSignHash(
+          this,
+          "44'/9000'/1'",
+          ["0/0"],
+          "111122223333444455556666777788889999aaaabbbbccccddddeeeeffff0000"
+        );
+        throw "Expected failure";
+      } catch (e) {
+        expect(e).has.property('statusCode', 0x6985); // REJECT
+        expect(e).has.property('statusText', 'INCORRECT_DATA');
+      } finally {
+        this.speculos.button("RrRLrlRLrlRLrlRrRLrl");
+      }
+    });
+
     it('can sign a transaction based on the serialization reference in verbose mode', async function () {
       const pathPrefix = "44'/9000'/1'";
       const pathSuffixes = ["0/0", "0/1", "100/100"];
