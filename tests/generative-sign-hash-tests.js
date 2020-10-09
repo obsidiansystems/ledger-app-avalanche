@@ -9,13 +9,13 @@ const bip = require('bip32-path');
 const prefix = bip.fromString("m/44'/9000'").toPathArray();
 const bipNotHardened = fc.integer(0x7fffffff);
 const bipHardened = bipNotHardened.map(a => a + 0x80000000);
-const accountGen = bipHardened.map(a => bip.fromPathArray(prefix.concat([a])));
-const subAddressGen = fc.array(fc.integer(0,4294967295),2,2).map(bip.fromPathArray);
+const account = bip.fromPathArray(prefix.concat([0 + 0x80000000]));
+const subAddressGen = fc.tuple(fc.integer(0,1), fc.integer(0,2147483648)).map(([a, b]) => bip.fromPathArray([a,b]));
 
 describe("Sign Hash tests", () => {
   context('Generative tests', function () {
     it('can sign a hash-sized sequence of bytes', async function () { // Need 'function' to get 'this' for mocha.
-      return await fc.assert(fc.asyncProperty(accountGen, fc.array(subAddressGen,1,10), fc.hexaString(64, 64), async (account, subAccts, hashHex) => {
+      return await fc.assert(fc.asyncProperty(fc.array(subAddressGen,1,10), fc.hexaString(64, 64), async (subAccts, hashHex) => {
         let ui;
         try {
           this.flushStderr();
@@ -45,7 +45,7 @@ describe("Sign Hash tests", () => {
     });
 
     it('does not produce signatures when prompt is rejected', async function () { // Need 'function' to get 'this' for mocha.
-      return await fc.assert(fc.asyncProperty(accountGen, fc.array(subAddressGen), fc.hexaString(64, 64), async (account, subAccts, hashHex) => {
+      return await fc.assert(fc.asyncProperty(fc.array(subAddressGen), fc.hexaString(64, 64), async (subAccts, hashHex) => {
         let ui;
         try {
           this.flushStderr();
@@ -71,7 +71,7 @@ describe("Sign Hash tests", () => {
     });
 
     it('rejects incorrectly-sized hashes', async function () { // Need 'function' to get 'this' for mocha.
-      return await fc.assert(fc.asyncProperty(accountGen, fc.array(subAddressGen), fc.hexaString(), async (account, subAccts, hashHex) => {
+      return await fc.assert(fc.asyncProperty(fc.array(subAddressGen), fc.hexaString(), async (subAccts, hashHex) => {
         this.flushStderr();
         const hash = Buffer.from(hashHex, "hex");
         const firstMessage = Buffer.concat([
