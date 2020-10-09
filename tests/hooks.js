@@ -129,7 +129,7 @@ async function automationStart(speculos, interactionFunc) {
   let subscript = speculos.automationEvents.subscribe({
     next: evt => {
       // Wrap up two-line prompts into one:
-      if(evt.y == 3) {
+      if(evt.y == 3 && evt.text != 'Configuration') { // Configuration header is just one line
         header = evt.text;
         return; // The top line comes out first, so now wait for the next draw.
       } else {
