@@ -167,7 +167,7 @@ async function syncWithLedger(speculos, source, interactionFunc) {
     screen = await source.next();
   }
   // Sink some extra homescreens to make us a bit more durable to failing tests.
-  while(await source.peek().header == "Avalanche" || await source.peek().body == "Quit") {
+  while(await source.peek().header == "Avalanche" || await source.peek().header == "Configuration" || await source.peek().body == "Quit") {
     await source.next();
   }
   // And continue on to interactionFunc
