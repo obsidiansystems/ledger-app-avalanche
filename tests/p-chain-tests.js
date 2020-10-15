@@ -69,7 +69,7 @@ describe("P-chain import and export tests", () => {
       0xee, 0x6b, 0x28, 0x00, 0x00, 0x00, 0x00, 0x01,
       0x00, 0x00, 0x00, 0x00,
     ]);
-    const pathPrefix = "44'/9000'/1'";
+    const pathPrefix = "44'/9000'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
       [{header:"Sign",body:"Import"}],
@@ -140,7 +140,7 @@ describe("P-chain import and export tests", () => {
       0xf6, 0x93, 0x34, 0xf8, 0x34, 0xbe, 0x6d, 0xd2,
       0x6d, 0x55, 0xa9, 0x55,
     ]);
-    const pathPrefix = "44'/9000'/1'";
+    const pathPrefix = "44'/9000'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
       [{header:"Sign",body:"Export"}],
@@ -236,7 +236,7 @@ describe('Staking tests', async function () {
       // Shares
       0x00, 0x00, 0x00, 0x64]);
 
-    const pathPrefix = "44'/9000'/1'";
+    const pathPrefix = "44'/9000'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
       [{header: 'Sign', body: 'Add Validator'}],
@@ -327,7 +327,7 @@ describe('Staking tests', async function () {
       0xbe, 0x82, 0xec, 0xc0, 0x0c, 0x34, 0xf3, 0x61,
       0xed, 0xa8, 0xeb, 0x30, 0xfb, 0x5a, 0x71, 0x5c,
     ]);
-    const pathPrefix = "44'/9000'/1'";
+    const pathPrefix = "44'/9000'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
       [{header: 'Sign', body: 'Add Delegator'}],

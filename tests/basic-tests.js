@@ -21,14 +21,37 @@ describe("Basic Tests", () => {
     });
     it('can retrieve a different address from the app', async function() {
       await flowAccept(this.speculos);
-      const key = await this.ava.getWalletAddress("44'/9000'/1'/0/0");
-      expect(key).to.equalBytes('f14c91be3a26e3ce30f970d87257fd2fb3dfbb7f');
+      const key = await this.ava.getWalletAddress("44'/9000'/0'/0/1");
+      expect(key).to.equalBytes('68c2185ed05ab18220808fb6a11731c9952bd9aa');
     });
-    it('produces the expected top-level extended key', async function() {
+    it('can retrieve a change address from the app', async function() {
       await flowAccept(this.speculos);
-      const key = await this.ava.getWalletExtendedPublicKey("44'/9000'");
-      expect(key).to.have.property('public_key').equalBytes('044b68da714d7f8b9d97a9071f2977b587183972f0aa18a6af0b5917d3b2820686c521a7d4ac90a6565df51cb9e7a5309cd2d46907450bd8d8dd89ba16751ed8ee');
-      expect(key).to.have.property('chain_code').to.equalBytes('3b0c30e8b72f70ebe99698aca6ef8f380290c235337916b27730b301e978e664');
+      const key = await this.ava.getWalletAddress("44'/9000'/0'/1/0");
+      expect(key).to.equalBytes('95250c0b1dccfe79388290381e44cdf6956b55e6');
+    });
+    it('cannot retrieve a different account from the app', async function() {
+      try {
+        await this.ava.getWalletAddress("44'/9000'/1'/0/0");
+        throw "Expected failure";
+      } catch (e) {
+        expect(e).has.property('statusCode', 0x6982);
+        expect(e).has.property('statusText', 'SECURITY_STATUS_NOT_SATISFIED');
+      }
+    });
+    it('cannot retrieve a non-hardened account from the app', async function() {
+      try {
+        await this.ava.getWalletAddress("44'/9000'/0/0/0");
+        throw "Expected failure";
+      } catch (e) {
+        expect(e).has.property('statusCode', 0x6982);
+        expect(e).has.property('statusText', 'SECURITY_STATUS_NOT_SATISFIED');
+      }
+    });
+    it('produces the expected top-level extended key for the zeroeth account', async function() {
+      await flowAccept(this.speculos);
+      const key = await this.ava.getWalletExtendedPublicKey("44'/9000'/0'");
+      expect(key).to.have.property('public_key').equalBytes('043033e21973c30ed7e50fa546f8690e25685ac900c3be24c5f641b9c1b959344151169853808be753760dd6aeddd3556f0efaafa6279b64f0ae49de0417ea70b2');
+      expect(key).to.have.property('chain_code').to.equalBytes('590c70e192c597c23ad7c8185c12952b50525ff9d839a95bf6a7e6da359ce873');
     });
     it('can retrieve an extended public key from the app', async function() {
       await flowAccept(this.speculos);
@@ -42,7 +65,7 @@ describe("Basic Tests", () => {
     it('can sign a hash-sized sequence of bytes with one path', async function () {
       await checkSignHash(
         this,
-        "44'/9000'/1'",
+        "44'/9000'/0'",
         ["0/0"],
         "111122223333444455556666777788889999aaaabbbbccccddddeeeeffff0000"
       );
@@ -51,7 +74,7 @@ describe("Basic Tests", () => {
     it('can sign a hash-sized sequence of bytes with many paths', async function () {
       await checkSignHash(
         this,
-        "44'/9000'/1'",
+        "44'/9000'/0'",
         ["0/0", "1/20", "1'/200'", "3000'/90030'"],
         "111122223333444455556666777788889999aaaabbbbccccddddeeeeffff0000"
       );
@@ -61,7 +84,7 @@ describe("Basic Tests", () => {
       try {
         await checkSignHash(
           this,
-          "44'/9000'/1'",
+          "44'/9000'/0'",
           ["0/0/0/0/0"],
           "111122223333444455556666777788889999aaaabbbbccccddddeeeeffff0000"
         );
@@ -73,7 +96,7 @@ describe("Basic Tests", () => {
     });
 
     it('refuses to sign when given an invalid path suffix', async function () {
-      const pathPrefix = "44'/9000'/1'";
+      const pathPrefix = "44'/9000'/0'";
       const firstMessage = Buffer.concat([
         this.ava.uInt8Buffer(1),
         Buffer.from("111122223333444455556666777788889999aaaabbbbccccddddeeeeffff0000", "hex"),
@@ -136,8 +159,8 @@ describe("Basic Tests", () => {
     });
 
     it('can sign a transaction based on the serialization reference in verbose mode', async function () {
-      const pathPrefix = "44'/9000'/1'";
-      const pathSuffixes = ["0/0", "0/1", "100/100"];
+      const pathPrefix = "44'/9000'/0'";
+      const pathSuffixes = ["0/0", "0/1", "1/100"];
       const ui = await flowMultiPrompt(this.speculos, [
         [{header:"Sign",body:"Transaction"}],
         [{header:"Transfer",body:"0.000012345 to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"}],
@@ -150,8 +173,8 @@ describe("Basic Tests", () => {
     });
 
     it('can display a transaction with lots of digits', async function () {
-      const pathPrefix = "44'/9000'/1'";
-      const pathSuffixes = ["0/0", "0/1", "100/100"];
+      const pathPrefix = "44'/9000'/0'";
+      const pathSuffixes = ["0/0", "0/1", "1/100"];
       const ui = await flowMultiPrompt(this.speculos, [
         [{header:"Sign",body:"Transaction"}],
         [{header:"Transfer",body:"0.123456789 to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"}],
@@ -167,8 +190,8 @@ describe("Basic Tests", () => {
     });
 
     it('can display a transaction with no decimal', async function () {
-      const pathPrefix = "44'/9000'/1'";
-      const pathSuffixes = ["0/0", "0/1", "100/100"];
+      const pathPrefix = "44'/9000'/0'";
+      const pathSuffixes = ["0/0", "0/1", "1/100"];
       const ui = await flowMultiPrompt(this.speculos, [
         [{header:"Sign",body:"Transaction"}],
         [{header:"Transfer",body:"1 to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"}],
@@ -260,8 +283,8 @@ describe("Basic Tests", () => {
         0x00, 0x00, 0x00, 0x00,
       ]);
 
-      const pathPrefix = "44'/9000'/1'";
-      const pathSuffixes = ["0/0", "0/1", "100/100"];
+      const pathPrefix = "44'/9000'/0'";
+      const pathSuffixes = ["0/0", "0/1", "1/100"];
       const ui = await flowMultiPrompt(this.speculos, [
         [{header:"Sign",body:"Transaction"}],
         [{header:"Transfer",body:"0.000001 to fuji10an3cucdfqru984pnvv6y0rspvvclz634xwwhs"}],
@@ -355,11 +378,12 @@ describe("Basic Tests", () => {
         0x00, 0x00, 0x00, 0x00,
       ]);
 
-      const pathPrefix = "44'/9000'/1'";
-      const pathSuffixes = ["0/0", "0/1", "100/100"];
+      const pathPrefix = "44'/9000'/0'";
+      const pathSuffixes = ["0/0", "0/1", "1/100"];
       const ui = await flowMultiPrompt(this.speculos, [
         [{header:"Sign",body:"Transaction"}],
         [{header:"Transfer",body:"0.000001 to fuji10an3cucdfqru984pnvv6y0rspvvclz634xwwhs"}],
+        [{header:"Transfer",body:"0.006999 to fuji179xfr036ym3uuv8ewrv8y4la97ealwmlfg8yrr"}],
         [{header:"Fee",body:"0.001"}],
         [{header:"Finalize",body:"Transaction"}],
       ]);
@@ -367,7 +391,7 @@ describe("Basic Tests", () => {
         BIPPath.fromString(pathPrefix),
         pathSuffixes.map(x => BIPPath.fromString(x, false)),
         txn,
-        BIPPath.fromString("44'/9000'/1'/0/0"),
+        BIPPath.fromString("44'/9000'/0'/0/0"),
       );
       await ui.promptsPromise;
       await checkSignTransactionResult(this.ava, await sigPromise, pathPrefix, pathSuffixes);
@@ -380,7 +404,7 @@ describe("Basic Tests", () => {
           [{header:"Transfer",body:"0.000012345 to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"}],
           [{header:"Fee",body:"0.123444444"}],
         ], "Next", "Next");
-        await signTransaction(this.ava, "44'/9000'/1'", ["0/0"], {
+        await signTransaction(this.ava, "44'/9000'/0'", ["0/0"], {
           extraEndBytes: Buffer.from([0x00])
         });
         await ui.promptsPromise;
@@ -579,7 +603,7 @@ describe("Basic Tests", () => {
         0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x07,
       ]);
 
-      const pathPrefix = "44'/9000'/1'";
+      const pathPrefix = "44'/9000'/0'";
       const pathSuffixes = ["0/0", "0/1", "100/100"];
       const ui = await flowMultiPrompt(this.speculos, [
         [{header:"Sign",body:"Import"}],
@@ -647,7 +671,7 @@ describe("Basic Tests", () => {
         0x51, 0x02, 0x5c, 0x61, 0xfb, 0xcf, 0xc0, 0x78,
         0xf6, 0x93, 0x34, 0xf8, 0x34, 0xbe, 0x6d, 0xd2,
         0x6d, 0x55, 0xa9, 0x55 ]);
-      const pathPrefix = "44'/9000'/1'";
+      const pathPrefix = "44'/9000'/0'";
       const pathSuffixes = ["0/0", "0/1", "100/100"];
       const ui = await flowMultiPrompt(this.speculos, [
         [{header:"Sign",body:"Export"}],
@@ -801,7 +825,7 @@ async function expectSignFailure(speculos, ava, fields, prompts=undefined) {
     const ui = prompts && prompts.length > 0
       ? await flowMultiPrompt(speculos, prompts, "Next", "Next")
       : undefined;
-    await signTransaction(ava, "44'/9000'/1'", ["0/0"], fields);
+    await signTransaction(ava, "44'/9000'/0'", ["0/0"], fields);
     if (ui) await ui.promptsPromise;
     throw "Signing should have been rejected";
   } catch (e) {
