@@ -68,6 +68,16 @@ struct SECP256K1TransferOutput_state {
     };
 };
 
+struct SECP256K1OutputOwners_state {
+    int state;
+    uint32_t address_n;
+    uint32_t address_i;
+    union {
+        NUMBER_STATES;
+        struct Address_state addressState;
+    };
+};
+
 struct Output_state {
     int state;
     uint32_t type;
@@ -126,9 +136,17 @@ struct Memo_state {
     };
 };
 
-struct TransactionState {
-    int state;
-    uint32_t type;
+enum BaseTransactionSteps {
+  BTS_NetworkId = 0,
+  BTS_BlockchainId,
+  BTS_Outputs,
+  BTS_Inputs,
+  BTS_Memo,
+  BTS_Done
+};
+
+struct BaseTransactionState {
+    enum BaseTransactionSteps state;
     union {
         struct uint16_t_state uint16State;
         struct uint32_t_state uint32State;
@@ -137,7 +155,68 @@ struct TransactionState {
         struct TransferableInputs_state inputsState;
         struct Memo_state memoState;
     };
-    cx_sha256_t hash_state;
+};
+
+struct ImportTransactionState {
+  int state;
+  union {
+        struct uint32_t_state uint32State;
+        struct Id32_state id32State;
+        struct TransferableInputs_state inputsState;
+  };
+};
+
+struct ExportTransactionState {
+  int state;
+  union {
+        struct uint32_t_state uint32State;
+        struct Id32_state id32State;
+        struct TransferableOutputs_state outputsState;
+  };
+};
+
+struct Validator_state {
+  int state;
+  union {
+    struct Address_state addressState;
+    struct uint64_t_state uint64State;
+  };
+};
+
+struct AddValidatorTransactionState {
+  int state;
+  union {
+        struct uint32_t_state uint32State;
+        struct Id32_state id32State;
+        struct TransferableOutputs_state outputsState;
+
+        struct Validator_state validatorState;
+        struct SECP256K1OutputOwners_state ownersState;
+  };
+};
+
+struct AddDelegatorTransactionState {
+  int state;
+  union {
+        struct uint32_t_state uint32State;
+        struct Id32_state id32State;
+        struct TransferableOutputs_state outputsState;
+  };
+};
+
+struct TransactionState {
+  int state;
+  uint32_t type;
+  cx_sha256_t hash_state;
+  union {
+    struct uint16_t_state uint16State;
+    struct uint32_t_state uint32State;
+    struct BaseTransactionState baseTxState;
+    struct ImportTransactionState importTxState;
+    struct ExportTransactionState exportTxState;
+    struct AddValidatorTransactionState addValidatorTxState;
+    struct AddDelegatorTransactionState addDelegatorTxState;
+  };
 };
 
 typedef struct {
@@ -152,6 +231,10 @@ typedef struct {
     Address address;
 } output_prompt_t;
 
+typedef struct {
+    network_id_t network_id;
+    Address address;
+} address_prompt_t;
 
 typedef struct {
     string_generation_callback to_string;
@@ -171,6 +254,10 @@ enum transaction_type_id_t {
     TRANSACTION_TYPE_ID_BASE = 0,
     TRANSACTION_TYPE_ID_IMPORT = 3,
     TRANSACTION_TYPE_ID_EXPORT = 4,
+    TRANSACTION_TYPE_ID_ADD_VALIDATOR = 0x0c,
+    TRANSACTION_TYPE_ID_ADD_DELEGATOR = 0x0e,
+    TRANSACTION_TYPE_ID_PLATFORM_IMPORT = 0x11,
+    TRANSACTION_TYPE_ID_PLATFORM_EXPORT = 0x12
 };
 
 typedef struct {
@@ -189,9 +276,6 @@ typedef struct {
     uint64_t sum_of_inputs;
     uint64_t sum_of_outputs;
 } parser_meta_state_t;
-
-char const *network_id_string(network_id_t const network_id);
-Id32 const *blockchain_id_for_network(network_id_t const network_id);
 
 void initTransaction(struct TransactionState *const state);
 

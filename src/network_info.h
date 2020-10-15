@@ -49,10 +49,28 @@ static inline network_info_t const *network_info_from_network_id(network_id_t co
   return NULL;
 }
 
+static inline network_info_t const *network_info_from_network_id_not_null(network_id_t const network_id) {
+  network_info_t const *res = network_info_from_network_id(network_id);
+  if (res == NULL) {
+    THROW(EXC_PARSE_ERROR);
+  } else {
+    return res;
+  }
+}
+
 static inline network_info_t const *network_info_from_blockchain_id(const blockchain_id_t const blockchain_id) {
   if (blockchain_id == NULL) return NULL;
   for (int i = 0; i < NETWORK_INFO_SIZE; i++)
     if (memcmp(blockchain_id, network_info[i].blockchain_id, sizeof(*blockchain_id)) == 0)
       return &network_info[i];
   return NULL;
+}
+
+static inline network_info_t const *network_info_from_blockchain_id_not_null(const blockchain_id_t const blockchain_id) {
+  network_info_t const *res = network_info_from_blockchain_id(blockchain_id);
+  if (res == NULL) {
+    THROW(EXC_PARSE_ERROR);
+  } else {
+    return res;
+  }
 }
