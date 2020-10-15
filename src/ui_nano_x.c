@@ -64,7 +64,57 @@ unsigned char io_event(__attribute__((unused)) unsigned char channel) {
     return 1;
 }
 
+void ui_cfg_screen(size_t);
 void ui_initial_screen(void);
+
+static const char prompt_warn[] = "Allow w/ warning";
+static const char prompt_allow[] = "Allow";
+static const char prompt_disallow[] = "Disallow";
+
+void switch_sign_hash_cb(void) {
+    nvram_data data;
+    memcpy(&data, &N_data, sizeof(nvram_data));
+
+    switch (data.sign_hash_policy) {
+    case WARN_ON_SIGN_HASH:
+        data.sign_hash_policy = DISALLOW_ON_SIGN_HASH;
+        strcpy(data.sign_hash_policy_prompt, prompt_disallow);
+        break;
+    case DISALLOW_ON_SIGN_HASH:
+        data.sign_hash_policy = ALLOW_ON_SIGN_HASH;
+        strcpy(data.sign_hash_policy_prompt, prompt_allow);
+        break;
+    case ALLOW_ON_SIGN_HASH:
+        data.sign_hash_policy = WARN_ON_SIGN_HASH;
+        strcpy(data.sign_hash_policy_prompt, prompt_warn);
+        break;
+    }
+
+    nvm_write((void*)&N_data, (void*)&data, sizeof(N_data));
+
+    ui_cfg_screen(0);
+}
+
+UX_STEP_CB(
+    ux_cfg_flow_1_step,
+    bn,
+    switch_sign_hash_cb(),
+    {
+      "Sign hash policy",
+      N_data_real.sign_hash_policy_prompt
+    });
+UX_STEP_CB(
+    ux_cfg_flow_2_step,
+    bn,
+    ui_initial_screen(),
+    {
+      "Main menu",
+      ""
+    });
+UX_FLOW(ux_cfg_flow,
+        &ux_cfg_flow_1_step,
+        &ux_cfg_flow_2_step);
+
 
 UX_STEP_NOCB(
     ux_idle_flow_1_step,
@@ -72,6 +122,14 @@ UX_STEP_NOCB(
     {
       "Avalanche",
       VERSION
+    });
+UX_STEP_CB(
+    ux_idle_flow_cfg_step,
+    bn,
+    ui_cfg_screen(0),
+    {
+      "Configuration",
+      ""
     });
 UX_STEP_CB(
     ux_idle_flow_quit_step,
@@ -84,6 +142,7 @@ UX_STEP_CB(
 
 UX_FLOW(ux_idle_flow,
     &ux_idle_flow_1_step,
+    &ux_idle_flow_cfg_step,
     &ux_idle_flow_quit_step
 );
 
@@ -211,6 +270,14 @@ void ui_prompt_with(uint16_t const exception, char const *const accept_str, char
 #else
     THROW(exception);
 #endif
+}
+
+void ui_cfg_screen(size_t i) {
+    // reserve a display stack slot if none yet
+    if(G_ux.stack_count == 0) {
+        ux_stack_push();
+    }
+    ux_flow_init(0, ux_cfg_flow, ux_cfg_flow[i]);
 }
 
 __attribute__((noreturn))

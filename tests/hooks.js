@@ -5,6 +5,8 @@ const spawn = require('child_process').spawn;
 const fc = require('fast-check');
 const chai = require('chai');
 const { expect } = chai.use(require('chai-bytes'));
+const { recover } = require('bcrypto/lib/secp256k1')
+const BIPPath = require("bip32-path");
 
 const APDU_PORT = 9999;
 const BUTTON_PORT = 8888;
@@ -81,6 +83,14 @@ async function flowAccept(speculos, expectedPrompts, acceptPrompt="Accept") {
   return await automationStart(speculos, acceptPrompts(expectedPrompts, acceptPrompt));
 }
 
+// A couple of our screens use "bn" formatting for only one line of text and we
+// don't have an icon so don't want "pn"; we need to know that there isn't
+// going to be a body in those cases so we should send the screen.
+
+const headerOnlyScreens = {
+  "Configuration": 1,
+  "Main menu": 1
+};
 
 /* State machine to read screen events and turn them into screens of prompts. */
 async function automationStart(speculos, interactionFunc) {
@@ -129,14 +139,14 @@ async function automationStart(speculos, interactionFunc) {
   let subscript = speculos.automationEvents.subscribe({
     next: evt => {
       // Wrap up two-line prompts into one:
-      if(evt.y == 3) {
+      if(evt.y == 3 && ! headerOnlyScreens[evt.text]) { // Configuration header is just one line
         header = evt.text;
         return; // The top line comes out first, so now wait for the next draw.
       } else {
         body = evt.text;
       }
       screen = { ...(header && {header}), body };
-      // console.log("SCREEN (" + subNum + "): " + JSON.stringify(screen));
+      if(process.env.DEBUG_SCREENS) console.log("SCREEN (" + subNum + "): " + JSON.stringify(screen));
       sendEvent(screen);
       body=undefined;
       header=undefined;
@@ -167,7 +177,7 @@ async function syncWithLedger(speculos, source, interactionFunc) {
     screen = await source.next();
   }
   // Sink some extra homescreens to make us a bit more durable to failing tests.
-  while(await source.peek().header == "Avalanche" || await source.peek().body == "Quit") {
+  while(await source.peek().header == "Avalanche" || await source.peek().header == "Configuration" || await source.peek().body == "Quit") {
     await source.next();
   }
   // And continue on to interactionFunc
@@ -235,6 +245,19 @@ function acceptPrompts(expectedPrompts, selectPrompt) {
   }
 }
 
+async function flowMultiPrompt(speculos, prompts, nextPrompt="Next", finalPrompt="Accept") {
+  return await automationStart(speculos, async (speculos, screens) => {
+    for (p of prompts.slice(0,-1)) {
+      const rp = (await acceptPrompts(undefined, nextPrompt)(speculos, screens)).promptList;
+      // Only looking at the last prompt, because we bounce off the home screen sometimes during this process:
+      expect([ rp[rp.length-1] ]).to.deep.equal(p);
+    }
+    const rp = (await acceptPrompts(undefined, finalPrompt)(speculos, screens)).promptList;
+    expect([ rp[rp.length-1] ]).to.deep.equal(prompts[prompts.length-1]);
+    return true;
+  });
+}
+
 const fcConfig = {
   interruptAfterTimeLimit: parseInt(process.env.GEN_TIME_LIMIT || 1000),
   markInterruptAsFailure: false,
@@ -255,3 +278,7 @@ global.signHashPrompts = (hash, pathPrefix) => {
     {header:"Are you sure?",body:"This is very dangerous!"},
   ];
 };
+global.BIPPath = BIPPath;
+global.recover = recover;
+global.expect = expect;
+global.flowMultiPrompt = flowMultiPrompt;

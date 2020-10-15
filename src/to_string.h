@@ -18,6 +18,7 @@ size_t nano_avax_to_string(char *const dest, size_t const buff_size, uint64_t na
 
 // These take their number parameter through a pointer and take a length
 void nano_avax_to_string_indirect64(char *const dest, size_t const buff_size, uint64_t const *const number);
+void number_to_string_indirect64(char *const dest, size_t const buff_size, uint64_t const *const number);
 void number_to_string_indirect32(char *const dest, size_t const buff_size, uint32_t const *const number);
 
 // `src` may be unrelocated pointer to rodata.

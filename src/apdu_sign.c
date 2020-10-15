@@ -39,33 +39,55 @@ static bool sign_reject(void) {
 
 __attribute__((noreturn))
 static size_t sign_hash_complete(void) {
-    static uint32_t const TYPE_INDEX = 0;
-    static uint32_t const DANGER_INDEX = 1;
-    static uint32_t const DRV_PREFIX_INDEX = 2;
-    static uint32_t const HASH_INDEX = 3;
-    static uint32_t const ARE_YOU_SURE_INDEX = 4;
-
-    static char const *const transaction_prompts[] = {
-        PROMPT("Sign"),
-        PROMPT("DANGER!"),
-        PROMPT("Derivation Prefix"),
-        PROMPT("Hash"),
-        PROMPT("Are you sure?"),
-        NULL,
-    };
-    REGISTER_STATIC_UI_VALUE(TYPE_INDEX, "Hash");
-    REGISTER_STATIC_UI_VALUE(DANGER_INDEX, "YOU MUST verify this manually!!!");
-
-    register_ui_callback(DRV_PREFIX_INDEX, bip32_path_to_string, &G.bip32_path_prefix);
-
     G.final_hash_as_buffer.bytes = &G.final_hash[0];
     G.final_hash_as_buffer.length = sizeof(G.final_hash);
     G.final_hash_as_buffer.size = sizeof(G.final_hash);
-    register_ui_callback(HASH_INDEX, buffer_to_hex, &G.final_hash_as_buffer);
 
-    REGISTER_STATIC_UI_VALUE(ARE_YOU_SURE_INDEX, "This is very dangerous!");
+    if (N_data.sign_hash_policy == WARN_ON_SIGN_HASH) {
+        static uint32_t const TYPE_INDEX = 0;
+        static uint32_t const DANGER_INDEX = 1;
+        static uint32_t const DRV_PREFIX_INDEX = 2;
+        static uint32_t const HASH_INDEX = 3;
+        static uint32_t const ARE_YOU_SURE_INDEX = 4;
 
-    ui_prompt(transaction_prompts, sign_ok, sign_reject);
+        static char const *const transaction_prompts[] = {
+            PROMPT("Sign"),
+            PROMPT("DANGER!"),
+            PROMPT("Derivation Prefix"),
+            PROMPT("Hash"),
+            PROMPT("Are you sure?"),
+            NULL,
+        };
+        REGISTER_STATIC_UI_VALUE(TYPE_INDEX, "Hash");
+        REGISTER_STATIC_UI_VALUE(DANGER_INDEX, "YOU MUST verify this manually!!!");
+
+        register_ui_callback(DRV_PREFIX_INDEX, bip32_path_to_string, &G.bip32_path_prefix);
+
+        register_ui_callback(HASH_INDEX, buffer_to_hex, &G.final_hash_as_buffer);
+
+        REGISTER_STATIC_UI_VALUE(ARE_YOU_SURE_INDEX, "This is very dangerous!");
+
+        ui_prompt(transaction_prompts, sign_ok, sign_reject);
+    } else { // no warnings
+        static uint32_t const TYPE_INDEX = 0;
+        static uint32_t const DRV_PREFIX_INDEX = 1;
+        static uint32_t const HASH_INDEX = 2;
+
+        static char const *const transaction_prompts[] = {
+            PROMPT("Sign"),
+            PROMPT("Derivation Prefix"),
+            PROMPT("Hash"),
+            NULL,
+        };
+        REGISTER_STATIC_UI_VALUE(TYPE_INDEX, "Hash");
+
+        register_ui_callback(DRV_PREFIX_INDEX, bip32_path_to_string, &G.bip32_path_prefix);
+
+        register_ui_callback(HASH_INDEX, buffer_to_hex, &G.final_hash_as_buffer);
+
+        ui_prompt(transaction_prompts, sign_ok, sign_reject);
+    }
+
 }
 
 static size_t sign_hash_with_suffix(uint8_t *const out, bool const is_last_signature, uint8_t const *const in, size_t const in_size) {
@@ -98,6 +120,7 @@ static size_t sign_hash_with_suffix(uint8_t *const out, bool const is_last_signa
 
     return tx;
 }
+
 
 static size_t sign_hash_impl(
     uint8_t const *const in,
@@ -138,6 +161,11 @@ static size_t sign_hash_impl(
 #define P1_LAST       0x80
 
 size_t handle_apdu_sign_hash(void) {
+    if (N_data.sign_hash_policy == DISALLOW_ON_SIGN_HASH) {
+        PRINTF("Rejecting due to disallowed sign hash in configuration\n");
+        THROW(EXC_REJECT);
+    }
+
     uint8_t const buff_size = READ_UNALIGNED_BIG_ENDIAN(uint8_t, &G_io_apdu_buffer[OFFSET_LC]);
     if (buff_size > MAX_APDU_SIZE)
         THROW(EXC_WRONG_LENGTH_FOR_INS);
