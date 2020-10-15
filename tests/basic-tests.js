@@ -603,7 +603,7 @@ describe("Basic Tests", () => {
         0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x07,
       ]);
 
-      const pathPrefix = "44'/9000'/1'";
+      const pathPrefix = "44'/9000'/0'";
       const pathSuffixes = ["0/0", "0/1", "100/100"];
       const ui = await flowMultiPrompt(this.speculos, [
         [{header:"Sign",body:"Import"}],
@@ -671,7 +671,7 @@ describe("Basic Tests", () => {
         0x51, 0x02, 0x5c, 0x61, 0xfb, 0xcf, 0xc0, 0x78,
         0xf6, 0x93, 0x34, 0xf8, 0x34, 0xbe, 0x6d, 0xd2,
         0x6d, 0x55, 0xa9, 0x55 ]);
-      const pathPrefix = "44'/9000'/1'";
+      const pathPrefix = "44'/9000'/0'";
       const pathSuffixes = ["0/0", "0/1", "100/100"];
       const ui = await flowMultiPrompt(this.speculos, [
         [{header:"Sign",body:"Export"}],
