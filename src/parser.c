@@ -531,7 +531,7 @@ static void strcpy_prompt(char *const out, size_t const out_size, char const *co
 
 static bool prompt_fee(parser_meta_state_t *const meta) {
     uint64_t fee = -1; // if this is unset this should be obviously wrong
-    PRINTF("inputs: %.*h outpfts: %.*h\n", 8, &meta->sum_of_inputs, 8, &meta->sum_of_outputs);
+    PRINTF("inputs: %.*h outputs: %.*h\n", 8, &meta->sum_of_inputs, 8, &meta->sum_of_outputs);
     if (__builtin_usubll_overflow(meta->sum_of_inputs, meta->sum_of_outputs, &fee)) THROW_(EXC_MEMORY_ERROR, "Difference of outputs from inputs overflowed");
     if (meta->prompt.count >= NUM_ELEMENTS(meta->prompt.entries)) THROW_(EXC_MEMORY_ERROR, "Tried to add a prompt to full queue");
     meta->prompt.labels[meta->prompt.count] = PROMPT("Fee");
@@ -543,7 +543,7 @@ static bool prompt_fee(parser_meta_state_t *const meta) {
 }
 
 void init_BaseTransaction(struct BaseTransactionState *const state) {
-  state->state = 0;
+  state->state = BTS_NetworkId; // We start on Network ID
   INIT_SUBPARSER(uint32State, uint32_t);
 }
 
@@ -562,14 +562,14 @@ static bool is_pchain_transaction(enum transaction_type_id_t type) {
 enum parse_rv parse_BaseTransaction(struct BaseTransactionState *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
     switch (state->state) {
-        case 0: { // Network ID
+        case BTS_NetworkId: { // Network ID
             CALL_SUBPARSER(uint32State, uint32_t);
             state->state++;
             PRINTF("Network ID: %.*h\n", sizeof(state->uint32State.buf), state->uint32State.buf);
             meta->network_id = parse_network_id(state->uint32State.val);
             INIT_SUBPARSER(id32State, Id32);
         }
-        case 1: // blockchain ID
+        case BTS_BlockchainId: // blockchain ID
             CALL_SUBPARSER(id32State, Id32);
             PRINTF("Blockchain ID: %.*h\n", 32, state->id32State.buf);
             const blockchain_id_t *const blockchain_id = &network_info_from_network_id_not_null(meta->network_id)->blockchain_id;
@@ -582,22 +582,22 @@ enum parse_rv parse_BaseTransaction(struct BaseTransactionState *const state, pa
             }
             state->state++;
             INIT_SUBPARSER(outputsState, TransferableOutputs);
-        case 2: // outputs
+        case BTS_Outputs: // outputs
             CALL_SUBPARSER(outputsState, TransferableOutputs);
             PRINTF("Done with outputs\n");
             state->state++;
             INIT_SUBPARSER(inputsState, TransferableInputs);
-        case 3: { // inputs
+        case BTS_Inputs: { // inputs
             CALL_SUBPARSER(inputsState, TransferableInputs);
             PRINTF("Done with inputs\n");
             state->state++;
             INIT_SUBPARSER(memoState, Memo);
         }
-        case 4: // memo
+        case BTS_Memo: // memo
             CALL_SUBPARSER(memoState, Memo);
             PRINTF("Done with memo;\n");
             state->state++;
-        case 5:
+        case BTS_Done:
             PRINTF("Done\n");
             sub_rv = PARSE_RV_DONE;
     }

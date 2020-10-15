@@ -136,8 +136,17 @@ struct Memo_state {
     };
 };
 
+enum BaseTransactionSteps {
+  BTS_NetworkId = 0,
+  BTS_BlockchainId,
+  BTS_Outputs,
+  BTS_Inputs,
+  BTS_Memo,
+  BTS_Done
+};
+
 struct BaseTransactionState {
-    int state;
+    enum BaseTransactionSteps state;
     union {
         struct uint16_t_state uint16State;
         struct uint32_t_state uint32State;
