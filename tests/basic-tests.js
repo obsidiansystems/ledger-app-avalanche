@@ -103,24 +103,41 @@ describe("Basic Tests", () => {
       }
     });
 
-    // it('rejects signing hash when disallowed in settings', async function () {
-    //   this.speculos.button("RrRLrlRLrlRrRLrl");
+    it('rejects signing hash when disallowed in settings', async function () { 
+      let flipHashPolicy = async (target) => {return await automationStart(this.speculos, async (speculos, screens) => {
+        speculos.button("Rr");
+        while((await screens.next()).body != "Configuration") speculos.button("Rr");
+        speculos.button("RLrl");
+        let policy;
+        while((policy = await screens.next()).header != "Sign hash policy") {
+          speculos.button("Rr");
+        }
+        while(policy.body != target) {
+          speculos.button("RLrl");
+          policy = await screens.next();
+        }
+        do { speculos.button("Rr") } while((await screens.next()).body != "Main menu");
+        speculos.button("RLrl");
 
-    //   try {
-    //     await checkSignHash(
-    //       this,
-    //       "44'/9000'/1'",
-    //       ["0/0"],
-    //       "111122223333444455556666777788889999aaaabbbbccccddddeeeeffff0000"
-    //     );
-    //     throw "Expected failure";
-    //   } catch (e) {
-    //     expect(e).has.property('statusCode', 0x6985); // REJECT
-    //     expect(e).has.property('statusText', 'CONDITIONS_OF_USE_NOT_SATISFIED');
-    //   } finally {
-    //     this.speculos.button("RrRLrlRLrlRLrlRrRLrl");
-    //   }
-    // });
+        return { promptsMatch: true };
+        
+      })};
+      await (await flipHashPolicy("Disallow")).promptsPromise;
+
+      try {
+        // we could have a signHashExpectFailure, but it's just this line anyways.
+        await this.ava.signHash(
+          BIPPath.fromString("44'/9000'/1'"),
+          [BIPPath.fromString("0/0", false)],
+          Buffer.from("111122223333444455556666777788889999aaaabbbbccccddddeeeeffff0000", "hex"));
+        throw "Expected failure";
+      } catch (e) {
+        expect(e).has.property('statusCode', 0x6985); // REJECT
+        expect(e).has.property('statusText', 'CONDITIONS_OF_USE_NOT_SATISFIED');
+      } finally {
+        await (await flipHashPolicy("Allow w/ warning")).promptsPromise;
+      }
+    });
 
     it('can sign a transaction based on the serialization reference in verbose mode', async function () {
       const pathPrefix = "44'/9000'/1'";

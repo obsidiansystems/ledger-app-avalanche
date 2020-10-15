@@ -81,6 +81,14 @@ async function flowAccept(speculos, expectedPrompts, acceptPrompt="Accept") {
   return await automationStart(speculos, acceptPrompts(expectedPrompts, acceptPrompt));
 }
 
+// A couple of our screens use "bn" formatting for only one line of text and we
+// don't have an icon so don't want "pn"; we need to know that there isn't
+// going to be a body in those cases so we should send the screen.
+
+const headerOnlyScreens = {
+  "Configuration": 1,
+  "Main menu": 1
+};
 
 /* State machine to read screen events and turn them into screens of prompts. */
 async function automationStart(speculos, interactionFunc) {
@@ -129,14 +137,14 @@ async function automationStart(speculos, interactionFunc) {
   let subscript = speculos.automationEvents.subscribe({
     next: evt => {
       // Wrap up two-line prompts into one:
-      if(evt.y == 3 && evt.text != 'Configuration') { // Configuration header is just one line
+      if(evt.y == 3 && ! headerOnlyScreens[evt.text]) { // Configuration header is just one line
         header = evt.text;
         return; // The top line comes out first, so now wait for the next draw.
       } else {
         body = evt.text;
       }
       screen = { ...(header && {header}), body };
-      // console.log("SCREEN (" + subNum + "): " + JSON.stringify(screen));
+      if(process.env.DEBUG_SCREENS) console.log("SCREEN (" + subNum + "): " + JSON.stringify(screen));
       sendEvent(screen);
       body=undefined;
       header=undefined;
