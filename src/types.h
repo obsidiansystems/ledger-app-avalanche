@@ -122,5 +122,14 @@ typedef char ascii_hrp_t[ASCII_HRP_MAX_SIZE];
         ____a_ < ____b_ ? ____a_ : ____b_;                                                                             \
     })
 
+typedef enum {
+    WARN_ON_SIGN_HASH=0,
+    DISALLOW_ON_SIGN_HASH,
+    ALLOW_ON_SIGN_HASH,
+} sign_hash_policy_t;
+
 typedef struct {
+    bool initialized;
+    sign_hash_policy_t sign_hash_policy;
+    char sign_hash_policy_prompt[20];
 } nvram_data;
