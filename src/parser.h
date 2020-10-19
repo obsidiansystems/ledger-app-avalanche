@@ -271,8 +271,6 @@ typedef struct {
     bool swap_output;
     uint64_t last_output_amount;
     network_id_t network_id;
-    bool first_asset_id_found;
-    Id32 first_asset_id;
     uint64_t sum_of_inputs;
     uint64_t sum_of_outputs;
 } parser_meta_state_t;
