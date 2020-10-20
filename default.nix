@@ -150,10 +150,18 @@ let
 
       release = rec {
         app = mkRelease "avalanche" "Avalanche" ledgerApp;
-        all = pkgs.runCommand "ledger-app-avalanche-${bolos.name}${if debug then "-debug" else ""}.tar.gz" {} ''
+        all = pkgs.runCommand "ledger-app-avalanche-${bolos.name}${if debug then "-debug" else ""}.tar.gz" {
+          nativeBuildInputs = [ (pkgs.python3.withPackages (ps: [ps.pillow ps.ledgerblue])) ];
+        } ''
           mkdir ledger-app-avalanche-${bolos.name}
 
           cp -r ${app} ledger-app-avalanche-${bolos.name}/app
+
+          source ${app}/app.manifest
+
+          python -m ledgerblue.hashApp \
+            --hex "${app}/app.hex" \
+            --targetVersion "" > ledger-app-avalanche-${bolos.name}/code-identifier.txt
 
           install -m a=rx ${./nix/app-installer-impl.sh} ledger-app-avalanche-${bolos.name}/install.sh
 
