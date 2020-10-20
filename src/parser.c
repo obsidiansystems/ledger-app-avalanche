@@ -33,20 +33,10 @@ static bool is_pchain(blockchain_id_t blockchain_id);
 static void check_asset_id(Id32 const *const asset_id, parser_meta_state_t *const meta) {
     check_null(asset_id);
     check_null(meta);
-    if (meta->first_asset_id_found) {
-        if (memcmp(&meta->first_asset_id, asset_id, sizeof(meta->first_asset_id)) != 0)
-            REJECT("All asset IDs must be identical");
-    } else {
-        bool found_valid_asset_id = false;
-        for (int i = 0; i < NETWORK_INFO_SIZE; i++) {
-            if (memcmp(network_info[i].avax_asset_id, asset_id, sizeof(asset_id_t)) == 0)
-                found_valid_asset_id = true;
-        }
-        if (!found_valid_asset_id)
-            REJECT("Asset ID %.*h is not supported", sizeof(asset_id_t), asset_id);
-
-        memcpy(&meta->first_asset_id, asset_id, sizeof(meta->first_asset_id));
-        meta->first_asset_id_found = true;
+    network_info_t const *const network_info = network_info_from_network_id(meta->network_id);
+    check_null(network_info);
+    if (memcmp(asset_id, network_info->avax_asset_id, sizeof(asset_id_t)) != 0) {
+      REJECT("Asset ID is not supported");
     }
 }
 
