@@ -7,6 +7,7 @@
 #include "bech32encode.h"
 
 #include <string.h>
+#include <limits.h>
 
 size_t pkh_to_string(char *const out, size_t const out_size, char const *const hrp, size_t const hrp_size,
                    public_key_hash_t const *const payload)
@@ -69,6 +70,17 @@ static inline size_t convert_number(char dest[MAX_INT_DIGITS], uint64_t number, 
         }
     }
     return 0;
+}
+
+// add a fixed number of zeros with padding
+static inline size_t convert_number_fixed(char dest[MAX_INT_DIGITS], uint64_t number, size_t padding) {
+    check_null(dest);
+    char *const end = dest + padding;
+    for (char *ptr = end - 1; ptr >= dest; ptr--) {
+        *ptr = '0' + number % 10;
+        number /= 10;
+    }
+    return padding;
 }
 
 void number_to_string_indirect64(char *const dest, size_t const buff_size, uint64_t const *const number) {
@@ -171,4 +183,90 @@ void buffer_to_hex(char *const out, size_t const out_size, buffer_t const *const
     check_null(in);
     buffer_t const *const src = (buffer_t const *)PIC(in);
     bin_to_hex(out, out_size, src->bytes, src->length);
+}
+
+// Time format implementation based on musl’s __secs_to_tm
+// https://git.musl-libc.org/cgit/musl/tree/src/time/__secs_to_tm.c
+
+/* 2000-03-01 (mod 400 year, immediately after feb29 */
+#define LEAPOCH (946684800LL + 86400*(31+29))
+
+#define DAYS_PER_400Y (365*400 + 97)
+#define DAYS_PER_100Y (365*100 + 24)
+#define DAYS_PER_4Y   (365*4   + 1)
+
+ // YYYY-MM-DD HH:MM:SS UTC
+#define TIME_FORMAT_SIZE 23
+
+size_t time_to_string(char *const dest, size_t const buff_size, uint64_t const *const time) {
+    check_null(dest);
+    check_null(time);
+
+    if (buff_size + 1 < TIME_FORMAT_SIZE)
+        THROW(EXC_WRONG_LENGTH);
+
+    int64_t days, secs;
+    int remdays, remsecs, remyears;
+    int qc_cycles, c_cycles, q_cycles;
+    int years, months;
+    static const char days_in_month[] = {31,30,31,30,31,31,30,31,30,31,31,29};
+
+    secs = *time - LEAPOCH;
+    days = secs / 86400;
+    remsecs = secs % 86400;
+    if (remsecs < 0) {
+        remsecs += 86400;
+        days--;
+    }
+
+    qc_cycles = days / DAYS_PER_400Y;
+    remdays = days % DAYS_PER_400Y;
+    if (remdays < 0) {
+        remdays += DAYS_PER_400Y;
+        qc_cycles--;
+    }
+
+    c_cycles = remdays / DAYS_PER_100Y;
+    if (c_cycles == 4) c_cycles--;
+    remdays -= c_cycles * DAYS_PER_100Y;
+
+    q_cycles = remdays / DAYS_PER_4Y;
+    if (q_cycles == 25) q_cycles--;
+    remdays -= q_cycles * DAYS_PER_4Y;
+
+    remyears = remdays / 365;
+    if (remyears == 4) remyears--;
+    remdays -= remyears * 365;
+
+    years = remyears + 4*q_cycles + 100*c_cycles + 400LL*qc_cycles;
+
+    for (months=0; days_in_month[months] <= remdays; months++)
+        remdays -= days_in_month[months];
+
+    if (months >= 10) {
+        months -= 12;
+        years++;
+    }
+
+    size_t ix = 0;
+
+    // format is YYYY-MM-DD HH:MM:SS UTC
+    ix += convert_number_fixed(&dest[ix], years + 2000, 4);
+    dest[ix++] = '-';
+    ix += convert_number_fixed(&dest[ix], months + 3, 2);
+    dest[ix++] = '-';
+    ix += convert_number_fixed(&dest[ix], remdays + 1, 2);
+    dest[ix++] = ' ';
+    ix += convert_number_fixed(&dest[ix], remsecs / 3600, 2);
+    dest[ix++] = ':';
+    ix += convert_number_fixed(&dest[ix], remsecs / 60 % 60, 2);
+    dest[ix++] = ':';
+    ix += convert_number_fixed(&dest[ix], remsecs % 60, 2);
+    dest[ix++] = ' ';
+    dest[ix++] = 'U';
+    dest[ix++] = 'T';
+    dest[ix++] = 'C';
+    dest[ix++] = '\0';
+
+    return ix;
 }

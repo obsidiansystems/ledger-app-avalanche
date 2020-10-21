@@ -31,3 +31,6 @@ void bin_to_hex(char *const out, size_t const out_size, uint8_t const *const in,
 // Wrapper around `bin_to_hex` that works on `buffer_t`.
 // `in` may be unrelocated pointer to rodata.
 void buffer_to_hex(char *const out, size_t const out_size, buffer_t const *const in);
+
+// Convert time to YYYY-MM-DD HH:MM:SS format
+size_t time_to_string(char *const dest, size_t const buff_size, uint64_t const *const time);

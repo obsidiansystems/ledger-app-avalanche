@@ -703,12 +703,12 @@ enum parse_rv parse_Validator(struct Validator_state *const state, parser_meta_s
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
       INIT_SUBPARSER(uint64State, uint64_t);
-      if (ADD_PROMPT("Start time", &state->uint64State.val, sizeof(uint64_t), number_to_string_indirect64)) break;
+      if (ADD_PROMPT("Start time", &state->uint64State.val, sizeof(uint64_t), time_to_string)) break;
     case 2:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
       INIT_SUBPARSER(uint64State, uint64_t);
-      if (ADD_PROMPT("End time", &state->uint64State.val, sizeof(uint64_t), number_to_string_indirect64)) break;
+      if (ADD_PROMPT("End time", &state->uint64State.val, sizeof(uint64_t), time_to_string)) break;
     case 3:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
