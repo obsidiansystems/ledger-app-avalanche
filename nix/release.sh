@@ -59,8 +59,13 @@ fi
 nano_s_tarball=$(build -A "nano.s.release.all" "$@")
 nano_x_tarball=$(build -A "nano.x.release.all" "$@")
 
-cp -f $nano_s_tarball nano-s-release.tar.gz
-cp -f $nano_x_tarball nano-x-release.tar.gz
+gitDescription=$(git describe --tags --abbrev=7 --always --long --dirty 2>/dev/null)
+
+nano_s_release="ledger-app-avalanche-nano-s-${gitDescription:1}.tar.gz"
+nano_x_release="ledger-app-avalanche-nano-x-${gitDescription:1}.tar.gz"
+
+cp -f $nano_s_tarball $nano_s_release
+cp -f $nano_x_tarball $nano_x_release
 
 # hub release create \
 #   -a $nano_s_tarball'#'nano-s-release.tar.gz \
@@ -68,16 +73,16 @@ cp -f $nano_x_tarball nano-x-release.tar.gz
 #   -F -
 
 echo '## Checksums'
-echo '### nano-s-release.tar.gz'
+echo "### $nano_s_release"
 echo 'Type | Value'
 echo '-- | --'
-echo "MD5 | $(md5sum nano-s-release.tar.gz | cut -f1 -d' ')"
-echo "SHA256 | $(sha256sum nano-s-release.tar.gz | cut -f1 -d' ')"
-echo "SHA512 | $(sha512sum nano-s-release.tar.gz | cut -f1 -d' ')"
+echo "MD5 | $(md5sum $nano_s_release | cut -f1 -d' ')"
+echo "SHA256 | $(sha256sum $nano_s_release | cut -f1 -d' ')"
+echo "SHA512 | $(sha512sum $nano_s_release | cut -f1 -d' ')"
 
-echo '### nano-x-release.tar.gz'
+echo "### $nano_x_release"
 echo 'Type | Value'
 echo '-- | --'
-echo "MD5 | $(md5sum nano-x-release.tar.gz | cut -f1 -d' ')"
-echo "SHA256 | $(sha256sum nano-x-release.tar.gz | cut -f1 -d' ')"
-echo "SHA512 | $(sha512sum nano-x-release.tar.gz | cut -f1 -d' ')"
+echo "MD5 | $(md5sum $nano_x_release | cut -f1 -d' ')"
+echo "SHA256 | $(sha256sum $nano_x_release | cut -f1 -d' ')"
+echo "SHA512 | $(sha512sum $nano_x_release | cut -f1 -d' ')"
