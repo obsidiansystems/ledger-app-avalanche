@@ -80,6 +80,7 @@ static inline size_t convert_number_fixed(char dest[MAX_INT_DIGITS], uint64_t nu
         *ptr = '0' + number % 10;
         number /= 10;
     }
+    if (number != 0) THROW(EXC_PARSE_ERROR);
     return padding;
 }
 
@@ -247,6 +248,8 @@ size_t time_to_string(char *const dest, size_t const buff_size, uint64_t const *
         months -= 12;
         years++;
     }
+
+    if (years < 20) THROW(EXC_PARSE_ERROR);
 
     size_t ix = 0;
 
