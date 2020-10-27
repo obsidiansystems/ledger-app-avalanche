@@ -5,9 +5,27 @@
 #include "key_macros.h"
 #include "globals.h"
 #include "bech32encode.h"
+#include "cb58.h"
 
 #include <string.h>
 #include <limits.h>
+
+static const char nodeid_prefix[] = "NodeID-";
+size_t nodeid_to_string(char *const out, size_t const out_size, public_key_hash_t const *const payload)
+{
+    if (out_size < sizeof(nodeid_prefix) - 1)
+        THROW(EXC_MEMORY_ERROR);
+
+    size_t ix = 0;
+    memcpy(&out[ix], nodeid_prefix, sizeof(nodeid_prefix) - 1);
+    ix += sizeof(nodeid_prefix) - 1;
+
+    size_t b58sz = out_size - ix;
+    if (!cb58enc(&out[ix], &b58sz, (const void*)payload, sizeof(*payload)))
+        THROW(EXC_MEMORY_ERROR);
+
+    return b58sz;
+}
 
 size_t pkh_to_string(char *const out, size_t const out_size, char const *const hrp, size_t const hrp_size,
                    public_key_hash_t const *const payload)

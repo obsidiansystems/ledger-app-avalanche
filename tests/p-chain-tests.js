@@ -216,7 +216,7 @@ describe('Staking tests', async function () {
     const ui = await flowMultiPrompt(this.speculos, [
       [{header: 'Sign', body: 'Add Validator'}],
       [{header: 'Transfer', body: '3.999 to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'}],
-      [{header: 'Validator', body: 'local1ayy57umfsqp065kfpqvmg4ael0yxd2uqvdcz77' }],
+      [{header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' }],
       [{header: 'Start time', body: '2020-07-29 22:07:25 UTC' }],
       [{header: 'End time', body: '2020-08-28 21:57:26 UTC' }],
       [{header: 'Total Stake', body: '2000' }],
@@ -394,7 +394,7 @@ describe('Staking tests', async function () {
     const ui = await flowMultiPrompt(this.speculos, [
       [{header: 'Sign', body: 'Add Delegator'}],
       [{header: 'Transfer', body: '3.999 to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'}],
-      [{header: 'Validator', body: 'local1ayy57umfsqp065kfpqvmg4ael0yxd2uqvdcz77' }],
+      [{header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' }],
       [{header: 'Start time', body: '2020-07-29 22:07:25 UTC' }],
       [{header: 'End time', body: '2020-08-28 21:57:26 UTC' }],
       [{header: 'Total Stake', body: '2000' }],
