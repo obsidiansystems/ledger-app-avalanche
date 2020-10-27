@@ -198,6 +198,8 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                         break;
                     case TRANSACTION_TYPE_ID_ADD_VALIDATOR:
                     case TRANSACTION_TYPE_ID_ADD_DELEGATOR:
+
+                        if (__builtin_uaddll_overflow(meta->staked, meta->last_output_amount, &meta->staked)) THROW_(EXC_MEMORY_ERROR, "Stake total overflowed.");
                         should_break = ADD_PROMPT(
                             "Stake",
                             &output_prompt, sizeof(output_prompt),
@@ -719,7 +721,8 @@ enum parse_rv parse_Validator(struct Validator_state *const state, parser_meta_s
     case 3:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
-      if (ADD_PROMPT("Weight", &state->uint64State.val, sizeof(uint64_t), number_to_string_indirect64)) break;
+      meta->staking_weight = state->uint64State.val;
+      if (ADD_PROMPT("Total Stake", &state->uint64State.val, sizeof(uint64_t), nano_avax_to_string_indirect64)) break;
     case 4:
       return PARSE_RV_DONE;
   }
@@ -750,6 +753,7 @@ enum parse_rv parse_AddValidatorTransaction(struct AddValidatorTransactionState
             INIT_SUBPARSER(ownersState, SECP256K1OutputOwners);
         }
         case 2: {
+            if ( meta->staking_weight != meta->staked ) REJECT("Stake total did not match sum of stake UTXOs");
             CALL_SUBPARSER(ownersState, SECP256K1OutputOwners);
             state->state++;
             INIT_SUBPARSER(uint32State, uint32_t);
