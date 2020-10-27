@@ -273,6 +273,8 @@ typedef struct {
     network_id_t network_id;
     uint64_t sum_of_inputs;
     uint64_t sum_of_outputs;
+    uint64_t staking_weight;
+    uint64_t staked;
 } parser_meta_state_t;
 
 void initTransaction(struct TransactionState *const state);
