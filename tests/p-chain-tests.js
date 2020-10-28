@@ -222,7 +222,7 @@ describe('Staking tests', async function () {
       [{header: 'Weight', body: '54321' }],
       [{header: 'Stake',body: '2000 to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'}],
       [{header: 'Rewards To', body: 'local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n' }],
-      [{header: 'Delegation Fee', body: '100' }],
+      [{header: 'Delegation Fee', body: '0.01%' }],
       [{header: 'Fee',body: '0.001'}],
       [{header: 'Finalize',body: 'Transaction'}],
     ]);
