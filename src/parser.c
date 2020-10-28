@@ -767,7 +767,7 @@ enum parse_rv parse_AddValidatorTransaction(struct AddValidatorTransactionState
             }
             CALL_SUBPARSER(uint32State, uint32_t);
             state->state++;
-            if(ADD_PROMPT("Delegation Fee", &state->uint32State.val, sizeof(uint32_t), number_to_string_indirect32)) break;
+            if(ADD_PROMPT("Delegation Fee", &state->uint32State.val, sizeof(uint32_t), delegation_fee_to_string)) break;
                 }
         case 4:
              // This is bc we call the parser recursively, and, at the end, it gets called with

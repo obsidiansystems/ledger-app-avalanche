@@ -118,6 +118,47 @@ void number_to_string_indirect32(char *const dest, size_t const buff_size, uint3
     number_to_string(dest, *number);
 }
 
+#define DELEGATION_FEE_DIGITS 4
+#define DELEGATION_FEE_SCALE 10000
+
+void delegation_fee_to_string(char *const dest, size_t const buff_size, uint32_t const *const delegation_fee) {
+    check_null(dest);
+    check_null(delegation_fee);
+
+    if (buff_size < 13) // 429496.7295%
+      THROW(EXC_WRONG_LENGTH);
+
+    uint32_t whole_percent = *delegation_fee / DELEGATION_FEE_SCALE;
+    uint32_t fractional_percent = *delegation_fee % DELEGATION_FEE_SCALE;
+    size_t off = number_to_string(dest, whole_percent);
+    if (fractional_percent == 0) {
+        dest[off++] = '%';
+        dest[off++] = '\0';
+        return;
+    }
+    dest[off++] = '.';
+
+    char tmp[MAX_INT_DIGITS];
+    convert_number(tmp, fractional_percent, true);
+
+    // Eliminate trailing 0s
+    char *start = tmp + MAX_INT_DIGITS - DELEGATION_FEE_DIGITS;
+    char *end;
+    for (end = tmp + MAX_INT_DIGITS - 1; end >= start; end--) {
+        if (*end != '0') {
+            end++;
+            break;
+        }
+    }
+
+    size_t length = end - start;
+    memcpy(dest + off, start, length);
+    off += length;
+
+    dest[off++] = '%';
+    dest[off++] = '\0';
+}
+
 size_t number_to_string(char *const dest, uint64_t number) {
     check_null(dest);
     char tmp[MAX_INT_DIGITS];
