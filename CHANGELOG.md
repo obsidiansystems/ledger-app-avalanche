@@ -1,5 +1,15 @@
 # Avalanche Hardware Wallet for Ledger
 
+## 0.3.1
+
+* Support P chain import and export.
+* Support P chain validator and delegator transactions.
+* Restrict BIP32 paths to those allowed by AVAX.
+* Add setting to reject or accept sign hash operations.
+* Display amounts in AVAX instead of nAVAX.
+* Update blockchain ids and handle different networks better.
+* Other miscellaneous bug fixes.
+
 ## 0.2.0
 
 * Move to Everest network.
