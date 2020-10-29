@@ -127,6 +127,13 @@ static void output_address_to_string(char *const out, size_t const out_size, add
     ix += pkh_to_string(&out[ix], out_size - ix, hrp, strlen(hrp), &in->address.val);
 }
 
+static void validator_to_string(char *const out, size_t const out_size, address_prompt_t const *const in) {
+    check_null(out);
+    check_null(in);
+    size_t ix = 0;
+    ix += nodeid_to_string(&out[ix], out_size - ix, &in->address.val);
+}
+
 enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
     switch (state->state) {
@@ -191,6 +198,8 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                         break;
                     case TRANSACTION_TYPE_ID_ADD_VALIDATOR:
                     case TRANSACTION_TYPE_ID_ADD_DELEGATOR:
+
+                        if (__builtin_uaddll_overflow(meta->staked, meta->last_output_amount, &meta->staked)) THROW_(EXC_MEMORY_ERROR, "Stake total overflowed.");
                         should_break = ADD_PROMPT(
                             "Stake",
                             &output_prompt, sizeof(output_prompt),
@@ -698,7 +707,7 @@ enum parse_rv parse_Validator(struct Validator_state *const state, parser_meta_s
       pkh_prompt.network_id = meta->network_id;
       memcpy(&pkh_prompt.address, &state->addressState.val, sizeof(pkh_prompt.address));
       INIT_SUBPARSER(uint64State, uint64_t);
-      if (ADD_PROMPT("Validator", &pkh_prompt, sizeof(address_prompt_t), output_address_to_string)) break;
+      if (ADD_PROMPT("Validator", &pkh_prompt, sizeof(address_prompt_t), validator_to_string)) break;
     case 1:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
@@ -712,7 +721,8 @@ enum parse_rv parse_Validator(struct Validator_state *const state, parser_meta_s
     case 3:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
-      if (ADD_PROMPT("Weight", &state->uint64State.val, sizeof(uint64_t), number_to_string_indirect64)) break;
+      meta->staking_weight = state->uint64State.val;
+      if (ADD_PROMPT("Total Stake", &state->uint64State.val, sizeof(uint64_t), nano_avax_to_string_indirect64)) break;
     case 4:
       return PARSE_RV_DONE;
   }
@@ -743,6 +753,7 @@ enum parse_rv parse_AddValidatorTransaction(struct AddValidatorTransactionState
             INIT_SUBPARSER(ownersState, SECP256K1OutputOwners);
         }
         case 2: {
+            if ( meta->staking_weight != meta->staked ) REJECT("Stake total did not match sum of stake UTXOs");
             CALL_SUBPARSER(ownersState, SECP256K1OutputOwners);
             state->state++;
             INIT_SUBPARSER(uint32State, uint32_t);
@@ -756,7 +767,7 @@ enum parse_rv parse_AddValidatorTransaction(struct AddValidatorTransactionState
             }
             CALL_SUBPARSER(uint32State, uint32_t);
             state->state++;
-            if(ADD_PROMPT("Delegation Fee", &state->uint32State.val, sizeof(uint32_t), number_to_string_indirect32)) break;
+            if(ADD_PROMPT("Delegation Fee", &state->uint32State.val, sizeof(uint32_t), delegation_fee_to_string)) break;
                 }
         case 4:
              // This is bc we call the parser recursively, and, at the end, it gets called with
