@@ -32,6 +32,10 @@
 	},
 	"dependencies": {
 		"hw-app-avalanche": "https://github.com/obsidiansystems/hw-app-avalanche.git#eac@verbose-signing-multi",
+		"@ledgerhq/hw-app-eth": "5.35.1",
+		"@ethereumjs/tx": "3.0.0",
+		"@ethereumjs/common": "2.0.0",
+		"rlp": "2.2.6",
 		"@ledgerhq/hw-transport-node-speculos": "5.19.1",
 		"@ledgerhq/hw-transport-node-hid": "5.22.0",
 		"bip32-path": "^0.4.2",

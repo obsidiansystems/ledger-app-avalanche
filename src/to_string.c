@@ -238,6 +238,24 @@ void bin_to_hex(char *const out, size_t const out_size, uint8_t const *const in,
     out[out_len] = '\0';
 }
 
+void bin_to_hex_lc(char *const out, size_t const out_size, uint8_t const *const in, size_t const in_size) {
+    check_null(out);
+    check_null(in);
+
+    size_t const out_len = in_size * 2;
+    if (out_size < out_len + 1)
+    {
+        THROW(EXC_MEMORY_ERROR);
+    }
+
+    char const *const src = (char const *)PIC(in);
+    for (size_t i = 0; i < in_size; i++) {
+        out[i * 2] = "0123456789abcdef"[src[i] >> 4];
+        out[i * 2 + 1] = "0123456789abcdef"[src[i] & 0x0F];
+    }
+    out[out_len] = '\0';
+}
+
 void buffer_to_hex(char *const out, size_t const out_size, buffer_t const *const in) {
     check_null(out);
     check_null(in);

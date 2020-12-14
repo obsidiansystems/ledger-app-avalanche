@@ -277,6 +277,38 @@ typedef struct {
     uint64_t staked;
 } parser_meta_state_t;
 
+typedef struct {
+    parser_input_meta_state_t input;
+    uint8_t chainIdLowByte;
+} evm_parser_meta_state_t;
+
 void initTransaction(struct TransactionState *const state);
 
 enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta_state_t *const meta);
+
+
+struct EVM_RLP_item_state {
+    int state;
+    uint32_t remaining;
+    uint8_t len_len;
+    struct uint64_t_state uint64_state;
+};
+
+struct EVM_RLP_list_state {
+    int state;
+    uint32_t remaining;
+    uint8_t len_len;
+    uint8_t item_index;
+    union {
+        struct uint64_t_state uint64_state;
+        struct EVM_RLP_item_state rlpItem_state;
+    };
+};
+
+void initFixed(struct FixedState *const state, size_t const len);
+
+enum parse_rv parseFixed(struct FixedState *const state, parser_meta_state_t *const meta, size_t const len);
+
+void init_rlp_list(struct EVM_RLP_list_state *const state);
+
+enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta);

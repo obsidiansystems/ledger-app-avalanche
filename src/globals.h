@@ -34,10 +34,27 @@ typedef struct {
 
 typedef struct {
     bip32_path_t bip32_path;
+    uint8_t final_hash[SIGN_HASH_SIZE];
+    buffer_t final_hash_as_buffer;
+    cx_sha3_t tx_hash_state;
+    struct {
+        struct EVM_RLP_list_state state;
+        evm_parser_meta_state_t meta_state;
+    };
+} apdu_evm_sign_state_t;
+
+enum pubkey_state_type {
+    PUBKEY_STATE_AVM,
+    PUBKEY_STATE_EVM
+};
+
+typedef struct {
+    bip32_path_t bip32_path;
     extended_public_key_t ext_public_key;
     public_key_hash_t pkh;
     ascii_hrp_t hrp;
     size_t hrp_len;
+    enum pubkey_state_type type;
 } apdu_pubkey_state_t;
 
 typedef struct {
@@ -71,10 +88,12 @@ typedef struct {
         union {
             apdu_pubkey_state_t pubkey;
             apdu_sign_state_t sign;
+            apdu_evm_sign_state_t evm_sign;
         } u;
     } apdu;
 
     uint8_t latest_apdu_instruction; // For detecting when a sequence of requests to the same APDU ends
+    uint8_t latest_apdu_cla; // For detecting when a sequence of requests to the same APDU ends
     nvram_data new_data;
 } globals_t;
 

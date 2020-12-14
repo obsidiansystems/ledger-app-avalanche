@@ -1,6 +1,7 @@
 const SpeculosTransport = require('@ledgerhq/hw-transport-node-speculos').default;
 const HidTransport = require('@ledgerhq/hw-transport-node-hid').default;
 const Avalanche = require('hw-app-avalanche').default;
+const Eth = require('@ledgerhq/hw-app-eth').default;
 const spawn = require('child_process').spawn;
 const fc = require('fast-check');
 const chai = require('chai');
@@ -58,6 +59,7 @@ exports.mochaHooks = {
     this.speculos.handlerNum=0;
     this.speculos.waitingQueue=[];
     this.ava = new Avalanche(this.speculos, "Avalanche", _ => { return; });
+    this.eth = new Eth(this.speculos);
     this.flushStderr = function() {
       if (this.speculosProcess && this.speculosProcess.stdio[2]) this.speculosProcess.stdio[2].read();
     };
