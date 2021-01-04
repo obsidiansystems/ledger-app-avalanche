@@ -26,8 +26,41 @@
 #include <stdbool.h>
 #include <string.h>
 
+#define BIP32_PURPOSE 44
+#define BIP32_COIN_TYPE 9000
+#define BIP32_ACCOUNT 0
+#define BIP32_NON_CHANGE 0
+#define BIP32_CHANGE 1
 #define PRIVATE_KEY_DATA_SIZE 32
 
+void check_bip32(bip32_path_t *const path, bool const check_full_path) {
+    if (check_full_path) {
+        if (path->length != 5) THROW_(EXC_SECURITY, "incorrect length BIP32 path");
+    } else {
+        if (path->length < 3) THROW_(EXC_SECURITY, "BIP32 prefix too short");
+    }
+    for (size_t i = 0; i < path->length; i++) {
+        bool const is_hardened = path->components[i] & BIP32_HARDENED_PATH_BIT;
+        uint32_t const component = path->components[i] & ~BIP32_HARDENED_PATH_BIT;
+        switch (i) {
+          case 0:
+            if (is_hardened && component == BIP32_PURPOSE) break;
+            THROW_(EXC_SECURITY, "incorrect BIP32 purpose");
+          case 1:
+            if (is_hardened && component == BIP32_COIN_TYPE) break;
+            THROW_(EXC_SECURITY, "incorrect BIP32 coin type");
+          case 2:
+            if (is_hardened && component == BIP32_ACCOUNT) break;
+            THROW_(EXC_SECURITY, "incorrect BIP32 account");
+          case 3:
+            if (!is_hardened && (component == BIP32_NON_CHANGE || component == BIP32_CHANGE)) break;
+            THROW_(EXC_SECURITY, "incorrect BIP32 change value");
+          case 4:
+            if (!is_hardened) break;
+            THROW_(EXC_SECURITY, "BIP32 address index must be non-hardened");
+        }
+    }
+}
 
 size_t read_bip32_path(bip32_path_t *const out, uint8_t const *const in, size_t const in_size) {
     struct bip32_path_wire const *const buf_as_bip32 = (struct bip32_path_wire const *)in;
@@ -164,11 +197,11 @@ void generate_pkh_for_pubkey(const cx_ecfp_public_key_t *const key, public_key_h
     //     0x04  uncompressed public keys, (i.e. an point on the curve with the full X and Y coordinates)
     //     0x02  compressed public key, with LSB bit of Y = 0
     //     0x03  compressed public key, with LSB bit of Y = 1
-    uint8_t tag_byte=(key->W[64]&1) ? 0x03 : 0x02;
+    uint8_t tag_byte = (key->W[64]&1) ? 0x03 : 0x02;
 
     cx_sha256_init(&hash_state.sha256);
     cx_hash((cx_hash_t *)&hash_state.sha256, 0, &tag_byte, 1, NULL, 0);
-    cx_hash((cx_hash_t *)&hash_state.sha256, CX_LAST, key->W+1, 32, temp_sha256_hash, CX_SHA256_SIZE);
+    cx_hash((cx_hash_t *)&hash_state.sha256, CX_LAST, key->W + 1, 32, temp_sha256_hash, CX_SHA256_SIZE);
     cx_ripemd160_init(&hash_state.ripemd160);
     cx_hash((cx_hash_t *)&hash_state.ripemd160, CX_LAST, temp_sha256_hash, CX_SHA256_SIZE, (uint8_t *)dest, sizeof(public_key_hash_t));
 }

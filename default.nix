@@ -1,25 +1,28 @@
 { pkgs ? import ./nix/dep/nixpkgs {}
 , gitDescribe ? "TEST-dirty"
-, nanoXSdk ? null
 , debug ? false
 , runTest ? true
 }:
 let
+  # TODO: Replace this with hackGet for added safety checking once hackGet is separated from reflex-platform
   fetchThunk = p:
+    if builtins.pathExists (p + /thunk.nix)
+      then (import (p + /thunk.nix))
+    else fetchThunkBackup p;
+
+  fetchThunkBackup = p:
     if builtins.pathExists (p + /git.json)
       then pkgs.fetchgit { inherit (builtins.fromJSON (builtins.readFile (p + /git.json))) url rev sha256; }
     else if builtins.pathExists (p + /github.json)
       then pkgs.fetchFromGitHub { inherit (builtins.fromJSON (builtins.readFile (p + /github.json))) owner repo rev sha256; }
     else p;
 
-  blake2_simd = import ./nix/dep/b2sum.nix { };
+  usbtool = import ./nix/dep/usbtool.nix { inherit pkgs; };
 
-  usbtool = import ./nix/dep/usbtool.nix { };
-
-  patchSDKBinBash = sdk: pkgs.stdenv.mkDerivation {
+  patchSDKBinBash = name: sdk: pkgs.stdenv.mkDerivation {
     # Replaces SDK's Makefile instances of /bin/bash with Nix's bash
-    name = sdk.name + "_patched_bin_bash";
-    src = sdk.out;
+    name = name + "_patched_bin_bash";
+    src = sdk;
     dontBuild = true;
     installPhase = ''
       mkdir -p $out
@@ -31,7 +34,7 @@ let
     {
       s = rec {
         name = "s";
-        sdk = patchSDKBinBash (fetchThunk ./nix/dep/nanos-secure-sdk);
+        sdk = patchSDKBinBash "nanos-secure-sdk" (fetchThunk ./nix/dep/nanos-secure-sdk);
         env = pkgs.callPackage ./nix/bolos-env.nix { clangVersion = 4; };
         target = "TARGET_NANOS";
         targetId = "0x31100004";
@@ -44,11 +47,7 @@ let
       };
       x = rec {
         name = "x";
-        sdk = if nanoXSdk == null
-          then throw "No NanoX SDK"
-          else assert builtins.typeOf nanoXSdk == "path";
-            # Use the attrset to mock up the derivation that fetch thunk returns
-            patchSDKBinBash { name = "nanox-secure-sdk"; out = nanoXSdk; };
+        sdk = patchSDKBinBash "ledger-nanox-sdk" (fetchThunk ./nix/dep/ledger-nanox-sdk);
         env = pkgs.callPackage ./nix/bolos-env.nix { clangVersion = 7; };
         target = "TARGET_NANOX";
         targetId = "0x33000004";
@@ -61,11 +60,14 @@ let
       };
     };
 
-  src = let glyphsFilter = (p: _: let p' = baseNameOf p; in p' != "glyphs.c" && p' != "glyphs.h");
-      in (pkgs.lib.sources.sourceFilesBySuffices
-          (pkgs.lib.sources.cleanSourceWith { src = ./.; filter = glyphsFilter; }) [".c" ".h" ".gif" "Makefile" ".sh" ".json" ".bats" ".txt" ".der"]);
+  src = pkgs.nix-gitignore.gitignoreSource [] ./.;
+  # src = foo: ./.;
+  # src = let glyphsFilter = (p: _: let p' = baseNameOf p; in p' != "glyphs.c" && p' != "glyphs.h");
+  #    in (pkgs.lib.sources.sourceFilesBySuffices
+  #        (pkgs.lib.sources.cleanSourceWith { src = ./.; filter = glyphsFilter; }) [".c" ".h" ".gif" "Makefile" ".sh" ".json" ".bats" ".txt" ".der" ".js" ".lock"]);
 
-  speculos = pkgs.callPackage ./nix/dep/speculos { };
+  speculos = pkgs.callPackage ./nix/dep/speculos { inherit pkgs; };
+  tests = import ./tests { inherit pkgs; };
 
   build = bolos:
     let
@@ -78,19 +80,21 @@ let
         '';
         nativeBuildInputs = [
           (pkgs.python3.withPackages (ps: [ps.pillow ps.ledgerblue]))
-          pkgs.jq
-          speculos.speculos
-          pkgs.bats
-          pkgs.xxd
-          pkgs.openssl
-          blake2_simd
-          usbtool
           bolos.env.clang
-          pkgs.yarn
-          pkgs.nodejs
-          pkgs.gdb
-          pkgs.python2
+          pkgs.bats
           pkgs.entr
+          pkgs.gdb
+          pkgs.jq
+          pkgs.libusb
+          pkgs.nodejs
+          pkgs.openssl
+          pkgs.pkg-config
+          pkgs.python2
+          pkgs.xxd
+          pkgs.yarn
+          speculos.speculos
+          tests
+          # usbtool
         ];
         TARGET = bolos.target;
         GIT_DESCRIBE = gitDescribe;
@@ -146,10 +150,18 @@ let
 
       release = rec {
         app = mkRelease "avalanche" "Avalanche" ledgerApp;
-        all = pkgs.runCommand "ledger-app-avalanche-${bolos.name}${if debug then "-debug" else ""}.tar.gz" {} ''
+        all = pkgs.runCommand "ledger-app-avalanche-${bolos.name}${if debug then "-debug" else ""}.tar.gz" {
+          nativeBuildInputs = [ (pkgs.python3.withPackages (ps: [ps.pillow ps.ledgerblue])) ];
+        } ''
           mkdir ledger-app-avalanche-${bolos.name}
 
           cp -r ${app} ledger-app-avalanche-${bolos.name}/app
+
+          source ${app}/app.manifest
+
+          python -m ledgerblue.hashApp \
+            --hex "${app}/app.hex" \
+            --targetVersion "" > ledger-app-avalanche-${bolos.name}/code-identifier.txt
 
           install -m a=rx ${./nix/app-installer-impl.sh} ledger-app-avalanche-${bolos.name}/install.sh
 
@@ -271,5 +283,5 @@ in rec {
     inherit (bolos) sdk;
   });
   inherit speculos;
-  tests = import ./tests { inherit pkgs; };
+  inherit tests;
 }

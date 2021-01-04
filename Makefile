@@ -11,7 +11,7 @@ GIT_DESCRIBE ?= $(shell git describe --tags --abbrev=8 --always --long --dirty 2
 
 VERSION_TAG ?= $(shell echo "$(GIT_DESCRIBE)" | cut -f1 -d-)
 APPVERSION_M=0
-APPVERSION_N=2
+APPVERSION_N=3
 APPVERSION_P=1
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 
@@ -157,9 +157,15 @@ include $(BOLOS_SDK)/Makefile.rules
 #add dependency on custom makefile filename
 dep/%.d: %.c Makefile
 
-.PHONY: test
+.PHONY: test test-no-nix watch
 
-test: tests/node_packages tests/*.js tests/package.json bin/app.elf
+watch:
+	ls src/*.c src/*.h tests/*.js tests/hw-app-avalanche/src/*.js | entr make test
+
+test: tests/*.js tests/package.json bin/app.elf
+	LEDGER_APP=bin/app.elf run-ledger-tests.sh tests/
+
+test-no-nix: tests/node_packages tests/*.js tests/package.json bin/app.elf
 	(cd tests; yarn test)
 
 tests/node_packages: tests/package.json

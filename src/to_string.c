@@ -5,12 +5,29 @@
 #include "key_macros.h"
 #include "globals.h"
 #include "bech32encode.h"
+#include "cb58.h"
 
 #include <string.h>
+#include <limits.h>
 
-#define BIP32_HARDENED_PATH_BIT 0x80000000
+static const char nodeid_prefix[] = "NodeID-";
+size_t nodeid_to_string(char *const out, size_t const out_size, public_key_hash_t const *const payload)
+{
+    if (out_size < sizeof(nodeid_prefix) - 1)
+        THROW(EXC_MEMORY_ERROR);
 
-void pkh_to_string(char *const out, size_t const out_size, char const *const hrp, size_t const hrp_size,
+    size_t ix = 0;
+    memcpy(&out[ix], nodeid_prefix, sizeof(nodeid_prefix) - 1);
+    ix += sizeof(nodeid_prefix) - 1;
+
+    size_t b58sz = out_size - ix;
+    if (!cb58enc(&out[ix], &b58sz, (const void*)payload, sizeof(*payload)))
+        THROW(EXC_MEMORY_ERROR);
+
+    return b58sz;
+}
+
+size_t pkh_to_string(char *const out, size_t const out_size, char const *const hrp, size_t const hrp_size,
                    public_key_hash_t const *const payload)
 {
     uint8_t base32_enc[32];
@@ -24,6 +41,7 @@ void pkh_to_string(char *const out, size_t const out_size, char const *const hrp
     if (!bech32_encode(out, &bech32_out_size, hrp, hrp_size, base32_enc, base32_size)) {
         THROW(EXC_MEMORY_ERROR);
     }
+    return bech32_out_size;
 }
 
 static inline void bound_check_buffer(size_t const counter, size_t const size) {
@@ -72,12 +90,24 @@ static inline size_t convert_number(char dest[MAX_INT_DIGITS], uint64_t number, 
     return 0;
 }
 
-void number_to_string_indirect64(char *const dest, size_t const buff_size, uint64_t const *const number) {
+// add a fixed number of zeros with padding
+static inline size_t convert_number_fixed(char dest[MAX_INT_DIGITS], uint64_t number, size_t padding) {
     check_null(dest);
-    check_null(number);
-    if (buff_size < MAX_INT_DIGITS + 1)
-        THROW(EXC_WRONG_LENGTH); // terminating null
-    number_to_string(dest, *number);
+    char *const end = dest + padding;
+    for (char *ptr = end - 1; ptr >= dest; ptr--) {
+        *ptr = '0' + number % 10;
+        number /= 10;
+    }
+    if (number != 0) THROW(EXC_PARSE_ERROR);
+    return padding;
+}
+
+void number_to_string_indirect64(char *const dest, size_t const buff_size, uint64_t const *const number) {
+  check_null(dest);
+  check_null(number);
+  if (buff_size < MAX_INT_DIGITS + 1)
+    THROW(EXC_WRONG_LENGTH); // terminating null
+  number_to_string(dest, *number);
 }
 
 void number_to_string_indirect32(char *const dest, size_t const buff_size, uint32_t const *const number) {
@@ -86,6 +116,47 @@ void number_to_string_indirect32(char *const dest, size_t const buff_size, uint3
     if (buff_size < MAX_INT_DIGITS + 1)
         THROW(EXC_WRONG_LENGTH); // terminating null
     number_to_string(dest, *number);
+}
+
+#define DELEGATION_FEE_DIGITS 4
+#define DELEGATION_FEE_SCALE 10000
+
+void delegation_fee_to_string(char *const dest, size_t const buff_size, uint32_t const *const delegation_fee) {
+    check_null(dest);
+    check_null(delegation_fee);
+
+    if (buff_size < 13) // 429496.7295%
+      THROW(EXC_WRONG_LENGTH);
+
+    uint32_t whole_percent = *delegation_fee / DELEGATION_FEE_SCALE;
+    uint32_t fractional_percent = *delegation_fee % DELEGATION_FEE_SCALE;
+    size_t off = number_to_string(dest, whole_percent);
+    if (fractional_percent == 0) {
+        dest[off++] = '%';
+        dest[off++] = '\0';
+        return;
+    }
+    dest[off++] = '.';
+
+    char tmp[MAX_INT_DIGITS];
+    convert_number(tmp, fractional_percent, true);
+
+    // Eliminate trailing 0s
+    char *start = tmp + MAX_INT_DIGITS - DELEGATION_FEE_DIGITS;
+    char *end;
+    for (end = tmp + MAX_INT_DIGITS - 1; end >= start; end--) {
+        if (*end != '0') {
+            end++;
+            break;
+        }
+    }
+
+    size_t length = end - start;
+    memcpy(dest + off, start, length);
+    off += length;
+
+    dest[off++] = '%';
+    dest[off++] = '\0';
 }
 
 size_t number_to_string(char *const dest, uint64_t number) {
@@ -100,7 +171,46 @@ size_t number_to_string(char *const dest, uint64_t number) {
     return length;
 }
 
-#define DECIMAL_DIGITS 8
+#define DECIMAL_DIGITS 9
+#define NANO_AVAX_SCALE 1000000000
+
+// Display avax in human readable form
+size_t nano_avax_to_string(char *const dest, size_t const buff_size, uint64_t nano_avax) {
+    check_null(dest);
+    if (buff_size < MAX_INT_DIGITS + 2)
+      THROW(EXC_WRONG_LENGTH); // terminating null
+    uint64_t whole_avax = nano_avax / NANO_AVAX_SCALE;
+    uint64_t fractional_avax = nano_avax % NANO_AVAX_SCALE;
+    size_t off = number_to_string(dest, whole_avax);
+    if (fractional_avax == 0) {
+        return off;
+    }
+    dest[off++] = '.';
+
+    char tmp[MAX_INT_DIGITS];
+    convert_number(tmp, fractional_avax, true);
+
+    // Eliminate trailing 0s
+    char *start = tmp + MAX_INT_DIGITS - DECIMAL_DIGITS;
+    char *end;
+    for (end = tmp + MAX_INT_DIGITS - 1; end >= start; end--) {
+        if (*end != '0') {
+            end++;
+            break;
+        }
+    }
+
+    size_t length = end - start;
+    memcpy(dest + off, start, length);
+    off += length;
+    dest[off] = '\0';
+    return off;
+}
+
+void nano_avax_to_string_indirect64(char *const dest, size_t const buff_size, uint64_t const *const number) {
+    check_null(number);
+    nano_avax_to_string(dest, buff_size, *number);
+}
 
 void copy_string(char *const dest, size_t const buff_size, char const *const src) {
     check_null(dest);
@@ -133,4 +243,92 @@ void buffer_to_hex(char *const out, size_t const out_size, buffer_t const *const
     check_null(in);
     buffer_t const *const src = (buffer_t const *)PIC(in);
     bin_to_hex(out, out_size, src->bytes, src->length);
+}
+
+// Time format implementation based on musl’s __secs_to_tm
+// https://git.musl-libc.org/cgit/musl/tree/src/time/__secs_to_tm.c
+
+/* 2000-03-01 (mod 400 year, immediately after feb29 */
+#define LEAPOCH (946684800LL + 86400*(31+29))
+
+#define DAYS_PER_400Y (365*400 + 97)
+#define DAYS_PER_100Y (365*100 + 24)
+#define DAYS_PER_4Y   (365*4   + 1)
+
+ // YYYY-MM-DD HH:MM:SS UTC
+#define TIME_FORMAT_SIZE 23
+
+size_t time_to_string(char *const dest, size_t const buff_size, uint64_t const *const time) {
+    check_null(dest);
+    check_null(time);
+
+    if (buff_size + 1 < TIME_FORMAT_SIZE)
+        THROW(EXC_WRONG_LENGTH);
+
+    int64_t days, secs;
+    int remdays, remsecs, remyears;
+    int qc_cycles, c_cycles, q_cycles;
+    int years, months;
+    static const char days_in_month[] = {31,30,31,30,31,31,30,31,30,31,31,29};
+
+    secs = *time - LEAPOCH;
+    days = secs / 86400;
+    remsecs = secs % 86400;
+    if (remsecs < 0) {
+        remsecs += 86400;
+        days--;
+    }
+
+    qc_cycles = days / DAYS_PER_400Y;
+    remdays = days % DAYS_PER_400Y;
+    if (remdays < 0) {
+        remdays += DAYS_PER_400Y;
+        qc_cycles--;
+    }
+
+    c_cycles = remdays / DAYS_PER_100Y;
+    if (c_cycles == 4) c_cycles--;
+    remdays -= c_cycles * DAYS_PER_100Y;
+
+    q_cycles = remdays / DAYS_PER_4Y;
+    if (q_cycles == 25) q_cycles--;
+    remdays -= q_cycles * DAYS_PER_4Y;
+
+    remyears = remdays / 365;
+    if (remyears == 4) remyears--;
+    remdays -= remyears * 365;
+
+    years = remyears + 4*q_cycles + 100*c_cycles + 400LL*qc_cycles;
+
+    for (months=0; days_in_month[months] <= remdays; months++)
+        remdays -= days_in_month[months];
+
+    if (months >= 10) {
+        months -= 12;
+        years++;
+    }
+
+    if (years < 20) THROW(EXC_PARSE_ERROR);
+
+    size_t ix = 0;
+
+    // format is YYYY-MM-DD HH:MM:SS UTC
+    ix += convert_number_fixed(&dest[ix], years + 2000, 4);
+    dest[ix++] = '-';
+    ix += convert_number_fixed(&dest[ix], months + 3, 2);
+    dest[ix++] = '-';
+    ix += convert_number_fixed(&dest[ix], remdays + 1, 2);
+    dest[ix++] = ' ';
+    ix += convert_number_fixed(&dest[ix], remsecs / 3600, 2);
+    dest[ix++] = ':';
+    ix += convert_number_fixed(&dest[ix], remsecs / 60 % 60, 2);
+    dest[ix++] = ':';
+    ix += convert_number_fixed(&dest[ix], remsecs % 60, 2);
+    dest[ix++] = ' ';
+    dest[ix++] = 'U';
+    dest[ix++] = 'T';
+    dest[ix++] = 'C';
+    dest[ix++] = '\0';
+
+    return ix;
 }

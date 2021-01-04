@@ -220,14 +220,15 @@ void clear_ui_callbacks(void) {
 }
 
 void ui_prompt_debug(size_t screen_count) {
-    for(uint32_t i=0; i<screen_count; i++) {
+    for(uint32_t i = 0; i < screen_count; i++) {
         G.switch_screen(i);
         PRINTF("Prompt %d:\n%s\n%s\n", i, global.ui.prompt.active_prompt, global.ui.prompt.active_value);
     }
 }
 
-__attribute__((noreturn)) void ui_prompt(const char *const *labels, ui_callback_t ok_c, ui_callback_t cxl_c) {
+__attribute__((noreturn)) void ui_prompt_with(uint16_t const exception, char const *const accept_str, char const *const *labels, ui_callback_t ok_c, ui_callback_t cxl_c) {
     check_null(labels);
+    check_null(accept_str);
     global.ui.prompt.prompts = labels;
 
     size_t i;
@@ -238,23 +239,27 @@ __attribute__((noreturn)) void ui_prompt(const char *const *labels, ui_callback_
     }
     size_t screen_count = i;
 
-    G.switch_screen=&switch_screen;
-
+    G.switch_screen = &switch_screen;
+    strncpy(&G.accept_prompt_str, accept_str, sizeof(G.accept_prompt_str));
     ui_display(ui_multi_screen, NUM_ELEMENTS(ui_multi_screen), ok_c, cxl_c, screen_count);
 #ifdef AVA_DEBUG
     ui_prompt_debug(screen_count);
     // In debug mode, the THROW below produces a PRINTF statement in an invalid position and causes the screen to blank,
     // so instead we just directly call the equivalent longjmp for debug only.
-    longjmp(try_context_get()->jmp_buf, ASYNC_EXCEPTION);
+    longjmp(try_context_get()->jmp_buf, exception);
 #else
-    THROW(ASYNC_EXCEPTION);
+    THROW(exception);
 #endif
+}
+
+__attribute__((noreturn)) void ui_prompt(const char *const *labels, ui_callback_t ok_c, ui_callback_t cxl_c) {
+    ui_prompt_with(ASYNC_EXCEPTION, "Accept", labels, ok_c, cxl_c);
 }
 
 __attribute__((noreturn)) void ui_prompt_with_cb(void (*switch_screen_cb)(uint32_t), size_t screen_count, ui_callback_t ok_c, ui_callback_t cxl_c) {
     check_null(switch_screen_cb);
 
-    G.switch_screen=switch_screen_cb;
+    G.switch_screen = switch_screen_cb;
 
     ui_display(ui_multi_screen, NUM_ELEMENTS(ui_multi_screen), ok_c, cxl_c, screen_count);
 #ifdef AVA_DEBUG
@@ -278,17 +283,31 @@ void exit_app_cb(__attribute__((unused)) unsigned int cb) {
 // Mutually recursive static variables require forward declarations
 static const ux_menu_entry_t main_menu_data[];
 static const ux_menu_entry_t about_menu_data[];
+static const ux_menu_entry_t configuration_menu_data[];
 
 static const ux_menu_entry_t about_menu_data[] = {
     {NULL, NULL, 0, NULL, "Avalanche", "Version " VERSION, 0, 0},
     {main_menu_data, NULL, 1, NULL, "Back", NULL, 61, 40}, // TODO: Put icon for "back" in
     UX_MENU_END};
 
+static const ux_menu_entry_t configuration_menu_data[] = {
+    {NULL, NULL, 0, NULL, "Avalanche", "Configuration", 0, 0},
+    {main_menu_data, NULL, 1, NULL, "Back", NULL, 61, 40}, // TODO: Put icon for "back" in
+    UX_MENU_END};
+
 static const ux_menu_entry_t main_menu_data[] = {
     {NULL, NULL, 0, NULL, "Use wallet to", "view accounts", 0, 0},
+    {configuration_menu_data, NULL, 0, NULL, "Configuration", NULL, 0, 0},
     {about_menu_data, NULL, 0, NULL, "About", NULL, 0, 0},
     {NULL, exit_app_cb, 0, NULL, "Quit app", NULL, 50, 29}, // TODO: Put icon for "dashboard" in
     UX_MENU_END};
+
+static const ux_menu_entry_t configuration_sign_hash_policy_menu_data[] = {
+  {NULL, configuration_sign_hash, WARN_ON_SIGN_HASH, NULL, "Allow with warning", NULL, 0, 0},
+  {NULL, configuration_sign_hash, DISALLOW_ON_SIGN_HASH, NULL, "Disallow", NULL, 0, 0},
+  {NULL, configuration_sign_hash, ALLOW_ON_SIGN_HASH, NULL, "Allow", NULL, 0, 0},
+  UX_MENU_END
+};
 
 void main_menu(void) {
     UX_MENU_DISPLAY(0, main_menu_data, NULL);
