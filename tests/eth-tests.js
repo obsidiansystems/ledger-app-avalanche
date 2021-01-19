@@ -3,7 +3,7 @@ Common = require("@ethereumjs/common").default;
 decode = require("rlp").decode;
 byContractAddress=require("@ledgerhq/hw-app-eth/erc20").byContractAddress;
 
-describe.only("Eth app compatibility tests", () => {
+describe("Eth app compatibility tests", () => {
   it('can get a key from the app with the ethereum ledgerjs module', async function() {
     const flow = await flowAccept(this.speculos);
     const dat = await this.eth.getAddress("44'/60'/0'/0/0", false, true);
