@@ -17,8 +17,10 @@ static bool address_ok(void) {
     switch(G.type) {
       case PUBKEY_STATE_AVM:
         delayed_send(provide_address(G_io_apdu_buffer, &G.pkh));
+        break;
       case PUBKEY_STATE_EVM:
         delayed_send(provide_evm_address(G_io_apdu_buffer, &G.ext_public_key, &G.pkh, true));
+        break;
     }
     return true;
 }
@@ -34,8 +36,10 @@ static void apdu_pubkey_state_to_string
   switch (payload->type) {
     case PUBKEY_STATE_AVM:
       pkh_to_string(out, out_size, payload->hrp, payload->hrp_len, &payload->pkh);
+      break;
     case PUBKEY_STATE_EVM:
       bin_to_hex_lc(out, out_size, &payload->pkh, 20);
+      break;
   }
 }
 
