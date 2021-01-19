@@ -428,7 +428,7 @@ describe("Basic Tests", () => {
         this.speculos,
         this.ava,
         { networkId: Buffer.from([0x01, 0x00, 0x00, 0x00]) },
-        [[{header:"Sign",body:"Transaction"}]],
+        [],
       );
     });
 
@@ -437,7 +437,7 @@ describe("Basic Tests", () => {
         this.speculos,
         this.ava,
         { networkId: Buffer.from([0x00, 0x00, 0x00, 0x01]) },
-        [[{header:"Sign",body:"Transaction"}]],
+        [],
       );
     });
 
@@ -446,6 +446,15 @@ describe("Basic Tests", () => {
         this.speculos,
         this.ava,
         { outputTypeId: Buffer.from([0x01, 0x00, 0x00, 0x00]) },
+        [[{header:"Sign",body:"Transaction"}]],
+      );
+    });
+
+    it('rejects a different unrecognized output type ID', async function () {
+      await expectSignFailure(
+        this.speculos,
+        this.ava,
+        { outputTypeId: Buffer.from([0x00, 0x00, 0xf0, 0x00]) },
         [[{header:"Sign",body:"Transaction"}]],
       );
     });
