@@ -58,19 +58,19 @@ enum transaction_type_id_t convert_type_id_to_type(uint32_t type_id) {
   }
 }
 
-enum parse_rv parseFixed(struct FixedState *const state, parser_meta_state_t *const meta, size_t const len) {
-    size_t const available = meta->input.length - meta->input.consumed;
+enum parse_rv parseFixed(struct FixedState *const state, parser_input_meta_state_t *const input, size_t const len) {
+    size_t const available = input->length - input->consumed;
     size_t const needed = len - state->filledTo;
     size_t const to_copy = available > needed ? needed : available;
-    memcpy(&state->buffer[state->filledTo], &meta->input.src[meta->input.consumed], to_copy);
+    memcpy(&state->buffer[state->filledTo], &input->src[input->consumed], to_copy);
     state->filledTo += to_copy;
-    meta->input.consumed += to_copy;
+    input->consumed += to_copy;
     return state->filledTo == len ? PARSE_RV_DONE : PARSE_RV_NEED_MORE;
 }
 
 #define IMPL_FIXED(name) \
     inline enum parse_rv parse_ ## name (struct name ## _state *const state, parser_meta_state_t *const meta) { \
-        return parseFixed((struct FixedState *const)state, meta, sizeof(name));\
+        return parseFixed((struct FixedState *const)state, &meta->input, sizeof(name));\
     } \
     inline void init_ ## name (struct name ## _state *const state) { \
         return initFixed((struct FixedState *const)state, sizeof(state)); \
@@ -79,7 +79,7 @@ enum parse_rv parseFixed(struct FixedState *const state, parser_meta_state_t *co
 #define IMPL_FIXED_BE(name) \
     inline enum parse_rv parse_ ## name (struct name ## _state *const state, parser_meta_state_t *const meta) { \
         enum parse_rv sub_rv = PARSE_RV_INVALID; \
-        sub_rv = parseFixed((struct FixedState *const)state, meta, sizeof(name)); \
+        sub_rv = parseFixed((struct FixedState *const)state, &meta->input, sizeof(name)); \
         if (sub_rv == PARSE_RV_DONE) { \
             state->val = READ_UNALIGNED_BIG_ENDIAN(name, state->buf); \
         } \
@@ -533,7 +533,7 @@ void update_transaction_hash(cx_sha256_t *const state, uint8_t const *const src,
     cx_hash((cx_hash_t *const)state, 0, src, length, NULL, 0);
 }
 
-static void strcpy_prompt(char *const out, size_t const out_size, char const *const in) {
+void strcpy_prompt(char *const out, size_t const out_size, char const *const in) {
     strncpy(out, in, out_size);
 }
 

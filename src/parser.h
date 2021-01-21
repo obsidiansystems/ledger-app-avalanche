@@ -275,23 +275,61 @@ typedef struct {
     uint64_t sum_of_outputs;
     uint64_t staking_weight;
     uint64_t staked;
+
+
 } parser_meta_state_t;
 
-typedef struct {
+// EVM stuff below this line
+
+struct EVM_ABI_state { };
+struct EVM_assetCall_state { };
+
+union EVM_endpoint_states {
+    struct EVM_ABI_state abi_state;
+    struct EVM_assetCall_state assetCall_state;
+};
+
+struct struct_evm_parser_meta_state_t;
+typedef struct struct_evm_parser_meta_state_t evm_parser_meta_state_t;
+
+typedef enum parse_rv(*known_destination_parser)(union EVM_endpoint_states *const state, parser_input_meta_state_t *const input, evm_parser_meta_state_t *const meta);
+
+struct known_destination {
+  uint8_t to[20];
+  known_destination_parser handle_value;
+  known_destination_parser handle_data;
+};
+
+struct struct_evm_parser_meta_state_t {
     parser_input_meta_state_t input;
     uint8_t chainIdLowByte;
-} evm_parser_meta_state_t;
+    struct known_destination const *known_destination;
+    struct {
+        size_t count;
+        char const *labels[TRANSACTION_PROMPT_BATCH_SIZE + 1]; // For NULL at end
+        prompt_entry_t entries[TRANSACTION_PROMPT_BATCH_SIZE];
+    } prompt;
+};
 
 void initTransaction(struct TransactionState *const state);
 
 enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta_state_t *const meta);
 
+#define MAX_EVM_BUFFER 20
 
 struct EVM_RLP_item_state {
     int state;
-    uint32_t remaining;
+    uint64_t length;
+    uint64_t current;
     uint8_t len_len;
-    struct uint64_t_state uint64_state;
+    union {
+        struct uint64_t_state uint64_state;
+        uint8_t buffer[MAX_EVM_BUFFER];
+        struct {
+            parser_input_meta_state_t chunk;
+            union EVM_endpoint_states endpoint_state;
+        };
+    };
 };
 
 struct EVM_RLP_list_state {
@@ -307,8 +345,10 @@ struct EVM_RLP_list_state {
 
 void initFixed(struct FixedState *const state, size_t const len);
 
-enum parse_rv parseFixed(struct FixedState *const state, parser_meta_state_t *const meta, size_t const len);
+enum parse_rv parseFixed(struct FixedState *const state, parser_input_meta_state_t *const input, size_t const len);
 
 void init_rlp_list(struct EVM_RLP_list_state *const state);
 
 enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta);
+
+void strcpy_prompt(char *const out, size_t const out_size, char const *const in);

@@ -214,5 +214,5 @@ void generate_evm_pkh_for_pubkey(const cx_ecfp_public_key_t *const key, public_k
     uint8_t temp[32];
     cx_keccak_init(&hash_state, 256);
     cx_hash((cx_hash_t *)&hash_state, CX_LAST, key->W + 1, 64, temp, sizeof(temp));
-    memcpy(dest, temp, 20);
+    memcpy(dest, temp+12, 20);
 }
