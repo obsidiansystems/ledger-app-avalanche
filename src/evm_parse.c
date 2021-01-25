@@ -19,6 +19,7 @@ enum parse_rv parse_rlp_item(struct EVM_RLP_list_state *const state, evm_parser_
 
 enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta) {
     enum parse_rv rv;
+
     switch(state->state) {
       case 0: {
           if(meta->input.consumed >= meta->input.length) return PARSE_RV_NEED_MORE;
@@ -41,20 +42,22 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
             }
         }
         init_rlp_item(&state->rlpItem_state);
+        state->state=2;
       case 2: // Now parse items.
         // Change this when a more general parser is built.
         while(1) {
             uint8_t itemStartIdx = meta->input.consumed;
 
-            if( (rv = parse_rlp_item(&state->rlpItem_state, meta)) != PARSE_RV_DONE ) return rv;
+            rv = parse_rlp_item(&state->rlpItem_state, meta);
             state->remaining -= meta->input.consumed - itemStartIdx;
+            if(rv != PARSE_RV_DONE) return rv;
+
             state->item_index++;
             if(state->item_index == 7) {
                 meta->chainIdLowByte = meta->input.src[meta->input.consumed-1];
-                PRINTF("Chain ID low byte: %x", meta->chainIdLowByte);
-                PRINTF("Chain ID: %.*h", meta->input.consumed-itemStartIdx, &meta->input.src[itemStartIdx]);
+                PRINTF("Chain ID low byte: %x\n", meta->chainIdLowByte);
+                PRINTF("Chain ID: %.*h\n", meta->input.consumed-itemStartIdx, &meta->input.src[itemStartIdx]);
             }
-
             init_rlp_item(&state->rlpItem_state);
 
             if(state->remaining == 0) {
@@ -68,6 +71,7 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
 
 enum parse_rv parse_rlp_item(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta) {
     enum parse_rv rv;
+
     switch(state->state) {
       case 0: {
           if(meta->input.consumed >= meta->input.length) return PARSE_RV_NEED_MORE;
@@ -88,21 +92,25 @@ enum parse_rv parse_rlp_item(struct EVM_RLP_list_state *const state, evm_parser_
               state->state=1;
           }
       }
+      //TODO: does this varint parsing work incrementally?
       case 1:
         rv = parseFixed(&state->uint64_state, meta, state->len_len);
         if(rv != PARSE_RV_DONE) return rv;
         for(size_t i = 0; i < state->len_len; i++) {
             ((uint8_t*)(&state->remaining))[i] = state->uint64_state.buf[state->len_len-i-1];
         }
-      case 2:
+        state->state=2;
+      case 2: {
+        uint8_t itemStartIdx = meta->input.consumed;
         if(state->remaining <= meta->input.length-meta->input.consumed) {
             state->state=3;
             meta->input.consumed+=state->remaining;
-
             return PARSE_RV_DONE;
         } else {
             meta->input.consumed=meta->input.length;
+            state->remaining -= meta->input.length - itemStartIdx;
             return PARSE_RV_NEED_MORE;
         }
+      }
     }
 }
