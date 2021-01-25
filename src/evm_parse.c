@@ -37,7 +37,7 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
             rv = parseFixed(&state->uint64_state, meta, state->len_len);
             if(rv != PARSE_RV_DONE) return rv;
             for(size_t i = 0; i < state->len_len; i++) {
-                ((uint8_t*)(&state->remaining))[i] = state->uint64_state.buf[sizeof(uint64_t)-i];
+                ((uint8_t*)(&state->remaining))[i] = state->uint64_state.buf[state->len_len-i-1];
             }
         }
         init_rlp_item(&state->rlpItem_state);
@@ -78,7 +78,7 @@ enum parse_rv parse_rlp_item(struct EVM_RLP_list_state *const state, evm_parser_
               state->remaining=first - 0x80;
               state->state=2;
           } else if (first < 0xc0) {
-              state->remaining=first - 0xbf;
+              state->len_len = first - 0xb7;
               state->state=1;
           } else if(first < 0xf8) {
               state->remaining = first - 0xc0;
@@ -92,7 +92,7 @@ enum parse_rv parse_rlp_item(struct EVM_RLP_list_state *const state, evm_parser_
         rv = parseFixed(&state->uint64_state, meta, state->len_len);
         if(rv != PARSE_RV_DONE) return rv;
         for(size_t i = 0; i < state->len_len; i++) {
-            ((uint8_t*)(&state->remaining))[i] = state->uint64_state.buf[sizeof(uint64_t)-i];
+            ((uint8_t*)(&state->remaining))[i] = state->uint64_state.buf[state->len_len-i-1];
         }
       case 2:
         if(state->remaining <= meta->input.length-meta->input.consumed) {
@@ -106,4 +106,3 @@ enum parse_rv parse_rlp_item(struct EVM_RLP_list_state *const state, evm_parser_
         }
     }
 }
-
