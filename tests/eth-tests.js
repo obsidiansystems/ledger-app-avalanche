@@ -12,7 +12,7 @@ describe("Eth app compatibility tests", () => {
     expect(dat.chainCode).to.equal("428489ee70680fa137392bc8399c4da9e39e92f058eb9e790f736142bba7e9d6");
     await flow.promptsPromise;
   })
-  it.only('can sign a transaction with the ethereum ledgerjs module', async function() {
+  it('can sign a transaction with the ethereum ledgerjs module', async function() {
     const self = this;
     async function testSigning(chainId, hexTx) {
         ethTx = Buffer.from(hexTx, 'hex');
