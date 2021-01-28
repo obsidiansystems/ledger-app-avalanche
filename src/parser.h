@@ -125,7 +125,30 @@ struct TransferableInput_state {
     };
 };
 
+
 DEFINE_ARRAY(TransferableInput);
+
+struct EVMOutput_state {
+    int state;
+    struct Address_state addressState;
+    union {
+        NUMBER_STATES;
+        struct Id32_state id32State;
+    };
+};
+
+DEFINE_ARRAY(EVMOutput);
+
+struct EVMInput_state {
+    int state;
+    union {
+        NUMBER_STATES;
+        struct Id32_state id32State;
+        struct Address_state addressState;
+    };
+};
+
+DEFINE_ARRAY(EVMInput);
 
 struct Memo_state {
     int state;
@@ -136,10 +159,23 @@ struct Memo_state {
     };
 };
 
+enum BaseTransactionHeaderSteps {
+    BTSH_NetworkId = 0,
+    BTSH_BlockchainId,
+    BTSH_Done
+};
+
+struct BaseTransactionHeaderState {
+    enum BaseTransactionHeaderSteps state;
+    union {
+        struct uint16_t_state uint16State;
+        struct uint32_t_state uint32State;
+        struct Id32_state id32State;
+    };
+};
+
 enum BaseTransactionSteps {
-  BTS_NetworkId = 0,
-  BTS_BlockchainId,
-  BTS_Outputs,
+  BTS_Outputs=0,
   BTS_Inputs,
   BTS_Memo,
   BTS_Done
@@ -155,6 +191,26 @@ struct BaseTransactionState {
         struct TransferableInputs_state inputsState;
         struct Memo_state memoState;
     };
+};
+
+struct CChainImportTransactionState {
+  int state;
+  union {
+        struct uint32_t_state uint32State;
+        struct Id32_state id32State;
+        struct TransferableInputs_state inputsState;
+        struct EVMOutputs_state evmOutputsState;
+  };
+};
+
+struct CChainExportTransactionState {
+  int state;
+  union {
+        struct uint32_t_state uint32State;
+        struct Id32_state id32State;
+        struct TransferableOutputs_state outputsState;
+        struct EVMInputs_state inputsState;
+  };
 };
 
 struct ImportTransactionState {
@@ -174,7 +230,6 @@ struct ExportTransactionState {
         struct TransferableOutputs_state outputsState;
   };
 };
-
 struct Validator_state {
   int state;
   union {
@@ -211,11 +266,14 @@ struct TransactionState {
   union {
     struct uint16_t_state uint16State;
     struct uint32_t_state uint32State;
+    struct BaseTransactionHeaderState baseTxHdrState;
     struct BaseTransactionState baseTxState;
     struct ImportTransactionState importTxState;
     struct ExportTransactionState exportTxState;
     struct AddValidatorTransactionState addValidatorTxState;
     struct AddDelegatorTransactionState addDelegatorTxState;
+    struct CChainImportTransactionState cChainImportState;
+    struct CChainExportTransactionState cChainExportState;
   };
 };
 
@@ -257,7 +315,9 @@ enum transaction_type_id_t {
     TRANSACTION_TYPE_ID_ADD_VALIDATOR = 0x0c,
     TRANSACTION_TYPE_ID_ADD_DELEGATOR = 0x0e,
     TRANSACTION_TYPE_ID_PLATFORM_IMPORT = 0x11,
-    TRANSACTION_TYPE_ID_PLATFORM_EXPORT = 0x12
+    TRANSACTION_TYPE_ID_PLATFORM_EXPORT = 0x12,
+    TRANSACTION_TYPE_ID_C_CHAIN_IMPORT = 0x00, // Yes, this is duplicate with BASE.
+    TRANSACTION_TYPE_ID_C_CHAIN_EXPORT = 0x01
 };
 
 typedef struct {
@@ -267,7 +327,11 @@ typedef struct {
         char const *labels[TRANSACTION_PROMPT_BATCH_SIZE + 1]; // For NULL at end
         prompt_entry_t entries[TRANSACTION_PROMPT_BATCH_SIZE];
     } prompt;
+    uint32_t raw_type_id;
     enum transaction_type_id_t type_id;
+    bool is_p_chain;
+    bool is_x_chain;
+    bool is_c_chain;
     bool swap_output;
     uint64_t last_output_amount;
     network_id_t network_id;
