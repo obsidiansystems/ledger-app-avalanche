@@ -59,6 +59,91 @@ void sign_evm_complete() {
     ui_prompt(transaction_prompts, evm_sign_ok, evm_sign_reject);
 }
 
+static size_t next_parse(bool const is_reentry);
+
+static bool continue_parsing(void) {
+    PRINTF("Continue parsing\n");
+    memset(&G.meta_state.prompt, 0, sizeof(G.meta_state.prompt));
+
+    BEGIN_TRY {
+        TRY {
+          // Call next_parse, which calls this function recursively...
+            next_parse(true);
+        }
+        CATCH(ASYNC_EXCEPTION) {
+            // requested another prompt
+            PRINTF("Caught nested ASYNC exception\n");
+        }
+        CATCH_OTHER(e) {
+            THROW(e);
+        }
+        FINALLY {}
+    }
+    END_TRY;
+    return true;
+}
+
+static void transaction_complete_prompt(void) {
+    static uint32_t const TYPE_INDEX = 0;
+
+    static char const *const transaction_prompts[] = {
+        PROMPT("Finalize"),
+        NULL,
+    };
+    REGISTER_STATIC_UI_VALUE(TYPE_INDEX, "Transaction");
+
+    ui_prompt(transaction_prompts, evm_sign_ok, evm_sign_reject);
+}
+
+static inline size_t reply_maybe_delayed(bool const is_reentry, size_t const tx) {
+    if (is_reentry) {
+        delayed_send(tx);
+    }
+    return tx;
+}
+
+static void empty_prompt_queue(void) {
+    if (G.meta_state.prompt.count > 0) {
+        PRINTF("Prompting for %d fields\n", G.meta_state.prompt.count);
+
+        for (size_t i = 0; i < G.meta_state.prompt.count; i++) {
+            register_ui_callback(
+                i,
+                G.meta_state.prompt.entries[i].to_string,
+                &G.meta_state.prompt.entries[i].data
+            );
+        }
+        ui_prompt_with(ASYNC_EXCEPTION, "Next", G.meta_state.prompt.labels, continue_parsing, evm_sign_reject);
+    }
+}
+
+static size_t next_parse(bool const is_reentry) {
+    PRINTF("Next parse\n");
+    enum parse_rv const rv = parse_rlp_txn(&G.state, &G.meta_state);
+    empty_prompt_queue();
+
+    if (rv == PARSE_RV_DONE || rv == PARSE_RV_NEED_MORE) {
+        if (G.meta_state.input.consumed != G.meta_state.input.length) {
+            PRINTF("Not all input was parsed: %d %d %d\n", rv, G.meta_state.input.consumed, G.meta_state.input.length);
+            THROW(EXC_PARSE_ERROR);
+        }
+
+        if (rv == PARSE_RV_NEED_MORE) {
+            PRINTF("Need more\n");
+            return reply_maybe_delayed(is_reentry, finalize_successful_send(0));
+        }
+
+        if (rv == PARSE_RV_DONE) {
+            PRINTF("Parser signaled done; sending final prompt\n");
+            cx_hash((cx_hash_t *const)&G.tx_hash_state, CX_LAST, NULL, 0, G.final_hash, sizeof(G.final_hash));
+            transaction_complete_prompt();
+        }
+    }
+
+    PRINTF("Parse error: %d %d %d\n", rv, G.meta_state.input.consumed, G.meta_state.input.length);
+    THROW(EXC_PARSE_ERROR);
+}
+
 size_t handle_apdu_sign_evm_transaction(void) {
     uint8_t const *const in = &G_io_apdu_buffer[OFFSET_CDATA];
     uint8_t const in_size = READ_UNALIGNED_BIG_ENDIAN(uint8_t, &G_io_apdu_buffer[OFFSET_LC]);
@@ -85,16 +170,10 @@ size_t handle_apdu_sign_evm_transaction(void) {
           G.meta_state.input.consumed=0;
           G.meta_state.input.length=in_size-ix;
           if(G.meta_state.input.length == 0) return finalize_successful_send(0);
-          enum parse_rv result = parse_rlp_txn(&G.state, &G.meta_state);
 
-          cx_hash((cx_hash_t *)&G.tx_hash_state, 0, G.meta_state.input.src, G.meta_state.input.consumed, NULL, 0);
+          cx_hash((cx_hash_t *)&G.tx_hash_state, 0, G.meta_state.input.src, G.meta_state.input.length, NULL, 0);
 
-          if(result != PARSE_RV_DONE) return finalize_successful_send(0);
-
-          cx_hash((cx_hash_t *)&G.tx_hash_state, CX_LAST, NULL, 0, G.final_hash, sizeof(G.final_hash));
-
-          sign_evm_complete();
-
+          return next_parse(false);
       }
     }
     return finalize_successful_send(0);

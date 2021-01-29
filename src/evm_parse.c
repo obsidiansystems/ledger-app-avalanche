@@ -39,9 +39,9 @@ void init_rlp_item(struct EVM_RLP_item_state *const state) {
 static void output_evm_prompt_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
     check_null(out);
     check_null(in);
-    network_info_t const *const network_info = network_info_from_network_id(in->network_id);
-    if (network_info == NULL) REJECT("Can't determine network HRP for addresses");
-    char const *const hrp = network_info->hrp;
+    //network_info_t const *const network_info = network_info_from_network_id(in->network_id);
+    //if (network_info == NULL) REJECT("Can't determine network HRP for addresses");
+    char const *const hrp = "fakeHrp"; // network_info->hrp;
 
     size_t ix = nano_avax_to_string(out, out_size, in->amount);
 
@@ -177,6 +177,7 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
                 PRINTF("%u\n", state->item_index); \
                 sub_rv = parse_rlp_item ## save(&state->rlpItem_state, meta); \
                 state->remaining -= meta->input.consumed - itemStartIdx; \
+                PRINTF("Finished " #ITEM "\n"); \
             } (void)0
 #define FINISH_ITEM_CHUNK() \
             if(sub_rv != PARSE_RV_DONE) break;                          \
@@ -215,14 +216,14 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
             for(uint64_t i = 0; i < state->rlpItem_state.length; i++) // Should be a function.
                 ((uint8_t*)(&value))[i] = state->rlpItem_state.buffer[state->rlpItem_state.length-i];
             SET_PROMPT_VALUE(entry->data.output_prompt.amount = value);
-            /*
+
+            FINISH_ITEM_CHUNK();
+
             if(ADD_ACCUM_PROMPT(
                 "Transfer",
                 output_evm_prompt_to_string // Needs tweaked to be EVM addresses
                 )) return PARSE_RV_PROMPT;
-            */
 
-            FINISH_ITEM_CHUNK();
             PARSE_ITEM(EVM_TXN_DATA, _to_buffer);
 
             if(meta->known_destination) {
