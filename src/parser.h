@@ -334,7 +334,7 @@ struct EVM_RLP_item_state {
 
 struct EVM_RLP_list_state {
     int state;
-    uint32_t remaining;
+    uint64_t remaining;
     uint8_t len_len;
     uint8_t item_index;
     union {

@@ -57,7 +57,7 @@ enum parse_rv parse_rlp_item(struct EVM_RLP_item_state *const state, evm_parser_
 enum parse_rv parse_rlp_item_to_buffer(struct EVM_RLP_item_state *const state, evm_parser_meta_state_t *const meta);
 
 enum eth_txn_items {
-  EVM_TXN_NONCE=1,
+  EVM_TXN_NONCE,
   EVM_TXN_GASPRICE,
   EVM_TXN_STARTGAS,
   EVM_TXN_TO,
@@ -117,9 +117,34 @@ enum parse_rv parse_evm_abi_data(evm_parser_meta_state_t *const meta) {
 }
 */
 
+debug_parser_input_meta_state(parser_input_meta_state_t *const state) {
+  PRINTF("DEBUG parser_input_meta_state\n");
+//  PRINTF("src\n");//  uint8_t const *src;
+  PRINTF("consumed %u\n", state->consumed);
+  PRINTF("length %u\n", state->length);
+}
+
+debug_EVM_RLP_list_state(struct EVM_RLP_list_state *const state) {
+  PRINTF("DEBUG EVM_RLP_list_state\n");
+//  PRINTF("state %d\n", state->state);
+  PRINTF("remaining %.*h\n", 8, &state->remaining);
+  PRINTF("len_len %.*h\n", 1, &state->len_len);
+  PRINTF("item_index %.*h\n", 1, &state->item_index);
+}
+
+debug_EVM_RLP_item_state(struct EVM_RLP_item_state *const state) {
+  PRINTF("DEBUG EVM_RLP_item_state\n");
+  PRINTF("state %u\n", state->state);
+  PRINTF("length %.*h\n", 8, &state->length);
+  PRINTF("current %.*h\n", 8, &state->current);
+  PRINTF("len_len %u\n", state->len_len);
+}
 
 enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta) {
     enum parse_rv sub_rv;
+    debug_EVM_RLP_list_state(state);
+    PRINTF("consumed %u\n", meta->input.consumed);
+    PRINTF("length %u\n", meta->input.length);
     switch(state->state) {
       case 0: {
           if(meta->input.consumed >= meta->input.length) return PARSE_RV_NEED_MORE;
@@ -145,52 +170,59 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
         init_rlp_item(&state->rlpItem_state);
       case 2: { // Now parse items.
           uint8_t itemStartIdx = meta->input.consumed;
-
           switch(state->item_index) {
 #define PARSE_ITEM(ITEM, save) \
             case ITEM: {\
+                PRINTF("%u\n", state->item_index); \
                 sub_rv = parse_rlp_item ## save(&state->rlpItem_state, meta); \
                 state->remaining -= meta->input.consumed - itemStartIdx; \
-                if(sub_rv != PARSE_RV_DONE) break; \
-                state->item_index++; \
             } (void)0
+#define FINISH_ITEM_CHUNK() \
+            if(sub_rv != PARSE_RV_DONE) break;                          \
+            state->item_index++;                                        \
+            init_rlp_item(&state->rlpItem_state);
 
             PARSE_ITEM(EVM_TXN_NONCE, );
-              // Don't need to do anything in particular with the nonce.
-              // In particular, all values are at least plausible here. We could show it perhaps.
+            FINISH_ITEM_CHUNK();
+            // Don't need to do anything in particular with the nonce.
+            // In particular, all values are at least plausible here. We could show it perhaps.
             PARSE_ITEM(EVM_TXN_GASPRICE, _to_buffer);
+            FINISH_ITEM_CHUNK();
             // Probably needs saved and/or prompted here
             PARSE_ITEM(EVM_TXN_STARTGAS, _to_buffer);
+            FINISH_ITEM_CHUNK();
             // Probably needs saved and/or prompted here
             PARSE_ITEM(EVM_TXN_TO, _to_buffer);
 
-            if(state->rlpItem_state.length!=20) REJECT("Desination address not 20 bytes");
+            if(state->rlpItem_state.length != 20) REJECT("Destination address not 20 bytes");
 
-            for(uint64_t i=0; i<sizeof(precompiled)/sizeof(struct known_destination); i++) {
+            for(uint64_t i = 0; i < sizeof(precompiled) / sizeof(struct known_destination); i++) {
                 if(!memcmp(precompiled[i].to, state->rlpItem_state.buffer, 20)) {
                     meta->known_destination = &precompiled[i];
                     break;
                 }
             }
             if(!meta->known_destination) {
-                SET_PROMPT_VALUE(memcpy(entry->data.output_prompt.address.val,state->rlpItem_state.buffer, 20));
+                SET_PROMPT_VALUE(memcpy(entry->data.output_prompt.address.val, state->rlpItem_state.buffer, 20));
             }
 
+            FINISH_ITEM_CHUNK();
             PARSE_ITEM(EVM_TXN_VALUE, _to_buffer);
 
             uint64_t value = 0; // FIXME: support bigger numbers.
-            if(state->rlpItem_state.length>6) REJECT("Can't support large numbers (yet)") // Fix this.
-            for(uint64_t i=0;i<state->rlpItem_state.length;i++) // Should be a function.
-                ((uint8_t*)(&value))[i]=state->rlpItem_state.buffer[state->rlpItem_state.length-i];
-
+            if(state->rlpItem_state.length > 8) REJECT("Can't support large numbers (yet)") // Fix this.
+            for(uint64_t i = 0; i < state->rlpItem_state.length; i++) // Should be a function.
+                ((uint8_t*)(&value))[i] = state->rlpItem_state.buffer[state->rlpItem_state.length-i];
             SET_PROMPT_VALUE(entry->data.output_prompt.amount = value);
-
+            /*
             if(ADD_ACCUM_PROMPT(
                 "Transfer",
                 output_evm_prompt_to_string // Needs tweaked to be EVM addresses
                 )) return PARSE_RV_PROMPT;
+            */
 
-            PARSE_ITEM(EVM_TXN_DATA,);
+            FINISH_ITEM_CHUNK();
+            PARSE_ITEM(EVM_TXN_DATA, _to_buffer);
 
             if(meta->known_destination) {
                 sub_rv = meta->known_destination->handle_data(&(state->rlpItem_state.endpoint_state), &(state->rlpItem_state.chunk), meta);
@@ -200,31 +232,38 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
                 if(ADD_PROMPT("Contract Data", isPresentLabel, sizeof(isPresentLabel), strcpy_prompt)) return PARSE_RV_PROMPT;
             }
 
+            FINISH_ITEM_CHUNK();
             PARSE_ITEM(EVM_TXN_CHAINID, _to_buffer);
 
-            if(state->rlpItem_state.length != 2 || state->rlpItem_state.buffer[0] != 0xa8
-              || (state->rlpItem_state.buffer[1] != 0x69 && state->rlpItem_state.buffer[1] != 0x6a))
+            if(state->rlpItem_state.length != 2
+               || state->rlpItem_state.buffer[0] != 0xa8
+               || (state->rlpItem_state.buffer[1] != 0x69 && state->rlpItem_state.buffer[1] != 0x6a))
                 REJECT("Chain ID incorrect for the Avalanche C chain");
             meta->chainIdLowByte = state->rlpItem_state.buffer[state->rlpItem_state.length-1];
             meta->chainIdLowByte = meta->input.src[meta->input.consumed-1];
             PRINTF("Chain ID low byte: %x", meta->chainIdLowByte);
 
+            FINISH_ITEM_CHUNK();
             PARSE_ITEM(EVM_TXN_SIG_R, _to_buffer);
 
             if(state->rlpItem_state.length != 0) REJECT("R value must be 0 for signing with EIP-155.");
 
+            FINISH_ITEM_CHUNK();
             PARSE_ITEM(EVM_TXN_SIG_S, _to_buffer);
 
             if(state->rlpItem_state.length != 0) REJECT("S value must be 0 for signing with EIP-155.");
-
+            FINISH_ITEM_CHUNK();
           }
           state->state++;
 
+          debug_EVM_RLP_list_state(state);
           state->remaining -= meta->input.consumed - itemStartIdx;
-          if(state->remaining == 0) {
-              state->state=3;
+          debug_EVM_RLP_list_state(&state);
+          if(true || state->remaining == 0) {
+              state->state = 3;
               return PARSE_RV_DONE;
           } else {
+              PRINTF("%u\n", state->remaining);
               REJECT("Reported total size of transaction did not match sum of pieces");
           }
       }
@@ -242,23 +281,24 @@ enum parse_rv parse_rlp_item(struct EVM_RLP_item_state *const state, evm_parser_
       case 0: {
           if(meta->input.consumed >= meta->input.length) return PARSE_RV_NEED_MORE;
           uint8_t first = meta->input.src[meta->input.consumed++];
+          PRINTF("parse_rlp_item first: %u\n", first);
           if(first <= 0x7f) {
-              state->chunk.src=&meta->input.src[meta->input.consumed-1];
-              state->chunk.consumed=0;
-              state->chunk.length=1;
+              state->chunk.src = &meta->input.src[meta->input.consumed-1];
+              state->chunk.consumed = 0;
+              state->chunk.length = 1;
               return PARSE_RV_DONE;
           } else if (first < 0xb8) {
-              state->length=first - 0x80;
-              state->state=2;
+              state->length = first - 0x80;
+              state->state = 2;
           } else if (first < 0xc0) {
-              state->length=first - 0xbf;
-              state->state=1;
+              state->length = first - 0xbf;
+              state->state = 1;
           } else if(first < 0xf8) {
               state->length = first - 0xc0;
-              state->state=2;
+              state->state = 2;
           } else {
               state->len_len = first - 0xf7;
-              state->state=1;
+              state->state = 1;
           }
       }
       case 1:
@@ -272,8 +312,13 @@ enum parse_rv parse_rlp_item(struct EVM_RLP_item_state *const state, evm_parser_
       case 2: {
           uint64_t remaining = state->length-state->current;
           uint64_t available = meta->input.length - meta->input.consumed;
+
+          debug_EVM_RLP_item_state(state);
+          PRINTF("parse_rlp_item_to_buffer available %.*h\n", 8, &available);
+          PRINTF("parse_rlp_item_to_buffer remaining %.*h\n", 8, &remaining);
+
           state->chunk.src=&meta->input.src[meta->input.consumed];
-          state->chunk.consumed=0;
+          state->chunk.consumed = 0;
           if(remaining <= available) {
               state->chunk.length=remaining;
               state->state = 3;
@@ -282,10 +327,10 @@ enum parse_rv parse_rlp_item(struct EVM_RLP_item_state *const state, evm_parser_
 
               sub_rv=PARSE_RV_DONE;
           } else {
-              state->chunk.length=available;
-              state->current += meta->input.length - meta->input.consumed;
+              state->chunk.length = available;
+              state->current += available;
               meta->input.consumed = meta->input.length;
-              sub_rv=PARSE_RV_NEED_MORE;
+              sub_rv = PARSE_RV_NEED_MORE;
           }
       }
     }
@@ -298,20 +343,21 @@ enum parse_rv parse_rlp_item_to_buffer(struct EVM_RLP_item_state *const state, e
       case 0: {
           if(meta->input.consumed >= meta->input.length) return PARSE_RV_NEED_MORE;
           uint8_t first = meta->input.src[meta->input.consumed++];
+          PRINTF("parse_rlp_item_to_buffer first: %u\n", first);
           if(first <= 0x7f) {
               return PARSE_RV_DONE;
           } else if (first < 0xb8) {
-              state->length=first - 0x80;
-              state->state=2;
+              state->length = first - 0x80;
+              state->state = 2;
           } else if (first < 0xc0) {
-              state->length=first - 0xbf;
-              state->state=1;
+              state->length = first - 0xbf;
+              state->state = 1;
           } else if(first < 0xf8) {
               state->length = first - 0xc0;
-              state->state=2;
+              state->state = 2;
           } else {
               state->len_len = first - 0xf7;
-              state->state=1;
+              state->state = 1;
           }
       }
       case 1:
@@ -326,15 +372,19 @@ enum parse_rv parse_rlp_item_to_buffer(struct EVM_RLP_item_state *const state, e
       case 2: {
           uint64_t remaining = state->length-state->current;
           uint64_t available = meta->input.length - meta->input.consumed;
+          debug_EVM_RLP_item_state(state);
+
+          PRINTF("parse_rlp_item_to_buffer available %.*h\n", 8, &available);
+          PRINTF("parse_rlp_item_to_buffer remaining %.*h\n", 8, &remaining);
           if(remaining <= available) {
               state->state=3;
               memcpy(state->buffer+state->current, meta->input.src + meta->input.consumed, remaining);
-              meta->input.consumed+=remaining;
+              meta->input.consumed += remaining;
               return PARSE_RV_DONE;
           } else {
               memcpy(state->buffer+state->current, meta->input.src + meta->input.consumed, available);
-              state->current+=available;
-              meta->input.consumed=meta->input.length;
+              state->current += available;
+              meta->input.consumed = meta->input.length;
               return PARSE_RV_NEED_MORE;
           }
       }
