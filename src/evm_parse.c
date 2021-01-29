@@ -5,6 +5,8 @@
 #include "to_string.h"
 #include "types.h"
 
+#define ETHEREUM_ADDRESS_SIZE 20
+
 void init_rlp_list(struct EVM_RLP_list_state *const state) {
     memset(state, 0, sizeof(*state));
 }
@@ -35,14 +37,9 @@ void init_rlp_item(struct EVM_RLP_item_state *const state) {
 
 #define REJECT(msg, ...) { PRINTF("Rejecting: " msg "\n", ##__VA_ARGS__); THROW_(EXC_PARSE_ERROR, "Rejected"); }
 
-// Fix this.
 static void output_evm_prompt_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
     check_null(out);
     check_null(in);
-    //network_info_t const *const network_info = network_info_from_network_id(in->network_id);
-    //if (network_info == NULL) REJECT("Can't determine network HRP for addresses");
-    char const *const hrp = "fakeHrp"; // network_info->hrp;
-
     size_t ix = nano_avax_to_string(out, out_size, in->amount);
 
     static char const to[] = " to ";
@@ -50,7 +47,10 @@ static void output_evm_prompt_to_string(char *const out, size_t const out_size, 
     memcpy(&out[ix], to, sizeof(to));
     ix += sizeof(to) - 1;
 
-    ix += pkh_to_string(&out[ix], out_size - ix, hrp, strlen(hrp), &in->address.val);
+    out[ix] = '0'; ix++;
+    out[ix] = 'x'; ix++;
+    bin_to_hex_lc(&out[ix], out_size - ix, &in->address.val, ETHEREUM_ADDRESS_SIZE);
+    ix += 2 * ETHEREUM_ADDRESS_SIZE + 1;
 }
 
 enum parse_rv parse_rlp_item(struct EVM_RLP_item_state *const state, evm_parser_meta_state_t *const meta);
@@ -196,17 +196,17 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
             // Probably needs saved and/or prompted here
             PARSE_ITEM(EVM_TXN_TO, _to_buffer);
 
-            if(state->rlpItem_state.length != 20) REJECT("Destination address not 20 bytes");
+            if(state->rlpItem_state.length != ETHEREUM_ADDRESS_SIZE)
+              REJECT("Destination address not %d bytes", ETHEREUM_ADDRESS_SIZE);
 
             for(uint64_t i = 0; i < sizeof(precompiled) / sizeof(struct known_destination); i++) {
-                if(!memcmp(precompiled[i].to, state->rlpItem_state.buffer, 20)) {
+                if(!memcmp(precompiled[i].to, state->rlpItem_state.buffer, ETHEREUM_ADDRESS_SIZE)) {
                     meta->known_destination = &precompiled[i];
                     break;
                 }
             }
-            if(!meta->known_destination) {
-                SET_PROMPT_VALUE(memcpy(entry->data.output_prompt.address.val, state->rlpItem_state.buffer, 20));
-            }
+            if(!meta->known_destination)
+                SET_PROMPT_VALUE(memcpy(entry->data.output_prompt.address.val, state->rlpItem_state.buffer, ETHEREUM_ADDRESS_SIZE));
 
             FINISH_ITEM_CHUNK();
             PARSE_ITEM(EVM_TXN_VALUE, _to_buffer);

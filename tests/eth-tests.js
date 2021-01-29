@@ -15,7 +15,7 @@ describe.only("Eth app compatibility tests", () => {
   it('can sign a transaction with the ethereum ledgerjs module', async function() {
     const flow = await flowMultiPrompt(this.speculos,
       [
-        [{header:"Transfer", body: "60563456.369098752 to fakeHrp19rh9928n6mjazhutzvved9gd0u5kc72jhq5u5p"}],
+        [{header:"Transfer", body: "60563456.369098752 to 0x28ee52a8f3d6e5d15f8b131996950d7f296c7952"}],
         [{header:"Finalize", body: "Transaction"}]
       ]);
     ethTx = Buffer.from('ed018504e3b292008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080', 'hex');
@@ -30,7 +30,7 @@ describe.only("Eth app compatibility tests", () => {
   it('can provide an ERC20 Token and sign with the ethereum ledgerjs module', async function() {
     const flow = await flowMultiPrompt(this.speculos,
       [
-        [{header:"Transfer", body: "60563456.369098752 to fakeHrp19rh9928n6mjazhutzvved9gd0u5kc72jhq5u5p"}],
+        [{header:"Transfer", body: "60563456.369098752 to 0x28ee52a8f3d6e5d15f8b131996950d7f296c7952"}],
         [{header:"Finalize", body: "Transaction"}]
       ]);
     ethTx = Buffer.from('ed018504e3b292008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080', 'hex');
