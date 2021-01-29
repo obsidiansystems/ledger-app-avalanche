@@ -169,10 +169,11 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
         }
         init_rlp_item(&state->rlpItem_state);
       case 2: { // Now parse items.
-          uint8_t itemStartIdx = meta->input.consumed;
+          uint8_t itemStartIdx;
           switch(state->item_index) {
 #define PARSE_ITEM(ITEM, save) \
             case ITEM: {\
+                itemStartIdx = meta->input.consumed; \
                 PRINTF("%u\n", state->item_index); \
                 sub_rv = parse_rlp_item ## save(&state->rlpItem_state, meta); \
                 state->remaining -= meta->input.consumed - itemStartIdx; \
@@ -256,10 +257,7 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
           }
           state->state++;
 
-          debug_EVM_RLP_list_state(state);
-          state->remaining -= meta->input.consumed - itemStartIdx;
-          debug_EVM_RLP_list_state(&state);
-          if(true || state->remaining == 0) {
+          if(state->remaining == 0) {
               state->state = 3;
               return PARSE_RV_DONE;
           } else {
