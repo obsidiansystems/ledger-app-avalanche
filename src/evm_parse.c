@@ -223,7 +223,7 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
             */
 
             FINISH_ITEM_CHUNK();
-            PARSE_ITEM(EVM_TXN_DATA, _to_buffer);
+            PARSE_ITEM(EVM_TXN_DATA, );
 
             if(meta->known_destination) {
                 sub_rv = meta->known_destination->handle_data(&(state->rlpItem_state.endpoint_state), &(state->rlpItem_state.chunk), meta);
@@ -241,8 +241,7 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
                || (state->rlpItem_state.buffer[1] != 0x69 && state->rlpItem_state.buffer[1] != 0x6a))
                 REJECT("Chain ID incorrect for the Avalanche C chain");
             meta->chainIdLowByte = state->rlpItem_state.buffer[state->rlpItem_state.length-1];
-            meta->chainIdLowByte = meta->input.src[meta->input.consumed-1];
-            PRINTF("Chain ID low byte: %x", meta->chainIdLowByte);
+            PRINTF("Chain ID low byte: %x\n", meta->chainIdLowByte);
 
             FINISH_ITEM_CHUNK();
             PARSE_ITEM(EVM_TXN_SIG_R, _to_buffer);
