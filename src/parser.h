@@ -29,6 +29,13 @@ struct FixedState {
         uint8_t buf[sizeof(name)]; \
         name val; \
     }
+#define IMPL_FIXED(name) \
+    inline enum parse_rv parse_ ## name (struct name ## _state *const state, parser_meta_state_t *const meta) { \
+        return parseFixed((struct FixedState *const)state, &meta->input, sizeof(name));\
+    } \
+    inline void init_ ## name (struct name ## _state *const state) { \
+        return initFixed((struct FixedState *const)state, sizeof(state)); \
+    }
 #define DEFINE_ARRAY(name) \
     struct name ## s_state { \
         int state; \
@@ -281,8 +288,36 @@ typedef struct {
 
 // EVM stuff below this line
 
+enum assetCall_state_t {
+    ASSETCALL_ADDRESS,
+    ASSETCALL_ASSETID,
+    ASSETCALL_AMOUNT,
+    ASSETCALL_DATA,
+    ASSETCALL_DONE
+};
+
+
+typedef struct {
+    uint8_t val[32];
+} uint256_t;
+
+DEFINE_FIXED(uint256_t);
+
 struct EVM_ABI_state { };
-struct EVM_assetCall_state { };
+
+struct EVM_assetCall_state {
+  enum assetCall_state_t state;
+  uint64_t data_length;
+    union {
+        struct Id32_state id32_state;
+        struct uint256_t_state uint256_state;
+        struct {
+            struct Address_state address_state;
+            parser_input_meta_state_t chunk;
+            // union EVM_endpoint_states endpoint_state;
+        };
+    };
+};
 
 union EVM_endpoint_states {
     struct EVM_ABI_state abi_state;
@@ -292,11 +327,14 @@ union EVM_endpoint_states {
 struct struct_evm_parser_meta_state_t;
 typedef struct struct_evm_parser_meta_state_t evm_parser_meta_state_t;
 
-typedef enum parse_rv(*known_destination_parser)(union EVM_endpoint_states *const state, parser_input_meta_state_t *const input, evm_parser_meta_state_t *const meta);
+typedef enum parse_rv (*known_destination_init)(union EVM_endpoint_states *const state, uint64_t length);
+typedef enum parse_rv (*known_destination_parser)(union EVM_endpoint_states *const state, parser_input_meta_state_t *const input, evm_parser_meta_state_t *const meta);
 
 struct known_destination {
   uint8_t to[20];
+  known_destination_init init_value;
   known_destination_parser handle_value;
+  known_destination_init init_data;
   known_destination_parser handle_data;
 };
 
@@ -322,6 +360,7 @@ struct EVM_RLP_item_state {
     uint64_t length;
     uint64_t current;
     uint8_t len_len;
+    bool do_init;
     union {
         struct uint64_t_state uint64_state;
         uint8_t buffer[MAX_EVM_BUFFER];

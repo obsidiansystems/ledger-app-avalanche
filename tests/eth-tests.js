@@ -3,7 +3,7 @@ Common = require("@ethereumjs/common").default;
 decode = require("rlp").decode;
 byContractAddress=require("@ledgerhq/hw-app-eth/erc20").byContractAddress;
 
-describe.only("Eth app compatibility tests", () => {
+describe("Eth app compatibility tests", () => {
   it('can get a key from the app with the ethereum ledgerjs module', async function() {
     const flow = await flowAccept(this.speculos);
     const dat = await this.eth.getAddress("44'/60'/0'/0/0", false, true);
@@ -48,5 +48,20 @@ describe.only("Eth app compatibility tests", () => {
   });
   it.skip('can sign a personal message with the ethereum ledgerjs module', async function() {
     const res = await this.eth.signPersonalMessage("44'/60'/0'/0/0", "aabbccddeeff");
+  });
+  it('can sign an assetCall transfer with the ethereum ledgerjs module', async function() {
+    const flow = await flowMultiPrompt(this.speculos,
+      [
+        [{header:"Transfer", body: "948.488372224 to fakeHrp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq6m20hv"}],
+        [{header:"Finalize", body: "Transaction"}]
+      ]);
+    ethTx = Buffer.from('f88501856d6e2edc00832dc6c09401000000000000000000000000000000000000028501dcd65000b85841c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a00000000000000000000000000000000000000000000000000000000000000008d0e30db082a8688080', 'hex');
+    const dat = await this.eth.signTransaction("44'/60'/0'/0/0", ethTx);
+    chain = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId: 43114 });
+    txnBufs = decode(ethTx).slice(0,6).concat([dat.v, dat.r, dat.s].map(a=>Buffer.from(((a.length%2==1)?'0'+a:a),'hex')));
+    ethTxObj = Transaction.fromValuesArray(txnBufs, {common: chain});
+    expect(ethTxObj.verifySignature()).to.equal(true);
+    expect(ethTxObj.getSenderPublicKey()).to.equalBytes("ef5b152e3f15eb0c50c9916161c2309e54bd87b9adce722d69716bcdef85f547678e15ab40a78919c7284e67a17ee9a96e8b9886b60f767d93023bac8dbc16e4");
+    await flow.promptsPromise;
   });
 })

@@ -68,13 +68,14 @@ enum eth_txn_items {
   EVM_TXN_SIG_S
 };
 
+void init_assetCall_data(struct EVM_assetCall_state *const state, uint64_t length);
 enum parse_rv parse_assetCall_data(struct EVM_assetCall_state *const state, parser_input_meta_state_t *const input, evm_parser_meta_state_t *const meta);
 
 const static struct known_destination precompiled[] = {
   //{ .to = { 0 }, .handle_data = handle_contract_creation },
   //{ .to = { [18] = 0xde, [19] = 0xad }, .handle_data = handle_burn },
   //{ .to = { [0] = 0x01, [19] = 0x01 }, .handle_data = reject_txn },
-  { .to = { [0] = 0x01, [19] = 0x02 }, .handle_data = (known_destination_parser)parse_assetCall_data }
+  { .to = { [0] = 0x01, [19] = 0x02 }, .init_data=(known_destination_init)init_assetCall_data, .handle_data = (known_destination_parser)parse_assetCall_data }
 };
 
 enum abi_type {
@@ -219,16 +220,22 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
 
             FINISH_ITEM_CHUNK();
 
-            if(ADD_ACCUM_PROMPT(
-                "Transfer",
-                output_evm_prompt_to_string // Needs tweaked to be EVM addresses
-                )) return PARSE_RV_PROMPT;
+            if(!meta->known_destination) {
+                if(ADD_ACCUM_PROMPT(
+                      "Transfer",
+                      output_evm_prompt_to_string // Needs tweaked to be EVM addresses
+                      )) return PARSE_RV_PROMPT;
+            }
 
-            FINISH_ITEM_CHUNK();
             PARSE_ITEM(EVM_TXN_DATA, );
 
             if(meta->known_destination) {
-                sub_rv = meta->known_destination->handle_data(&(state->rlpItem_state.endpoint_state), &(state->rlpItem_state.chunk), meta);
+                if(state->rlpItem_state.do_init && meta->known_destination->init_data) ((known_destination_init)PIC(meta->known_destination->init_data))(&(state->rlpItem_state.endpoint_state), state->rlpItem_state.length);
+                PRINTF("INITED\n");
+                PRINTF("Chunk: %.*h", state->rlpItem_state.chunk.length, state->rlpItem_state.chunk.src);
+                if(meta->known_destination->handle_data)
+                    sub_rv = ((known_destination_parser)PIC(meta->known_destination->handle_data))(&(state->rlpItem_state.endpoint_state), &(state->rlpItem_state.chunk), meta);
+                PRINTF("PARSER CALLED\n");
             } else if(state->rlpItem_state.length != 0) {
                 // Probably we have to allow this, as the metamask constraint means _this_ endpoint will be getting stuff it doesn't understand a lot.
                 static char const isPresentLabel[]="Is Present";
@@ -276,6 +283,10 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
 
 enum parse_rv parse_rlp_item(struct EVM_RLP_item_state *const state, evm_parser_meta_state_t *const meta) {
     enum parse_rv sub_rv;
+    state->chunk.src=0;
+    state->chunk.length=0;
+    state->chunk.consumed=0;
+    state->do_init=false;
     switch(state->state) {
       case 0: {
           if(meta->input.consumed >= meta->input.length) return PARSE_RV_NEED_MORE;
@@ -308,6 +319,7 @@ enum parse_rv parse_rlp_item(struct EVM_RLP_item_state *const state, evm_parser_
                 ((uint8_t*)(&state->length))[i] = state->uint64_state.buf[sizeof(uint64_t)-i];
             }
         }
+        state->do_init=true;
       case 2: {
           uint64_t remaining = state->length-state->current;
           uint64_t available = meta->input.length - meta->input.consumed;
@@ -392,8 +404,54 @@ enum parse_rv parse_rlp_item_to_buffer(struct EVM_RLP_item_state *const state, e
     }
 }
 
+IMPL_FIXED(uint256_t);
+
+void init_assetCall_data(struct EVM_assetCall_state *const state, uint64_t length) {
+    state->state=0;
+    PRINTF("Initing assetCall Data\n");
+    state->data_length=length-84; // 20+32+32 for the assetCall chunks
+    initFixed(&state->address_state, sizeof(state->address_state));
+    PRINTF("Initing assetCall Data\n");
+}
+
 enum parse_rv parse_assetCall_data(struct EVM_assetCall_state *const state, parser_input_meta_state_t *const input, evm_parser_meta_state_t *const meta) {
     enum parse_rv sub_rv;
 
-    REJECT("assetCall is not yet supported");
+    PRINTF("AssetCall Data: %.*h\n", input->length, input->src);
+    switch(state->state) {
+    case ASSETCALL_ADDRESS:
+      sub_rv=parseFixed(&state->address_state, input, 20);
+      if(sub_rv != PARSE_RV_DONE) return sub_rv;
+      // SET_PROMPT_VALUE(memcpy(entry->data.output_prompt.address.val, state->rlpItem_state.buffer, 20));
+      PRINTF("Address: %.*h\n", 20, state->address_state.buf);
+      state->state++;
+      initFixed(&state->id32_state, sizeof(state->id32_state));
+    case ASSETCALL_ASSETID:
+      sub_rv=parseFixed(&state->id32_state, input, 32);
+      if(sub_rv != PARSE_RV_DONE) return sub_rv;
+      PRINTF("Asset: %.*h\n", 32, state->id32_state.buf);
+      state->state++;
+      initFixed(&state->uint256_state, sizeof(state->uint256_state));
+    case ASSETCALL_AMOUNT:
+      sub_rv=parseFixed(&state->uint256_state, input, 32);
+      if(sub_rv != PARSE_RV_DONE) return sub_rv;
+      PRINTF("Amount: %.*h\n", 32, state->uint256_state.buf);
+      state->state++;
+      // init_evm_abi_data(&state);
+    case ASSETCALL_DATA:
+      if(state->data_length==0) {
+          PRINTF("Plain non-avax transfer\n");
+          // if(ADD_ACCUM_PROMPT(
+          //      "Transfer",
+          //      output_evm_prompt_to_string // Needs tweaked to be EVM addresses
+          //      )) return PARSE_RV_PROMPT;
+          state->state++;
+          return PARSE_RV_DONE;
+      } else {
+          REJECT("deposit not supported");
+          // sub_rv=parse_evm_abi_data(&state, ...);
+      }
+    case ASSETCALL_DONE:
+      return PARSE_RV_DONE;
+    }
 }

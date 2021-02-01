@@ -68,14 +68,6 @@ enum parse_rv parseFixed(struct FixedState *const state, parser_input_meta_state
     return state->filledTo == len ? PARSE_RV_DONE : PARSE_RV_NEED_MORE;
 }
 
-#define IMPL_FIXED(name) \
-    inline enum parse_rv parse_ ## name (struct name ## _state *const state, parser_meta_state_t *const meta) { \
-        return parseFixed((struct FixedState *const)state, &meta->input, sizeof(name));\
-    } \
-    inline void init_ ## name (struct name ## _state *const state) { \
-        return initFixed((struct FixedState *const)state, sizeof(state)); \
-    }
-
 #define IMPL_FIXED_BE(name) \
     inline enum parse_rv parse_ ## name (struct name ## _state *const state, parser_meta_state_t *const meta) { \
         enum parse_rv sub_rv = PARSE_RV_INVALID; \
