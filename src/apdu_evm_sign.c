@@ -136,6 +136,7 @@ static size_t next_parse(bool const is_reentry) {
         if (rv == PARSE_RV_DONE) {
             PRINTF("Parser signaled done; sending final prompt\n");
             cx_hash((cx_hash_t *const)&G.tx_hash_state, CX_LAST, NULL, 0, G.final_hash, sizeof(G.final_hash));
+            PRINTF("G.final_hash: %.*h\n", sizeof(G.final_hash), G.final_hash);
             transaction_complete_prompt();
         }
     }
@@ -171,6 +172,7 @@ size_t handle_apdu_sign_evm_transaction(void) {
           G.meta_state.input.length=in_size-ix;
           if(G.meta_state.input.length == 0) return finalize_successful_send(0);
 
+          PRINTF("HASH BUFFER %.*h\n", G.meta_state.input.length, G.meta_state.input.src);
           cx_hash((cx_hash_t *)&G.tx_hash_state, 0, G.meta_state.input.src, G.meta_state.input.length, NULL, 0);
 
           return next_parse(false);
