@@ -3,25 +3,26 @@ Common = require("@ethereumjs/common").default;
 decode = require("rlp").decode;
 byContractAddress=require("@ledgerhq/hw-app-eth/erc20").byContractAddress;
 
-    async function testSigning(self, chainId, address, amount, hexTx) {
-      const ethTx = Buffer.from(hexTx, 'hex');
-      const flow = await flowMultiPrompt(self.speculos,
-        [
-          [{header:"Transfer", body: amount + " to " + address}],
-          [{header:"Finalize", body: "Transaction"}]
-        ]);
-      const chainParams = { common: Common.forCustomChain('mainnet', { networkId: 1, chainId }, 'istanbul')};
+const transferPrompts = (address, amount) => [
+    [{header:"Transfer", body: amount + " to " + address}],
+    [{header:"Finalize", body: "Transaction"}]
+];
 
-      const dat = await self.eth.signTransaction("44'/60'/0'/0/0", ethTx);
-      chain = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId });
-      txnBufs = decode(ethTx).slice(0,6).concat([dat.v, dat.r, dat.s].map(a=>Buffer.from(((a.length%2==1)?'0'+a:a),'hex')));
-      ethTxObj = Transaction.fromValuesArray(txnBufs, {common: chain});
-      console.error(ethTxObj.getMessageToVerifySignature());
-      console.error(ethTxObj.serialize().toString('hex'));
-      expect(ethTxObj.verifySignature()).to.equal(true);
-      expect(ethTxObj.getSenderPublicKey()).to.equalBytes("ef5b152e3f15eb0c50c9916161c2309e54bd87b9adce722d69716bcdef85f547678e15ab40a78919c7284e67a17ee9a96e8b9886b60f767d93023bac8dbc16e4");
-      await flow.promptsPromise;
-    }
+async function testSigning(self, prompts, chainId, address, amount, hexTx) {
+  const ethTx = Buffer.from(hexTx, 'hex');
+  const flow = await flowMultiPrompt(self.speculos, prompts(address, amount));
+  const chainParams = { common: Common.forCustomChain('mainnet', { networkId: 1, chainId }, 'istanbul')};
+
+  const dat = await self.eth.signTransaction("44'/60'/0'/0/0", ethTx);
+  chain = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId });
+  txnBufs = decode(ethTx).slice(0,6).concat([dat.v, dat.r, dat.s].map(a=>Buffer.from(((a.length%2==1)?'0'+a:a),'hex')));
+  ethTxObj = Transaction.fromValuesArray(txnBufs, {common: chain});
+  console.error(ethTxObj.getMessageToVerifySignature());
+  console.error(ethTxObj.serialize().toString('hex'));
+  expect(ethTxObj.verifySignature()).to.equal(true);
+  expect(ethTxObj.getSenderPublicKey()).to.equalBytes("ef5b152e3f15eb0c50c9916161c2309e54bd87b9adce722d69716bcdef85f547678e15ab40a78919c7284e67a17ee9a96e8b9886b60f767d93023bac8dbc16e4");
+  await flow.promptsPromise;
+}
 
 describe.only("Eth app compatibility tests", () => {
   it('can get a key from the app with the ethereum ledgerjs module', async function() {
@@ -33,30 +34,30 @@ describe.only("Eth app compatibility tests", () => {
     await flow.promptsPromise;
   })
 
-  it.only('can sign a transaction with the ethereum ledgerjs module', async function() {
-      await testSigning(this, 43114, '0x28ee52a8f3d6e5d15f8b131996950d7f296c7952', '12340000',
+  it('can sign a transaction via the ethereum ledgerjs module', async function() {
+      await testSigning(this, transferPrompts, 43114, '0x28ee52a8f3d6e5d15f8b131996950d7f296c7952', '12340000',
                         'ed018504e3b292008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080'
                        );
   })
-  it.only('can sign a transaction with the ethereum ledgerjs module', async function() {
-      await testSigning(this, 43112, '0x0100000000000000000000000000000000000006', '0.000000001',
+  it('can sign a transaction with calldata via the ethereum ledgerjs module', async function() {
+      await testSigning(this, transferPrompts, 43112, '0x0100000000000000000000000000000000000006', '0.000000001',
                         'f83880856d6e2edc00832dc6c0940100000000000000000000000000000000000006019190000102030405060708090a0b0c0d0e0f82a8688080'
                        );
   })
-  it.only('can sign a transaction with the ethereum ledgerjs module', async function() {
-      await testSigning(this, 43112, '0x0100000000000000000000000000000000000006', '0',
+  it('can sign a transaction with assetCall via the ethereum ledgerjs module', async function() {
+      await testSigning(this, transferPrompts, 43112, '0x0100000000000000000000000000000000000006', '0',
                         'f88001856d6e2edc00832dc6c094010000000000000000000000000000000000000680b85841c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a00000000000000000000000000000000000000000000000000000000000000011d0e30db082a8688080'
                        )
   })
-  it.only('can sign a transaction with the ethereum ledgerjs module', async function() {
-      await testSigning(this, 43112, '0x0100000000000000000000000000000000000006', '8',
+  it('can sign a transaction with assetCall deposit and funds via the ethereum ledgerjs module', async function() {
+      await testSigning(this, transferPrompts, 43112, '0x0100000000000000000000000000000000000006', '8',
                         'f88501856d6e2edc00832dc6c09401000000000000000000000000000000000000068501dcd65000b85841c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a00000000000000000000000000000000000000000000000000000000000000008d0e30db082a8688080'
                        )
   });
   it('can provide an ERC20 Token and sign with the ethereum ledgerjs module', async function() {
     const flow = await flowMultiPrompt(this.speculos,
       [
-        [{header:"Transfer", body: "60563456.369098752 to 0x28ee52a8f3d6e5d15f8b131996950d7f296c7952"}],
+        [{header:"Transfer", body: "12340000 to 0x28ee52a8f3d6e5d15f8b131996950d7f296c7952"}],
         [{header:"Finalize", body: "Transaction"}]
       ]);
     ethTx = Buffer.from('ed018504e3b292008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080', 'hex');
