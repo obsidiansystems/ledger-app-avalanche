@@ -48,7 +48,7 @@ describe("Eth app compatibility tests", () => {
                        );
   })
 
-  it('can sign a transaction with calldata via the ethereum ledgerjs module', async function() {
+  it('A call to assetCall with incorrect call data rejects', async function() {
     try {
       const dat = await this.eth.signTransaction(
           "44'/60'/0'/0/0",
@@ -58,6 +58,15 @@ describe("Eth app compatibility tests", () => {
         expect(e).has.property('statusCode', 0x9405); // PARSE_ERROR
         expect(e).has.property('statusText', 'UNKNOWN_ERROR');
     }
+  })
+
+  it('can sign a transaction with calldata via the ethereum ledgerjs module', async function() {
+    await testSigning(this, 43112,
+        [[{header:"Transfer",body:"0.000000001 to 0x0102030400000000000000000000000000000002"}],
+         [{header:"Contract Data",body:"Is Present (unsafe)"}],
+         [{header:"Finalize",body:"Transaction"}]
+        ],
+        'f83880856d6e2edc00832dc6c0940102030400000000000000000000000000000002019190000102030405060708090a0b0c0d0e0f82a8688080');
   })
 
   it('can sign a transaction with assetCall via the ethereum ledgerjs module', async function() {

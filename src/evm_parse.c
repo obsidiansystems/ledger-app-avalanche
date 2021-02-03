@@ -32,7 +32,7 @@ void init_rlp_item(struct EVM_RLP_item_state *const state) {
     })
 
 #define ADD_PROMPT(label_, data_, size_, to_string_) ({\
-    SET_PROMPT_VALUE(memcpy(entry, data_, size_));\
+    SET_PROMPT_VALUE(memcpy(&entry->data, data_, size_));\
     ADD_ACCUM_PROMPT(label_, to_string_);\
     })
 
@@ -320,13 +320,23 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
                 }
                 PRINTF("PARSER CALLED [sub_rv: %u]\n", sub_rv);
                 if(sub_rv != PARSE_RV_DONE) return sub_rv;
-            } else if(state->rlpItem_state.length != 0) {
-                // Probably we have to allow this, as the metamask constraint means _this_ endpoint will be getting stuff it doesn't understand a lot.
-                static char const isPresentLabel[]="Is Present";
-                if(ADD_PROMPT("Contract Data", isPresentLabel, sizeof(isPresentLabel), strcpy_prompt)) return PARSE_RV_PROMPT;
             }
 
-            FINISH_ITEM_CHUNK();
+            // Can't use the macro here because we need to do a prompt in the middle of it.
+            if(sub_rv != PARSE_RV_DONE) return sub_rv;
+            state->item_index++;
+            uint64_t len=state->rlpItem_state.length;
+            init_rlp_item(&state->rlpItem_state);
+
+            if(!meta->known_destination && len != 0) {
+                // Probably we have to allow this, as the metamask constraint means _this_ endpoint will be getting stuff it doesn't understand a lot.
+                static char const isPresentLabel[]="Is Present (unsafe)";
+                if(ADD_PROMPT("Contract Data", isPresentLabel, sizeof(isPresentLabel), strcpy_prompt)) {
+                    PRINTF("IP: %s",isPresentLabel);
+                    return PARSE_RV_PROMPT;
+                }
+            }
+
             PARSE_ITEM(EVM_TXN_CHAINID, _to_buffer);
 
             if(state->rlpItem_state.length != 2
