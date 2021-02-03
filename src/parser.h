@@ -290,10 +290,24 @@ typedef struct {
     size_t length;
 } parser_input_meta_state_t;
 
+
 typedef struct {
+  uint8_t val[32];
+} uint256_t;
+
+DEFINE_FIXED(uint256_t);
+
+typedef struct {
+  union {
     uint64_t amount;
-    network_id_t network_id;
-    Address address;
+    struct {
+      uint256_t amount;
+      uint256_t assetID;
+      uint8_t isDeposit;
+    } assetCall;
+  };
+  network_id_t network_id;
+  Address address;
 } output_prompt_t;
 
 typedef struct {
@@ -357,15 +371,8 @@ enum assetCall_state_t {
     ASSETCALL_ASSETID,
     ASSETCALL_AMOUNT,
     ASSETCALL_DATA,
-    ASSETCALL_DONE
+    ASSETCALL_DONE,
 };
-
-
-typedef struct {
-    uint8_t val[32];
-} uint256_t;
-
-DEFINE_FIXED(uint256_t);
 
 struct EVM_ABI_state { };
 
@@ -375,6 +382,7 @@ struct EVM_assetCall_state {
     union {
         struct Id32_state id32_state;
         struct uint256_t_state uint256_state;
+        struct uint32_t_state selector_state;
         struct {
             struct Address_state address_state;
             parser_input_meta_state_t chunk;

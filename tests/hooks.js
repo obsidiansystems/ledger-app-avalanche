@@ -112,7 +112,7 @@ async function automationStart(speculos, interactionFunc) {
     await speculos.promptsEndPromise;
   }
   speculos.promptsEndPromise = promptsLock; // Set ourselves as the interaction.
-        
+
   // Make an async iterator we can push stuff into.
   let sendEvent;
   let sendPromise=new Promise(r=>{sendEvent = r;});
@@ -126,12 +126,12 @@ async function automationStart(speculos, interactionFunc) {
       return await sendPromise;
     }
   };
-  
+
   // Sync up with the ledger; wait until we're on the home screen, and do some
   // clicking back and forth to make sure we see the event.
   // Then pass screens to interactionFunc.
   let readyPromise = syncWithLedger(speculos, asyncEventIter, interactionFunc);
-  
+
   // Resolve our lock when we're done
   readyPromise.then(r=>r.promptsPromise.then(()=>{promptLockResolve(true)}));
 
@@ -153,7 +153,7 @@ async function automationStart(speculos, interactionFunc) {
       body=undefined;
       header=undefined;
     }});
-  
+
   asyncEventIter.unsubscribe = () => { subscript.unsubscribe(); };
 
   // Send a rightward-click to make sure we get _an_ event and our state
@@ -191,14 +191,15 @@ async function readMultiScreenPrompt(speculos, source) {
   let header;
   let body;
   let screen = await source.next();
-  let m = screen.header && screen.header.match(/^(.*) \(([0-9])\/([0-9])\)$/);
+  let regexp = /^(.*) \(([0-9]*)\/([0-9]*)\)$/;
+  let m = screen.header && screen.header.match(regexp);
   if (m) {
     header = m[1];
     body = screen.body;
     while(m[2] !== m[3]) {
       speculos.button("Rr");
       screen = await source.next();
-      m = screen.header && screen.header.match(/^(.*) \(([0-9])\/([0-9])\)$/);
+      m = screen.header && screen.header.match(regexp);
       body = body + screen.body;
     }
     return { header: header, body: body };
