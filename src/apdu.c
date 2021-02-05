@@ -32,6 +32,34 @@ size_t provide_ext_pubkey(uint8_t *const io_buffer, extended_public_key_t const 
     return finalize_successful_send(tx);
 }
 
+size_t provide_evm_address(uint8_t *const io_buffer, extended_public_key_t const *const ext_pubkey, public_key_hash_t const *const pubkey_hash, bool include_chain_code) {
+    check_null(io_buffer);
+    check_null(pubkey_hash);
+    check_null(ext_pubkey);
+    PRINTF("PROVIDE EVM ADDRESS\n");
+    size_t tx = 0;
+    // Send the public key
+    size_t keySize = ext_pubkey->public_key.W_len;
+    io_buffer[tx++] = keySize;
+    memmove(io_buffer + tx, ext_pubkey->public_key.W, keySize);
+    tx+=keySize;
+
+    // And the address, in hex
+    io_buffer[tx++] = sizeof(*pubkey_hash)*2; // times 2 because it'll be in hex.
+    bin_to_hex_lc(io_buffer + tx, IO_APDU_BUFFER_SIZE-tx, pubkey_hash, sizeof(*pubkey_hash));
+    tx+=sizeof(*pubkey_hash)*2;
+
+    // and the chain code, if requested.
+    if(include_chain_code) {
+        if(tx+CHAIN_CODE_DATA_SIZE > IO_APDU_BUFFER_SIZE) THROW(EXC_MEMORY_ERROR);
+        memcpy(io_buffer+tx, ext_pubkey->chain_code, CHAIN_CODE_DATA_SIZE);
+        PRINTF("CHAIN: %.*h\n", CHAIN_CODE_DATA_SIZE, io_buffer+tx);
+        tx+=CHAIN_CODE_DATA_SIZE;
+    }
+
+    return finalize_successful_send(tx);
+}
+
 size_t handle_apdu_error(void) {
     THROW(EXC_INVALID_INS);
 }
@@ -96,8 +124,9 @@ void measure_stack_max(void) {
 #endif
 
 #define CLA 0x80
+#define ETH_CLA 0xe0
 
-__attribute__((noreturn)) void main_loop(apdu_handler const *const handlers, size_t const handlers_size) {
+__attribute__((noreturn)) void main_loop(struct app_handlers const *const app_handlers) {
     uint8_t volatile next_io_exchange_flag = CHANNEL_APDU;
     size_t volatile next_io_exchange_tx = 0;
     while (true) {
@@ -116,9 +145,13 @@ __attribute__((noreturn)) void main_loop(apdu_handler const *const handlers, siz
                     THROW(EXC_SECURITY);
                 }
 
-                if (G_io_apdu_buffer[OFFSET_CLA] != CLA) {
+                uint8_t cla = G_io_apdu_buffer[OFFSET_CLA];
+
+                if (cla != CLA && cla != ETH_CLA) {
                     THROW(EXC_CLASS);
                 }
+
+                struct handlers const *const handlers = cla == CLA ? &app_handlers->avm : &app_handlers->evm;
 
                 // The amount of bytes we get in our APDU must match what the APDU declares
                 // its own content length is. All these values are unsigned, so this implies
@@ -134,17 +167,20 @@ __attribute__((noreturn)) void main_loop(apdu_handler const *const handlers, siz
                 uint8_t const instruction = G_io_apdu_buffer[OFFSET_INS];
 
                 // Don't let state between *different* APDU instructions persist.
-                if (instruction != global.latest_apdu_instruction) {
+                if (instruction != global.latest_apdu_instruction || cla != global.latest_apdu_cla) {
                     clear_apdu_globals();
                 }
-                if (instruction < handlers_size) {
+                if (instruction < handlers->handlers_size) {
                     global.latest_apdu_instruction = instruction;
+                    global.latest_apdu_cla = cla;
                 }
 
-                PRINTF("Handling instruction %d when number of handlers is %d\n", instruction, handlers_size);
-                apdu_handler const cb = instruction >= handlers_size
+                PRINTF("Handling instruction %d when number of handlers is %d\n", instruction, handlers->handlers_size);
+
+                apdu_handler const cb = instruction >= handlers->handlers_size
+                  || !((apdu_handler*)PIC(handlers->handlers))[instruction]
                     ? handle_apdu_error
-                    : (apdu_handler)PIC(handlers[instruction]);
+                    : (apdu_handler)PIC(((apdu_handler*)PIC(handlers->handlers))[instruction]);
 
                 PRINTF("Calling handler\n");
                 size_t const tx = cb();

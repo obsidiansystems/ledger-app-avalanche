@@ -14,7 +14,14 @@
 #define G global.apdu.u.pubkey
 
 static bool address_ok(void) {
-    delayed_send(provide_address(G_io_apdu_buffer, &G.pkh));
+    switch(G.type) {
+      case PUBKEY_STATE_AVM:
+        delayed_send(provide_address(G_io_apdu_buffer, &G.pkh));
+        break;
+      case PUBKEY_STATE_EVM:
+        delayed_send(provide_evm_address(G_io_apdu_buffer, &G.ext_public_key, &G.pkh, true));
+        break;
+    }
     return true;
 }
 
@@ -26,7 +33,14 @@ static bool ext_pubkey_ok(void) {
 static void apdu_pubkey_state_to_string
    (char *out, size_t out_size,
     const apdu_pubkey_state_t *const payload) {
-  pkh_to_string(out, out_size, payload->hrp, payload->hrp_len, &payload->pkh);
+  switch (payload->type) {
+    case PUBKEY_STATE_AVM:
+      pkh_to_string(out, out_size, payload->hrp, payload->hrp_len, &payload->pkh);
+      break;
+    case PUBKEY_STATE_EVM:
+      bin_to_hex_lc(out, out_size, &payload->pkh, 20);
+      break;
+  }
 }
 
 __attribute__((noreturn)) static void prompt_address(void) {
@@ -103,6 +117,28 @@ __attribute__((noreturn)) size_t handle_apdu_get_public_key_impl(bool const prom
 
 __attribute__((noreturn)) size_t handle_apdu_get_public_key(void) {
     handle_apdu_get_public_key_impl(false);
+}
+
+__attribute__((noreturn)) size_t handle_apdu_evm_get_address(void) {
+    const uint8_t *const buffer = G_io_apdu_buffer;
+
+    const uint8_t p1 = buffer[OFFSET_P1];
+    const uint8_t p2 = buffer[OFFSET_P2];
+    const size_t cdata_size = buffer[OFFSET_LC];
+
+    if (p1 > 1 || p2 > 1) {
+      THROW(EXC_WRONG_PARAM);
+    }
+
+    read_bip32_path(&G.bip32_path, buffer+OFFSET_CDATA, cdata_size);
+    generate_extended_public_key(&G.ext_public_key, &G.bip32_path);
+
+    generate_evm_pkh_for_pubkey(&G.ext_public_key.public_key, &G.pkh);
+
+    G.type = PUBKEY_STATE_EVM;
+
+    check_bip32(&G.bip32_path, false);
+    prompt_address();
 }
 
 __attribute__((noreturn)) size_t handle_apdu_get_public_key_ext(void) {

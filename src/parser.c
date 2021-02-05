@@ -45,8 +45,13 @@ void initFixed(struct FixedState *const state, size_t const len) {
     memset(&state->buffer, 0, len);
 }
 
-enum transaction_type_id_t convert_type_id_to_type(uint32_t type_id) {
-  switch (type_id) {
+enum transaction_type_id_t convert_type_id_to_type(uint32_t type_id, uint8_t is_c_chain) {
+    static const uint32_t c_chain_bit = 24;
+    if(type_id & 1<<c_chain_bit) {
+        // If this becomes a real type id, just change the 24 for the switch.
+      REJECT("Invalid transaction type_id; Must be base, export, or import; found %d", type_id);
+    }
+  switch (type_id | is_c_chain<<c_chain_bit) {
       case 0: return TRANSACTION_TYPE_ID_BASE;
       case 3: return TRANSACTION_TYPE_ID_IMPORT;
       case 4: return TRANSACTION_TYPE_ID_EXPORT;
@@ -54,32 +59,26 @@ enum transaction_type_id_t convert_type_id_to_type(uint32_t type_id) {
       case 0x12: return TRANSACTION_TYPE_ID_PLATFORM_EXPORT;
       case 0x0c: return TRANSACTION_TYPE_ID_ADD_VALIDATOR;
       case 0x0e: return TRANSACTION_TYPE_ID_ADD_DELEGATOR;
+      case 1<<c_chain_bit | 0x00: return TRANSACTION_TYPE_ID_C_CHAIN_IMPORT;
+      case 1<<c_chain_bit | 0x01: return TRANSACTION_TYPE_ID_C_CHAIN_EXPORT;
       default: REJECT("Invalid transaction type_id; Must be base, export, or import; found %d", type_id);
   }
 }
 
-enum parse_rv parseFixed(struct FixedState *const state, parser_meta_state_t *const meta, size_t const len) {
-    size_t const available = meta->input.length - meta->input.consumed;
+enum parse_rv parseFixed(struct FixedState *const state, parser_input_meta_state_t *const input, size_t const len) {
+    size_t const available = input->length - input->consumed;
     size_t const needed = len - state->filledTo;
     size_t const to_copy = available > needed ? needed : available;
-    memcpy(&state->buffer[state->filledTo], &meta->input.src[meta->input.consumed], to_copy);
+    memcpy(&state->buffer[state->filledTo], &input->src[input->consumed], to_copy);
     state->filledTo += to_copy;
-    meta->input.consumed += to_copy;
+    input->consumed += to_copy;
     return state->filledTo == len ? PARSE_RV_DONE : PARSE_RV_NEED_MORE;
 }
-
-#define IMPL_FIXED(name) \
-    inline enum parse_rv parse_ ## name (struct name ## _state *const state, parser_meta_state_t *const meta) { \
-        return parseFixed((struct FixedState *const)state, meta, sizeof(name));\
-    } \
-    inline void init_ ## name (struct name ## _state *const state) { \
-        return initFixed((struct FixedState *const)state, sizeof(state)); \
-    }
 
 #define IMPL_FIXED_BE(name) \
     inline enum parse_rv parse_ ## name (struct name ## _state *const state, parser_meta_state_t *const meta) { \
         enum parse_rv sub_rv = PARSE_RV_INVALID; \
-        sub_rv = parseFixed((struct FixedState *const)state, meta, sizeof(name)); \
+        sub_rv = parseFixed((struct FixedState *const)state, &meta->input, sizeof(name)); \
         if (sub_rv == PARSE_RV_DONE) { \
             state->val = READ_UNALIGNED_BIG_ENDIAN(name, state->buf); \
         } \
@@ -211,7 +210,8 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                         THROW(EXC_PARSE_ERROR);
                   }
                 } else {
-                  switch(meta->type_id) {
+                  const uint8_t c_chain_bit = 24;
+                  switch(meta->is_c_chain << c_chain_bit | meta->type_id) {
                     case TRANSACTION_TYPE_ID_IMPORT:
                       should_break = ADD_PROMPT(
                           "From P chain",
@@ -222,6 +222,13 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                     case TRANSACTION_TYPE_ID_PLATFORM_IMPORT:
                       should_break = ADD_PROMPT(
                           "From X chain",
+                          &output_prompt, sizeof(output_prompt),
+                          output_prompt_to_string
+                          );
+                      break;
+                    case 1<<c_chain_bit | TRANSACTION_TYPE_ID_C_CHAIN_EXPORT:
+                      should_break = ADD_PROMPT(
+                          "C to X chain",
                           &output_prompt, sizeof(output_prompt),
                           output_prompt_to_string
                           );
@@ -452,7 +459,7 @@ enum parse_rv parse_TransferableInput(struct TransferableInput_state *const stat
             INIT_SUBPARSER(id32State, Id32);
         case 2: // asset_id
             CALL_SUBPARSER(id32State, Id32);
-            PRINTF("ASSET ID: %u\n", state->uint32State.val);
+            PRINTF("ASSET ID: %.*h\n", 32, state->id32State.buf);
             check_asset_id(&state->id32State.val, meta);
             state->state++;
             INIT_SUBPARSER(inputState, Input);
@@ -533,7 +540,7 @@ void update_transaction_hash(cx_sha256_t *const state, uint8_t const *const src,
     cx_hash((cx_hash_t *const)state, 0, src, length, NULL, 0);
 }
 
-static void strcpy_prompt(char *const out, size_t const out_size, char const *const in) {
+void strcpy_prompt(char *const out, size_t const out_size, char const *const in) {
     strncpy(out, in, out_size);
 }
 
@@ -550,10 +557,6 @@ static bool prompt_fee(parser_meta_state_t *const meta) {
     return should_break;
 }
 
-void init_BaseTransaction(struct BaseTransactionState *const state) {
-  state->state = BTS_NetworkId; // We start on Network ID
-  INIT_SUBPARSER(uint32State, uint32_t);
-}
 
 static bool is_pchain_transaction(enum transaction_type_id_t type) {
   switch(type) {
@@ -567,30 +570,52 @@ static bool is_pchain_transaction(enum transaction_type_id_t type) {
   }
 }
 
-enum parse_rv parse_BaseTransaction(struct BaseTransactionState *const state, parser_meta_state_t *const meta) {
+void init_BaseTransactionHeader(struct BaseTransactionHeaderState *const state) {
+  state->state = BTSH_NetworkId; // We start on Network ID
+  INIT_SUBPARSER(uint32State, uint32_t);
+}
+
+enum parse_rv parse_BaseTransactionHeader(struct BaseTransactionHeaderState *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
-    switch (state->state) {
-        case BTS_NetworkId: { // Network ID
+    switch(state->state) {
+      case BTSH_NetworkId: {
             CALL_SUBPARSER(uint32State, uint32_t);
             state->state++;
             PRINTF("Network ID: %.*h\n", sizeof(state->uint32State.buf), state->uint32State.buf);
             meta->network_id = parse_network_id(state->uint32State.val);
             INIT_SUBPARSER(id32State, Id32);
-        }
-        case BTS_BlockchainId: // blockchain ID
+      }
+      case BTSH_BlockchainId: {
             CALL_SUBPARSER(id32State, Id32);
             PRINTF("Blockchain ID: %.*h\n", 32, state->id32State.buf);
-            const blockchain_id_t *const blockchain_id = &network_info_from_network_id_not_null(meta->network_id)->blockchain_id;
-            if (is_pchain_transaction(meta->type_id)) {
-              if (!is_pchain(state->id32State.val.val))
-                REJECT("Transaction ID indicates P-chain but blockchain ID is is not 0");
-            } else {
-              if (memcmp(blockchain_id, &state->id32State.val, sizeof(state->id32State.val)) != 0)
+            const network_info_t *const net_info = network_info_from_network_id_not_null(meta->network_id);
+            const blockchain_id_t *const x_blockchain_id = &net_info->x_blockchain_id;
+            const blockchain_id_t *const c_blockchain_id = &net_info->c_blockchain_id;
+            meta->is_p_chain = is_pchain(state->id32State.val.val);
+            meta->is_x_chain = !memcmp(x_blockchain_id, &state->id32State.val, sizeof(state->id32State.val));
+            meta->is_c_chain = !memcmp(c_blockchain_id, &state->id32State.val, sizeof(state->id32State.val));
+            if(!(meta->is_p_chain || meta->is_x_chain || meta->is_c_chain)) {
                 REJECT("Blockchain ID did not match expected value for network ID");
             }
             state->state++;
-            INIT_SUBPARSER(outputsState, TransferableOutputs);
+      }
+      case BTSH_Done:
+        PRINTF("Done\n");
+        sub_rv = PARSE_RV_DONE;
+    }
+    return sub_rv;
+}
+
+void init_BaseTransaction(struct BaseTransactionState *const state) {
+  state->state = BTS_Outputs; // We start on Outputs
+  INIT_SUBPARSER(outputsState, TransferableOutputs);
+}
+
+enum parse_rv parse_BaseTransaction(struct BaseTransactionState *const state, parser_meta_state_t *const meta) {
+    enum parse_rv sub_rv = PARSE_RV_INVALID;
+    switch (state->state) {
         case BTS_Outputs: // outputs
+            PRINTF("Parsing outputs\n");
             CALL_SUBPARSER(outputsState, TransferableOutputs);
             PRINTF("Done with outputs\n");
             state->state++;
@@ -630,7 +655,7 @@ enum parse_rv parse_ImportTransaction(struct ImportTransactionState *const state
         case 0: // ChainID
             CALL_SUBPARSER(id32State, Id32);
             if(is_pchain_transaction(meta->type_id)) {
-              if(memcmp(network_info_from_network_id_not_null(meta->network_id)->blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
+              if(memcmp(network_info_from_network_id_not_null(meta->network_id)->x_blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
                 REJECT("Invalid XChain ID");
             } else {
               if(! is_pchain(state->id32State.buf)) REJECT("Invalid PChain ID");
@@ -666,7 +691,7 @@ enum parse_rv parse_ExportTransaction(struct ExportTransactionState *const state
         case 0: // ChainID
             CALL_SUBPARSER(id32State, Id32);
             if(is_pchain_transaction(meta->type_id)) {
-              if(memcmp(network_info_from_network_id_not_null(meta->network_id)->blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
+              if(memcmp(network_info_from_network_id_not_null(meta->network_id)->x_blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
                 REJECT("Invalid XChain ID");
             } else {
               if(! is_pchain(state->id32State.buf)) REJECT("Invalid PChain ID");
@@ -683,6 +708,169 @@ enum parse_rv parse_ExportTransaction(struct ExportTransactionState *const state
             break;
         }
         case 2:
+             // This is bc we call the parser recursively, and, at the end, it gets called with
+             // nothing to parse...But it exits without unwinding the stack, so if we are here,
+             // we need to set this in order to exit properly
+            sub_rv = PARSE_RV_DONE;
+    }
+    return sub_rv;
+}
+
+void init_EVMOutput(struct EVMOutput_state *const state) {
+  state->state = 0;
+  INIT_SUBPARSER(addressState, Address);
+}
+
+enum parse_rv parse_EVMOutput(struct EVMOutput_state *const state, parser_meta_state_t *const meta) {
+    enum parse_rv sub_rv = PARSE_RV_INVALID;
+    switch (state->state) {
+      case 0: { // Address
+          CALL_SUBPARSER(addressState, Address);
+          state->state++;
+          PRINTF("ADDRESS: %.*h\n", 20, state->addressState.buf);
+          INIT_SUBPARSER(uint32State, uint32_t);
+      }
+      case 1: { // Amount
+          CALL_SUBPARSER(uint64State, uint64_t);
+          PRINTF("AMOUNT: %x\n", state->uint64State.val);
+          if (__builtin_uaddll_overflow(state->uint64State.val, meta->sum_of_outputs, &meta->sum_of_outputs)) THROW_(EXC_MEMORY_ERROR, "Sum of outputs overflowed");
+          meta->last_output_amount = state->uint64State.val;
+          state->state++;
+          INIT_SUBPARSER(id32State, Id32);
+      }
+      case 2: { // AssetID
+          CALL_SUBPARSER(id32State, Id32);
+          PRINTF("ASSET: %.*h\n", 32, state->id32State.buf);
+          state->state++;
+      }
+      case 3: {
+          sub_rv=PARSE_RV_PROMPT;
+          state->state++;
+          output_prompt_t output_prompt;
+          memset(&output_prompt, 0, sizeof(output_prompt));
+          if (!(meta->last_output_amount > 0)) REJECT("Assertion failed: last_output_amount > 0");
+          output_prompt.amount = meta->last_output_amount;
+          output_prompt.network_id = meta->network_id;
+          // addressState explicitly is not part of the ephemeral sub-states of
+          // EVMOutput_state so that this value is still available here.
+          memcpy(&output_prompt.address, &state->addressState.val,
+              sizeof(output_prompt.address));
+
+          if(ADD_PROMPT(
+                "From X chain",
+                &output_prompt, sizeof(output_prompt),
+                output_prompt_to_string
+                ))
+              break;
+      }
+      case 4:
+        sub_rv=PARSE_RV_DONE;
+    }
+    return sub_rv;
+}
+
+IMPL_ARRAY(EVMOutput);
+
+void init_EVMInput(struct EVMInput_state *const state) {
+  state->state = 0;
+  INIT_SUBPARSER(addressState, Address);
+}
+
+enum parse_rv parse_EVMInput(struct EVMInput_state *const state, parser_meta_state_t *const meta) {
+    enum parse_rv sub_rv = PARSE_RV_INVALID;
+    switch (state->state) {
+      case 0: { // Address
+          CALL_SUBPARSER(addressState, Address);
+          state->state++;
+          PRINTF("ADDRESS: %.*h\n", 20, state->addressState.buf);
+          INIT_SUBPARSER(uint64State, uint64_t);
+      }
+      case 1: { // Amount
+          CALL_SUBPARSER(uint64State, uint64_t);
+          PRINTF("AMOUNT: %.*h\n", 8, &state->uint64State.val);
+            if (__builtin_uaddll_overflow(state->uint64State.val, meta->sum_of_inputs, &meta->sum_of_inputs)) THROW_(EXC_MEMORY_ERROR, "Sum of inputs overflowed");
+          state->state++;
+          INIT_SUBPARSER(id32State, Id32);
+      }
+      case 2: { // AssetID
+          CALL_SUBPARSER(id32State, Id32);
+          PRINTF("ASSET: %.*h\n", 32, state->id32State.buf);
+          INIT_SUBPARSER(uint64State, uint64_t);
+      }
+      case 3: { // nonce
+          CALL_SUBPARSER(uint64State, uint64_t);
+          PRINTF("NONCE: %.*h\n", 8, &state->uint64State.val);
+      }
+    }
+    return sub_rv;
+}
+
+IMPL_ARRAY(EVMInput);
+
+void init_CChainImportTransaction(struct CChainImportTransactionState *const state) {
+  state->state = 0;
+  INIT_SUBPARSER(uint32State, uint32_t);
+}
+
+enum parse_rv parse_CChainImportTransaction(struct CChainImportTransactionState *const state, parser_meta_state_t *const meta) {
+    enum parse_rv sub_rv = PARSE_RV_INVALID;
+      switch (state->state) {
+        case 0: // sourceChain
+            CALL_SUBPARSER(id32State, Id32);
+            if(memcmp(network_info_from_network_id_not_null(meta->network_id)->x_blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
+              REJECT("Invalid XChain ID");
+            state->state++;
+            INIT_SUBPARSER(inputsState, TransferableInputs);
+            PRINTF("Done with ChainID;\n");
+
+        case 1: {
+            CALL_SUBPARSER(inputsState, TransferableInputs);
+            state->state++;
+            INIT_SUBPARSER(evmOutputsState, EVMOutputs);
+            PRINTF("Done with TransferableInputs\n");
+        }
+        case 2: { // EVMOutputs
+            CALL_SUBPARSER(evmOutputsState, EVMOutputs);
+            PRINTF("Done with EVMOutputs\n");
+            state->state++;
+        }
+        case 3:
+             // This is bc we call the parser recursively, and, at the end, it gets called with
+             // nothing to parse...But it exits without unwinding the stack, so if we are here,
+             // we need to set this in order to exit properly
+            sub_rv = PARSE_RV_DONE;
+    }
+    return sub_rv;
+}
+
+void init_CChainExportTransaction(struct CChainExportTransactionState *const state) {
+  state->state = 0;
+  INIT_SUBPARSER(uint32State, uint32_t);
+}
+
+enum parse_rv parse_CChainExportTransaction(struct CChainExportTransactionState *const state, parser_meta_state_t *const meta) {
+    enum parse_rv sub_rv = PARSE_RV_INVALID;
+      switch (state->state) {
+        case 0: // destinationChain
+            CALL_SUBPARSER(id32State, Id32);
+            if(memcmp(network_info_from_network_id_not_null(meta->network_id)->x_blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
+              REJECT("Invalid XChain ID");
+            state->state++;
+            INIT_SUBPARSER(inputsState, EVMInputs);
+            PRINTF("Done with ChainID;\n");
+
+        case 1: { // Inputs
+            CALL_SUBPARSER(inputsState, EVMInputs);
+            state->state++;
+            INIT_SUBPARSER(outputsState, TransferableOutputs);
+            PRINTF("Done with EVMInputs\n");
+        }
+        case 2: { // TransferableOutputs
+            CALL_SUBPARSER(outputsState, TransferableOutputs);
+            PRINTF("Done with TransferableOutputs\n");
+            state->state++;
+        }
+        case 3:
              // This is bc we call the parser recursively, and, at the end, it gets called with
              // nothing to parse...But it exits without unwinding the stack, so if we are here,
              // we need to set this in order to exit properly
@@ -786,8 +974,8 @@ static char const delegateLabel[] = "Add Delegator";
 
 typedef struct { char const* label; size_t label_size; } label_t;
 
-static label_t type_id_to_label(enum transaction_type_id_t type_id) {
-  switch (type_id) {
+static label_t type_id_to_label(enum transaction_type_id_t type_id, bool is_c_chain) {
+  switch (type_id | is_c_chain<<8) {
     case TRANSACTION_TYPE_ID_BASE: return (label_t) { .label = transactionLabel, .label_size = sizeof(transactionLabel) };
     case TRANSACTION_TYPE_ID_IMPORT: return (label_t) { .label = importLabel, .label_size = sizeof(importLabel) };
     case TRANSACTION_TYPE_ID_EXPORT: return (label_t) { .label = exportLabel, .label_size = sizeof(exportLabel) };
@@ -797,6 +985,8 @@ static label_t type_id_to_label(enum transaction_type_id_t type_id) {
                                               return (label_t) { .label = validateLabel, .label_size = sizeof(validateLabel) };
     case TRANSACTION_TYPE_ID_ADD_DELEGATOR:
                                               return (label_t) { .label = delegateLabel, .label_size = sizeof(delegateLabel) };
+    case 0x0100 | TRANSACTION_TYPE_ID_C_CHAIN_IMPORT: return (label_t) { .label = importLabel, .label_size = sizeof(importLabel) };
+    case 0x0100 | TRANSACTION_TYPE_ID_C_CHAIN_EXPORT: return (label_t) { .label = exportLabel, .label_size = sizeof(exportLabel) };
     default:
       THROW(EXC_PARSE_ERROR);
   }
@@ -822,18 +1012,40 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             state->type = state->uint32State.val;
 
             // Rejects invalid tx types
-            meta->type_id = convert_type_id_to_type(state->type);
+            meta->raw_type_id = state->type;
             state->state++;
             PRINTF("Type ID: %.*h\n", sizeof(state->uint32State.buf), state->uint32State.buf);
 
-            label_t label = type_id_to_label(meta->type_id);
+            INIT_SUBPARSER(baseTxHdrState, BaseTransactionHeader);
+        }
+        case 2: { // Base transaction header
+            CALL_SUBPARSER(baseTxHdrState, BaseTransactionHeader);
+            PRINTF("Parsed BTH\n");
+            meta->type_id = convert_type_id_to_type(meta->raw_type_id, meta->is_c_chain);
+            state->state++;
+
+            label_t label = type_id_to_label(meta->type_id, meta->is_c_chain);
+            if (is_pchain_transaction(meta->type_id)) {
+              if (!meta->is_p_chain)
+                REJECT("Transaction ID indicates P-chain but blockchain ID is is not 0");
+            } else {
+              if (!(meta->is_x_chain || meta->is_c_chain))
+                REJECT("Blockchain ID did not match expected value for network ID");
+            }
+
             INIT_SUBPARSER(baseTxState, BaseTransaction);
             if (ADD_PROMPT("Sign", label.label, label.label_size, strcpy_prompt)) break;
         }
-        case 2: { // Base transaction
-            CALL_SUBPARSER(baseTxState, BaseTransaction);
+        case 3: { // Base transaction
+            if(! meta->is_c_chain) { // C-chain atomic transactions have a different format; skip here.
+                PRINTF("TRACE\n");
+                CALL_SUBPARSER(baseTxState, BaseTransaction);
+                PRINTF("TRACE\n");
+            } else {
+                PRINTF("SKIPPING BASE TRANSACTION\n");
+            }
             state->state++;
-            switch(meta->type_id) {
+            switch(meta->type_id | meta->is_c_chain << 8) {
               case TRANSACTION_TYPE_ID_BASE:
                 break;
               case TRANSACTION_TYPE_ID_IMPORT:
@@ -852,12 +1064,18 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
               case TRANSACTION_TYPE_ID_PLATFORM_EXPORT:
                 INIT_SUBPARSER(exportTxState, ExportTransaction);
                 break;
+              case 0x0100 | TRANSACTION_TYPE_ID_C_CHAIN_IMPORT:
+                INIT_SUBPARSER(cChainImportState, CChainImportTransaction);
+                break;
+              case 0x0100 | TRANSACTION_TYPE_ID_C_CHAIN_EXPORT:
+                INIT_SUBPARSER(cChainExportState, CChainExportTransaction);
+                break;
               default:
                 REJECT("Only base, export, and import transactions are supported");
             }
         }
-        case 3: {
-            switch (meta->type_id) {
+        case 4: {
+            switch (meta->type_id | meta->is_c_chain << 8) {
               case TRANSACTION_TYPE_ID_BASE:
                 sub_rv = PARSE_RV_DONE;
                 break;
@@ -877,19 +1095,27 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
               case TRANSACTION_TYPE_ID_PLATFORM_EXPORT:
                 CALL_SUBPARSER(exportTxState, ExportTransaction);
                 break;
+              case 0x0100 | TRANSACTION_TYPE_ID_C_CHAIN_IMPORT:
+                CALL_SUBPARSER(cChainImportState, CChainImportTransaction);
+                break;
+              case 0x0100 | TRANSACTION_TYPE_ID_C_CHAIN_EXPORT:
+                CALL_SUBPARSER(cChainExportState, CChainExportTransaction);
+                break;
               default:
                 REJECT("Only base, export, and import transactions are supported");
             }
             BUBBLE_SWITCH_BREAK;
             state->state++;
                 }
-        case 4: {
+        case 5: {
+                  PRINTF("Prompting for fee\n");
                   bool should_break = prompt_fee(meta);
                   sub_rv = PARSE_RV_PROMPT;
                   state->state++;
+                  PRINTF("Prompted for fee\n");
                   if (should_break) break;
                 }
-        case 5:
+        case 6:
                 return PARSE_RV_DONE;
     }
     PRINTF("Consumed %d bytes of input so far\n", meta->input.consumed);
