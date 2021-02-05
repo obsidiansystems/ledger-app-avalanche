@@ -47,7 +47,7 @@ void initFixed(struct FixedState *const state, size_t const len) {
 
 enum transaction_type_id_t convert_type_id_to_type(uint32_t type_id, uint8_t is_c_chain) {
     static const uint32_t c_chain_bit = 24;
-    if(type_id & 1<<c_chain_bit) { 
+    if(type_id & 1<<c_chain_bit) {
         // If this becomes a real type id, just change the 24 for the switch.
       REJECT("Invalid transaction type_id; Must be base, export, or import; found %d", type_id);
     }
@@ -755,7 +755,7 @@ enum parse_rv parse_EVMOutput(struct EVMOutput_state *const state, parser_meta_s
           // EVMOutput_state so that this value is still available here.
           memcpy(&output_prompt.address, &state->addressState.val,
               sizeof(output_prompt.address));
-          
+
           if(ADD_PROMPT(
                 "From X chain",
                 &output_prompt, sizeof(output_prompt),
@@ -815,7 +815,7 @@ void init_CChainImportTransaction(struct CChainImportTransactionState *const sta
 enum parse_rv parse_CChainImportTransaction(struct CChainImportTransactionState *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
       switch (state->state) {
-        case 0: // sourceChain 
+        case 0: // sourceChain
             CALL_SUBPARSER(id32State, Id32);
             if(memcmp(network_info_from_network_id_not_null(meta->network_id)->x_blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
               REJECT("Invalid XChain ID");
@@ -823,7 +823,7 @@ enum parse_rv parse_CChainImportTransaction(struct CChainImportTransactionState 
             INIT_SUBPARSER(inputsState, TransferableInputs);
             PRINTF("Done with ChainID;\n");
 
-        case 1: { // PChain
+        case 1: {
             CALL_SUBPARSER(inputsState, TransferableInputs);
             state->state++;
             INIT_SUBPARSER(evmOutputsState, EVMOutputs);
@@ -851,7 +851,7 @@ void init_CChainExportTransaction(struct CChainExportTransactionState *const sta
 enum parse_rv parse_CChainExportTransaction(struct CChainExportTransactionState *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
       switch (state->state) {
-        case 0: // destinationChain 
+        case 0: // destinationChain
             CALL_SUBPARSER(id32State, Id32);
             if(memcmp(network_info_from_network_id_not_null(meta->network_id)->x_blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
               REJECT("Invalid XChain ID");
