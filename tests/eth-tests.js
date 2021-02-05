@@ -81,9 +81,9 @@ describe("Eth app compatibility tests", () => {
   it('can sign a transaction with assetCall deposit and funds via the ethereum ledgerjs module', async function() {
       await testSigning(this, 43112,
                         assetCallDepositPrompts('verma4Pa9biWKbjDGNsTXU47cYCyDSNGSU1iBkxucfVSFVXdv',
-                                                 '0x41c9cc6fd27e26e70f951869fb09da685a696f0a',
-                                                 '0x0'),
-                         'f88501856d6e2edc00832dc6c09401000000000000000000000000000000000000028501dcd65000b85841c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a00000000000000000000000000000000000000000000000000000000000000000d0e30db082a8688080'
+                                                '0x41c9cc6fd27e26e70f951869fb09da685a696f0a',
+                                                '0x0'),
+                         'f88001856d6e2edc00832dc6c094010000000000000000000000000000000000000280b85841c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a00000000000000000000000000000000000000000000000000000000000000000d0e30db082a8688080'
                        )
   });
 
@@ -105,4 +105,17 @@ describe("Eth app compatibility tests", () => {
     expect(ethTxObj.getSenderPublicKey()).to.equalBytes("ef5b152e3f15eb0c50c9916161c2309e54bd87b9adce722d69716bcdef85f547678e15ab40a78919c7284e67a17ee9a96e8b9886b60f767d93023bac8dbc16e4");
     await flow.promptsPromise;
   });
+
+  // TODO: something about this test having no prompts causes the ones ran after it to fail
+  it.skip('rejects assetCall with non-zero AVAX', async function() {
+    try {
+      await testSigning(this, 43112, [],
+                        'f87c01856d6e2edc00832dc6c094010000000000000000000000000000000000000201b85441c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a0000000000000000000000000000000000000000000000000000000000001234582a8688080'
+                       );
+      throw "Signing should have been rejected";
+    } catch (e) {
+      expect(e).has.property('statusCode', 0x9405); // PARSE_ERROR
+      expect(e).has.property('statusText', 'UNKNOWN_ERROR');
+    }
+  })
 });

@@ -218,6 +218,12 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
             if(state->rlpItem_state.length > 8) REJECT("Can't support large numbers (yet)") // Fix this.
             for(uint64_t i = 0; i < state->rlpItem_state.length; i++) // Should be a function.
                 ((uint8_t*)(&value))[i] = state->rlpItem_state.buffer[state->rlpItem_state.length-i-1];
+
+            // As of now, there is no known reason to send AVAX to any precompiled contract we support
+            // Given that, we take the less risky action with the intent of protecting from unintended transfers
+            if(meta->known_destination && value)
+              REJECT("Transactions sent to precompiled contracts must have an amount of 0 WEI");
+
             SET_PROMPT_VALUE(entry->data.output_prompt.amount = value);
 
             FINISH_ITEM_CHUNK();
