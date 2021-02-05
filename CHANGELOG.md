@@ -1,5 +1,15 @@
 # Avalanche Hardware Wallet for Ledger
 
+## 0.4.0
+
+* Support C chain import and export.
+* Support C chain transfer of Avalanche Native Assets (ANTs).
+* Support C chain deposit of ANTs to a token contract.
+* Support signing of a hash with Ethereum BIP32 paths.
+* Bump AvalancheJS to 0.3.2 Apricot release.
+* Other miscellaneous bug fixes.
+
+
 ## 0.3.1
 
 * Support P chain import and export.
