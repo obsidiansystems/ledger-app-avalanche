@@ -8,11 +8,11 @@ const transferPrompts = (address, amount) => [
     [{header:"Finalize", body: "Transaction"}]
 ];
 const assetCallTransferPrompts = (assetID, address, amount) => [
-    [{header:"Transfer", body: '0000000000000000000000000000000000000000000000000000000000123456' + " of " + assetID + " to " + address}],
+    [{header:"Transfer", body: amount + " of " + assetID + " to " + address}],
     [{header:"Finalize", body: "Transaction"}]
 ];
 const assetCallDepositPrompts = (assetID, address, amount) => [
-    [{header: "Deposit", body: '0000000000000000000000000000000000000000000000000000000000000008' + " of " + assetID + " to " + address}],
+    [{header: "Deposit", body: amount + " of " + assetID + " to " + address}],
     [{header:"Finalize", body: "Transaction"}]
 ];
 
@@ -73,8 +73,8 @@ describe("Eth app compatibility tests", () => {
       await testSigning(this, 43112,
                         assetCallTransferPrompts('verma4Pa9biWKbjDGNsTXU47cYCyDSNGSU1iBkxucfVSFVXdv',
                                                  '0x41c9cc6fd27e26e70f951869fb09da685a696f0a',
-                                                 '17'),
-                        'f87c01856d6e2edc00832dc6c094010000000000000000000000000000000000000280b85441c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a0000000000000000000000000000000000000000000000000000000000012345682a8688080'
+                                                 '0x012345'),
+                        'f87c01856d6e2edc00832dc6c094010000000000000000000000000000000000000280b85441c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a0000000000000000000000000000000000000000000000000000000000001234582a8688080'
                        )
   })
 
@@ -82,8 +82,8 @@ describe("Eth app compatibility tests", () => {
       await testSigning(this, 43112,
                         assetCallDepositPrompts('verma4Pa9biWKbjDGNsTXU47cYCyDSNGSU1iBkxucfVSFVXdv',
                                                  '0x41c9cc6fd27e26e70f951869fb09da685a696f0a',
-                                                 '8'),
-                         'f88501856d6e2edc00832dc6c09401000000000000000000000000000000000000028501dcd65000b85841c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a00000000000000000000000000000000000000000000000000000000000000008d0e30db082a8688080'
+                                                 '0x0'),
+                         'f88501856d6e2edc00832dc6c09401000000000000000000000000000000000000028501dcd65000b85841c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a00000000000000000000000000000000000000000000000000000000000000000d0e30db082a8688080'
                        )
   });
 

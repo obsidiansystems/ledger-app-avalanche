@@ -59,8 +59,22 @@ static void output_assetCall_prompt_to_string(char *const out, size_t const out_
   check_null(in);
   size_t ix = 0;
 
-  bin_to_hex_lc(out, out_size, &in->assetCall.amount, 32);
-  ix += 64;
+  size_t leadingZeros = 0;
+  for(size_t i = 0; i < 32; i++) {
+    if(in->assetCall.amount.val[i])
+      break;
+    leadingZeros += 1;
+  }
+
+  out[ix] = '0'; ix++;
+  out[ix] = 'x'; ix++;
+  if(leadingZeros == 32) {
+    out[ix] = '0'; ix++;
+  } else {
+    size_t toCopy = 32 - leadingZeros;
+    bin_to_hex_lc(&out[ix], out_size, &in->assetCall.amount.val[leadingZeros], toCopy);
+    ix += toCopy * 2;
+  }
 
   static char const of[] = " of ";
   if (ix + sizeof(of) > out_size) THROW_(EXC_MEMORY_ERROR, "Can't fit ' of ' into prompt value string");
