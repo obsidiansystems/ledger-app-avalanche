@@ -303,7 +303,6 @@ typedef struct {
     struct {
       uint256_t amount;
       uint256_t assetID;
-      uint8_t isDeposit;
     } assetCall;
   };
   network_id_t network_id;

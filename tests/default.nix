@@ -90,12 +90,6 @@ let
             (s."create-hash@1.2.0")
           ];
         };
-        #"@ledgerhq/hw-app-eth@5.35.1" = {
-        #  key = super."@ledgerhq/hw-app-eth@5.35.1".key;
-        #  drv = super."@ledgerhq/hw-app-eth@5.35.1".drv.overrideAttrs (attrs: {
-        #    src = ./ledgerhq-hw-app-eth-v5.35.1.tgz;
-        #  });
-        #};
       };
   deps = nixLib.buildNodeDeps (pkgs.lib.composeExtensions (pkgs.callPackage npmDepsNix {fetchgit=builtins.fetchGit;}) localOverrides);
 in

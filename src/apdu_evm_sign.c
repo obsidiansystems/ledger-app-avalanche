@@ -40,6 +40,8 @@ void sign_evm_complete() {
     static uint32_t const TYPE_INDEX = 0;
     static uint32_t const DRV_PREFIX_INDEX = 1;
     static uint32_t const HASH_INDEX = 2;
+
+    // TODO: this seems dead code - confirm and remove any transitively dead code
     G.final_hash_as_buffer.bytes = &G.final_hash[0];
     G.final_hash_as_buffer.length = sizeof(G.final_hash);
     G.final_hash_as_buffer.size = sizeof(G.final_hash);
