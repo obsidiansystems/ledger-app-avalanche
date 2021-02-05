@@ -6,7 +6,6 @@
 * Support C chain transfer of Avalanche Native Assets (ANTs).
 * Support C chain deposit of ANTs to a token contract.
 * Support signing of a hash with Ethereum BIP32 paths.
-* Bump AvalancheJS to 0.3.2 Apricot release.
 * Other miscellaneous bug fixes.
 
 
