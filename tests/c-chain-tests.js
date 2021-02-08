@@ -69,8 +69,8 @@ describe("C-chain import and export tests", () => {
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
       [{header:"Sign", body:"Import"}],
-      [{header:"From X chain",body:"0.268435456 to local1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqljssag"}],
-      [{header:"Fee", body:"0"}],
+      [{header:"From X chain",body:"0.268435456 AVAX to local1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqljssag"}],
+      [{header:"Fee", body:"0 AVAX"}],
       [{header:"Finalize",body:"Transaction"}],
     ]);
     const sigPromise = this.ava.signTransaction(
@@ -130,8 +130,8 @@ describe("C-chain import and export tests", () => {
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
       [{header:"Sign",body:"Export"}],
-      [{header:"C to X chain",body:'0.001 to local1vmusmdsn0fu0w6ekj0ml90zs09td4etrp5d6p7'}],
-      [{header:"Fee",body:"0.001"}],
+      [{header:"C to X chain",body:'0.001 AVAX to local1vmusmdsn0fu0w6ekj0ml90zs09td4etrp5d6p7'}],
+      [{header:"Fee",body:"0.001 AVAX"}],
       [{header:"Finalize",body:"Transaction"}],
     ]);
     const sigPromise = this.ava.signTransaction(

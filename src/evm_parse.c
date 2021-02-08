@@ -41,7 +41,7 @@ void init_rlp_item(struct EVM_RLP_item_state *const state) {
 static void output_evm_prompt_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
     check_null(out);
     check_null(in);
-    size_t ix = nano_avax_to_string(out, out_size, in->amount);
+    size_t ix = wei_to_gwei_string(out, out_size, in->amount);
 
     static char const to[] = " to ";
     if (ix + sizeof(to) > out_size) THROW_(EXC_MEMORY_ERROR, "Can't fit ' to ' into prompt value string");
