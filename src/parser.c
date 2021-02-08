@@ -649,6 +649,7 @@ void init_ImportTransaction(struct ImportTransactionState *const state) {
 
 enum parse_rv parse_ImportTransaction(struct ImportTransactionState *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
+    bool showChainPrompt = false;
       switch (state->state) {
         case 0: // ChainID
             CALL_SUBPARSER(id32State, Id32);
@@ -656,6 +657,7 @@ enum parse_rv parse_ImportTransaction(struct ImportTransactionState *const state
               if(memcmp(network_info_from_network_id_not_null(meta->network_id)->x_blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
                 REJECT("Invalid XChain ID");
             } else {
+              showChainPrompt = true;
               if (is_pchain(state->id32State.buf))
                 meta->swapCounterpartChain = SWAPCOUNTERPARTCHAIN_P;
               else if(!memcmp(network_info_from_network_id_not_null(meta->network_id)->c_blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
@@ -669,11 +671,13 @@ enum parse_rv parse_ImportTransaction(struct ImportTransactionState *const state
 
             static char const cChainLabel[]="C-chain";
             static char const pChainLabel[]="P-chain";
-            if(ADD_PROMPT("From",
-                          meta->swapCounterpartChain == SWAPCOUNTERPARTCHAIN_C ? cChainLabel : pChainLabel,
-                          meta->swapCounterpartChain == SWAPCOUNTERPARTCHAIN_C ? sizeof(cChainLabel) : sizeof(pChainLabel),
-                          strcpy_prompt))
-              return PARSE_RV_PROMPT;
+            if (showChainPrompt) {
+              if(ADD_PROMPT("From",
+                            meta->swapCounterpartChain == SWAPCOUNTERPARTCHAIN_C ? cChainLabel : pChainLabel,
+                            meta->swapCounterpartChain == SWAPCOUNTERPARTCHAIN_C ? sizeof(cChainLabel) : sizeof(pChainLabel),
+                            strcpy_prompt))
+                return PARSE_RV_PROMPT;
+            }
 
         case 1: {
             meta->swap_output = true;
