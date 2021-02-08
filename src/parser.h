@@ -340,6 +340,11 @@ enum transaction_type_id_t {
     TRANSACTION_TYPE_ID_C_CHAIN_EXPORT = 0x01
 };
 
+enum SwapCounterpartChain {
+  SWAPCOUNTERPARTCHAIN_C = 1,
+  SWAPCOUNTERPARTCHAIN_P = 2,
+};
+
 typedef struct {
     parser_input_meta_state_t input;
     struct {
@@ -352,6 +357,7 @@ typedef struct {
     bool is_p_chain;
     bool is_x_chain;
     bool is_c_chain;
+    enum SwapCounterpartChain swapCounterpartChain;
     bool swap_output;
     uint64_t last_output_amount;
     network_id_t network_id;

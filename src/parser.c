@@ -658,17 +658,22 @@ enum parse_rv parse_ImportTransaction(struct ImportTransactionState *const state
               if(memcmp(network_info_from_network_id_not_null(meta->network_id)->x_blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
                 REJECT("Invalid XChain ID");
             } else {
-              if(! is_pchain(state->id32State.buf)) REJECT("Invalid PChain ID");
+              if (is_pchain(state->id32State.buf))
+                meta->swapCounterpartChain = SWAPCOUNTERPARTCHAIN_P;
+              else if(!memcmp(network_info_from_network_id_not_null(meta->network_id)->c_blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
+                meta->swapCounterpartChain = SWAPCOUNTERPARTCHAIN_C;
+              else
+                REJECT("Invalid Chain ID - must be P or C");
             }
             state->state++;
             INIT_SUBPARSER(inputsState, TransferableInputs);
             PRINTF("Done with ChainID;\n");
 
-        case 1: { // PChain
+        case 1: {
             meta->swap_output = true;
             CALL_SUBPARSER(inputsState, TransferableInputs);
             state->state++;
-            PRINTF("Done with PChain Address\n");
+            PRINTF("Done with source chain Address\n");
             break;
         }
         case 2:
@@ -694,7 +699,12 @@ enum parse_rv parse_ExportTransaction(struct ExportTransactionState *const state
               if(memcmp(network_info_from_network_id_not_null(meta->network_id)->x_blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
                 REJECT("Invalid XChain ID");
             } else {
-              if(! is_pchain(state->id32State.buf)) REJECT("Invalid PChain ID");
+              if (is_pchain(state->id32State.buf))
+                meta->swapCounterpartChain = SWAPCOUNTERPARTCHAIN_P;
+              else if(!memcmp(network_info_from_network_id_not_null(meta->network_id)->c_blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
+                meta->swapCounterpartChain = SWAPCOUNTERPARTCHAIN_C;
+              else
+                REJECT("Invalid Chain ID - must be P or C");
             }
             state->state++;
             INIT_SUBPARSER(outputsState, TransferableOutputs);
@@ -704,7 +714,7 @@ enum parse_rv parse_ExportTransaction(struct ExportTransactionState *const state
             meta->swap_output = true;
             CALL_SUBPARSER(outputsState, TransferableOutputs);
             state->state++;
-            PRINTF("Done with PChain Address\n");
+            PRINTF("Done with destination chain Address\n");
             break;
         }
         case 2:
