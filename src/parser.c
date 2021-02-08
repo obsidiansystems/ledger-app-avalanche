@@ -182,11 +182,9 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                 } else if(meta->swap_output) {
                   switch(meta->type_id) {
                     case TRANSACTION_TYPE_ID_EXPORT:
-                        should_break = ADD_PROMPT(
-                            "X to P chain",
-                            &output_prompt, sizeof(output_prompt),
-                            output_prompt_to_string
-                            );
+                      should_break = meta->swapCounterpartChain == SWAPCOUNTERPARTCHAIN_P
+                          ? ADD_PROMPT("X to P chain", &output_prompt, sizeof(output_prompt), output_prompt_to_string)
+                          : ADD_PROMPT("X to C chain", &output_prompt, sizeof(output_prompt), output_prompt_to_string);
                         break;
                     case TRANSACTION_TYPE_ID_PLATFORM_EXPORT:
                         should_break = ADD_PROMPT(
@@ -214,7 +212,7 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                   switch(meta->is_c_chain << c_chain_bit | meta->type_id) {
                     case TRANSACTION_TYPE_ID_IMPORT:
                       should_break = ADD_PROMPT(
-                          "From P chain",
+                          "Sending",
                           &output_prompt, sizeof(output_prompt),
                           output_prompt_to_string
                           );
@@ -668,6 +666,14 @@ enum parse_rv parse_ImportTransaction(struct ImportTransactionState *const state
             state->state++;
             INIT_SUBPARSER(inputsState, TransferableInputs);
             PRINTF("Done with ChainID;\n");
+
+            static char const cChainLabel[]="C-chain";
+            static char const pChainLabel[]="P-chain";
+            if(ADD_PROMPT("From",
+                          meta->swapCounterpartChain == SWAPCOUNTERPARTCHAIN_C ? cChainLabel : pChainLabel,
+                          meta->swapCounterpartChain == SWAPCOUNTERPARTCHAIN_C ? sizeof(cChainLabel) : sizeof(pChainLabel),
+                          strcpy_prompt))
+              return PARSE_RV_PROMPT;
 
         case 1: {
             meta->swap_output = true;
