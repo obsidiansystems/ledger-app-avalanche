@@ -28,6 +28,7 @@
 
 #define BIP32_PURPOSE 44
 #define BIP32_COIN_TYPE 9000
+#define BIP32_ETH_COIN_TYPE 60
 #define BIP32_ACCOUNT 0
 #define BIP32_NON_CHANGE 0
 #define BIP32_CHANGE 1
@@ -47,7 +48,7 @@ void check_bip32(bip32_path_t *const path, bool const check_full_path) {
             if (is_hardened && component == BIP32_PURPOSE) break;
             THROW_(EXC_SECURITY, "incorrect BIP32 purpose");
           case 1:
-            if (is_hardened && component == BIP32_COIN_TYPE) break;
+            if (is_hardened && (component == BIP32_COIN_TYPE || component == BIP32_ETH_COIN_TYPE)) break;
             THROW_(EXC_SECURITY, "incorrect BIP32 coin type");
           case 2:
             if (is_hardened && component == BIP32_ACCOUNT) break;
@@ -204,4 +205,14 @@ void generate_pkh_for_pubkey(const cx_ecfp_public_key_t *const key, public_key_h
     cx_hash((cx_hash_t *)&hash_state.sha256, CX_LAST, key->W + 1, 32, temp_sha256_hash, CX_SHA256_SIZE);
     cx_ripemd160_init(&hash_state.ripemd160);
     cx_hash((cx_hash_t *)&hash_state.ripemd160, CX_LAST, temp_sha256_hash, CX_SHA256_SIZE, (uint8_t *)dest, sizeof(public_key_hash_t));
+}
+
+void generate_evm_pkh_for_pubkey(const cx_ecfp_public_key_t *const key, public_key_hash_t *const dest) {
+
+    cx_sha3_t hash_state;
+
+    uint8_t temp[32];
+    cx_keccak_init(&hash_state, 256);
+    cx_hash((cx_hash_t *)&hash_state, CX_LAST, key->W + 1, 64, temp, sizeof(temp));
+    memcpy(dest, temp+12, 20);
 }

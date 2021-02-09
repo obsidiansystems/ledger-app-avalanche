@@ -35,6 +35,7 @@ for arg in "$@"; do
     --curve prime256r1 \
     --targetId "${target_id:?manifest file is missing field}" \
     --delete \
+    --path "44'/60'" \
     --path "44'/9000'" \
     --fileName "$app_dir/app.hex" \
     --appName "$name" \
