@@ -32,7 +32,8 @@ typedef char network_name_t[MAX_NETWORK_NAME_SIZE];
 
 typedef struct {
   network_id_t network_id;
-  blockchain_id_t blockchain_id;
+  blockchain_id_t x_blockchain_id;
+  blockchain_id_t c_blockchain_id;
   asset_id_t avax_asset_id;
   hrp_t hrp;
   network_name_t network_name;
@@ -61,7 +62,7 @@ static inline network_info_t const *network_info_from_network_id_not_null(networ
 static inline network_info_t const *network_info_from_blockchain_id(const blockchain_id_t const blockchain_id) {
   if (blockchain_id == NULL) return NULL;
   for (int i = 0; i < NETWORK_INFO_SIZE; i++)
-    if (memcmp(blockchain_id, network_info[i].blockchain_id, sizeof(*blockchain_id)) == 0)
+    if (memcmp(blockchain_id, network_info[i].x_blockchain_id, sizeof(*blockchain_id)) == 0)
       return &network_info[i];
   return NULL;
 }

@@ -173,14 +173,17 @@ size_t number_to_string(char *const dest, uint64_t number) {
 
 #define DECIMAL_DIGITS 9
 #define NANO_AVAX_SCALE 1000000000
+#define WEI_GWEI_SCALE 1000000000
 
 // Display avax in human readable form
-size_t nano_avax_to_string(char *const dest, size_t const buff_size, uint64_t nano_avax) {
+size_t subunit_to_unit_string(char *const dest, size_t const buff_size, uint64_t subunits, uint64_t scale) {
     check_null(dest);
+
     if (buff_size < MAX_INT_DIGITS + 2)
       THROW(EXC_WRONG_LENGTH); // terminating null
-    uint64_t whole_avax = nano_avax / NANO_AVAX_SCALE;
-    uint64_t fractional_avax = nano_avax % NANO_AVAX_SCALE;
+
+    uint64_t whole_avax = subunits / scale;
+    uint64_t fractional_avax = subunits % scale;
     size_t off = number_to_string(dest, whole_avax);
     if (fractional_avax == 0) {
         return off;
@@ -205,6 +208,23 @@ size_t nano_avax_to_string(char *const dest, size_t const buff_size, uint64_t na
     off += length;
     dest[off] = '\0';
     return off;
+}
+
+size_t nano_avax_to_string(char *const dest, size_t const buff_size, uint64_t nano_avax) {
+  static char const unit[] = " AVAX";
+  size_t ix = subunit_to_unit_string(dest, buff_size, nano_avax, NANO_AVAX_SCALE);
+  if (ix + sizeof(unit) > buff_size) THROW_(EXC_MEMORY_ERROR, "Can't fit ' AVAX' into prompt value string");
+  memcpy(&dest[ix], unit, sizeof(unit));
+  ix += sizeof(unit) - 1;
+  return ix;
+}
+size_t wei_to_gwei_string(char *const dest, size_t const buff_size, uint64_t wei) {
+  static char const unit[] = " GWEI";
+  size_t ix = subunit_to_unit_string(dest, buff_size, wei, WEI_GWEI_SCALE);
+  if (ix + sizeof(unit) > buff_size) THROW_(EXC_MEMORY_ERROR, "Can't fit ' AVAX' into prompt value string");
+  memcpy(&dest[ix], unit, sizeof(unit));
+  ix += sizeof(unit) - 1;
+  return ix;
 }
 
 void nano_avax_to_string_indirect64(char *const dest, size_t const buff_size, uint64_t const *const number) {
@@ -234,6 +254,24 @@ void bin_to_hex(char *const out, size_t const out_size, uint8_t const *const in,
     for (size_t i = 0; i < in_size; i++) {
         out[i * 2] = "0123456789ABCDEF"[src[i] >> 4];
         out[i * 2 + 1] = "0123456789ABCDEF"[src[i] & 0x0F];
+    }
+    out[out_len] = '\0';
+}
+
+void bin_to_hex_lc(char *const out, size_t const out_size, uint8_t const *const in, size_t const in_size) {
+    check_null(out);
+    check_null(in);
+
+    size_t const out_len = in_size * 2;
+    if (out_size < out_len + 1)
+    {
+        THROW(EXC_MEMORY_ERROR);
+    }
+
+    char const *const src = (char const *)PIC(in);
+    for (size_t i = 0; i < in_size; i++) {
+        out[i * 2] = "0123456789abcdef"[src[i] >> 4];
+        out[i * 2 + 1] = "0123456789abcdef"[src[i] & 0x0F];
     }
     out[out_len] = '\0';
 }
