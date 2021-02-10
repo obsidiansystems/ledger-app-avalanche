@@ -60,8 +60,8 @@ describe("P-chain import and export tests", () => {
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
       [{header:"Sign",body:"Import"}],
-      [{header:"From X chain",body:"19999.999 to fuji18jma8ppw3nhx5r4ap8clazz0dps7rv5u6wmu4t"}],
-      [{header:"Fee",body:"15188.373088832"}],
+      [{header:"From X chain",body:"19999.999 AVAX to fuji18jma8ppw3nhx5r4ap8clazz0dps7rv5u6wmu4t"}],
+      [{header:"Fee",body:"15188.373088832 AVAX"}],
       [{header:"Finalize",body:"Transaction"}],
     ]);
     const sigPromise = this.ava.signTransaction(
@@ -87,7 +87,7 @@ describe("P-chain import and export tests", () => {
       0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x30, 0x39, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0xd4, 0x31, 0x00, 0x00, 0x00, 0x01,
-      0x00, 0x00, 0x00, 0x01, 
+      0x00, 0x00, 0x00, 0x01,
       0xc3, 0x34, 0x41, 0x28, 0xe0, 0x60, 0x12, 0x8e,
       0xde, 0x35, 0x23, 0xa2, 0x4a, 0x46, 0x1c, 0x89,
       0x43, 0xab, 0x08, 0x59, 0x00, 0x00, 0x00, 0x01,
@@ -125,9 +125,9 @@ describe("P-chain import and export tests", () => {
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
       [{header:"Sign",body:"Export"}],
-      [{header:"Transfer",body:'0.000012345 to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3'}],
-      [{header:"P to X chain",body:'0.000012345 to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx'}],
-      [{header:"Fee",body:"0.123432099"}],
+      [{header:"Transfer",body:'0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3'}],
+      [{header:"P to X chain",body:'0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx'}],
+      [{header:"Fee",body:"0.123432099 AVAX"}],
       [{header:"Finalize",body:"Transaction"}],
     ]);
     const sigPromise = this.ava.signTransaction(
@@ -215,15 +215,15 @@ describe('Staking tests', async function () {
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
       [{header: 'Sign', body: 'Add Validator'}],
-      [{header: 'Transfer', body: '3.999 to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'}],
+      [{header: 'Transfer', body: '3.999 AVAX to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'}],
       [{header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' }],
       [{header: 'Start time', body: '2020-07-29 22:07:25 UTC' }],
       [{header: 'End time', body: '2020-08-28 21:57:26 UTC' }],
-      [{header: 'Total Stake', body: '2000' }],
-      [{header: 'Stake',body: '2000 to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'}],
+      [{header: 'Total Stake', body: '2000 AVAX' }],
+      [{header: 'Stake',body: '2000 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'}],
       [{header: 'Rewards To', body: 'local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n' }],
       [{header: 'Delegation Fee', body: '0.01%' }],
-      [{header: 'Fee',body: '0.001'}],
+      [{header: 'Fee',body: '0.001 AVAX'}],
       [{header: 'Finalize',body: 'Transaction'}],
     ]);
     const sigPromise = this.ava.signTransaction(
@@ -310,12 +310,12 @@ describe('Staking tests', async function () {
       const pathSuffixes = ["0/0", "0/1", "100/100"];
       const ui = await flowMultiPrompt(this.speculos, [
         [{header: 'Sign', body: 'Add Validator'}],
-        [{header: 'Transfer', body: '3.999 to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'}],
+        [{header: 'Transfer', body: '3.999 AVAX to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'}],
         [{header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' }],
         [{header: 'Start time', body: '2020-07-29 22:07:25 UTC' }],
         [{header: 'End time', body: '2020-08-28 21:57:26 UTC' }],
-        [{header: 'Total Stake', body: '0.000054321' }],
-        [{header: 'Stake',body: '2000 to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'}],
+        [{header: 'Total Stake', body: '0.000054321 AVAX' }],
+        [{header: 'Stake',body: '2000 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'}],
       ], "Next", "Next");
       const sigPromise = this.ava.signTransaction(
         BIPPath.fromString(pathPrefix),
@@ -393,14 +393,14 @@ describe('Staking tests', async function () {
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
       [{header: 'Sign', body: 'Add Delegator'}],
-      [{header: 'Transfer', body: '3.999 to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'}],
+      [{header: 'Transfer', body: '3.999 AVAX to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'}],
       [{header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' }],
       [{header: 'Start time', body: '2020-07-29 22:07:25 UTC' }],
       [{header: 'End time', body: '2020-08-28 21:57:26 UTC' }],
-      [{header: 'Total Stake', body: '2000' }],
-      [{header: 'Stake', body: '2000 to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'}],
+      [{header: 'Total Stake', body: '2000 AVAX' }],
+      [{header: 'Stake', body: '2000 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'}],
       [{header: 'Rewards To', body: 'local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n' }],
-      [{header: 'Fee', body: '0.001'}],
+      [{header: 'Fee', body: '0.001 AVAX'}],
       [{header: 'Finalize', body: 'Transaction'}],
     ]);
     const sigPromise = this.ava.signTransaction(
@@ -476,12 +476,12 @@ describe('Staking tests', async function () {
       const pathSuffixes = ["0/0", "0/1", "100/100"];
       const ui = await flowMultiPrompt(this.speculos, [
         [{header: 'Sign', body: 'Add Delegator'}],
-        [{header: 'Transfer', body: '3.999 to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'}],
+        [{header: 'Transfer', body: '3.999 AVAX to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'}],
         [{header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' }],
         [{header: 'Start time', body: '2020-07-29 22:07:25 UTC' }],
         [{header: 'End time', body: '2020-08-28 21:57:26 UTC' }],
-        [{header: 'Total Stake', body: '0.000054321' }],
-        [{header: 'Stake', body: '2000 to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'}],
+        [{header: 'Total Stake', body: '0.000054321 AVAX' }],
+        [{header: 'Stake', body: '2000 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'}],
       ], "Next", "Next");
       const sigPromise = this.ava.signTransaction(
         BIPPath.fromString(pathPrefix),

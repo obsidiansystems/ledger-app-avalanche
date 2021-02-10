@@ -48,3 +48,4 @@ size_t sign(uint8_t *const out, size_t const out_size, key_pair_t const *const k
             size_t const in_size);
 
 void generate_pkh_for_pubkey(const cx_ecfp_public_key_t *key, public_key_hash_t *dest);
+void generate_evm_pkh_for_pubkey(const cx_ecfp_public_key_t *const key, public_key_hash_t *const dest);

@@ -29,6 +29,13 @@ struct FixedState {
         uint8_t buf[sizeof(name)]; \
         name val; \
     }
+#define IMPL_FIXED(name) \
+    inline enum parse_rv parse_ ## name (struct name ## _state *const state, parser_meta_state_t *const meta) { \
+        return parseFixed((struct FixedState *const)state, &meta->input, sizeof(name));\
+    } \
+    inline void init_ ## name (struct name ## _state *const state) { \
+        return initFixed((struct FixedState *const)state, sizeof(state)); \
+    }
 #define DEFINE_ARRAY(name) \
     struct name ## s_state { \
         int state; \
@@ -125,7 +132,30 @@ struct TransferableInput_state {
     };
 };
 
+
 DEFINE_ARRAY(TransferableInput);
+
+struct EVMOutput_state {
+    int state;
+    struct Address_state addressState;
+    union {
+        NUMBER_STATES;
+        struct Id32_state id32State;
+    };
+};
+
+DEFINE_ARRAY(EVMOutput);
+
+struct EVMInput_state {
+    int state;
+    union {
+        NUMBER_STATES;
+        struct Id32_state id32State;
+        struct Address_state addressState;
+    };
+};
+
+DEFINE_ARRAY(EVMInput);
 
 struct Memo_state {
     int state;
@@ -136,10 +166,23 @@ struct Memo_state {
     };
 };
 
+enum BaseTransactionHeaderSteps {
+    BTSH_NetworkId = 0,
+    BTSH_BlockchainId,
+    BTSH_Done
+};
+
+struct BaseTransactionHeaderState {
+    enum BaseTransactionHeaderSteps state;
+    union {
+        struct uint16_t_state uint16State;
+        struct uint32_t_state uint32State;
+        struct Id32_state id32State;
+    };
+};
+
 enum BaseTransactionSteps {
-  BTS_NetworkId = 0,
-  BTS_BlockchainId,
-  BTS_Outputs,
+  BTS_Outputs=0,
   BTS_Inputs,
   BTS_Memo,
   BTS_Done
@@ -155,6 +198,26 @@ struct BaseTransactionState {
         struct TransferableInputs_state inputsState;
         struct Memo_state memoState;
     };
+};
+
+struct CChainImportTransactionState {
+  int state;
+  union {
+        struct uint32_t_state uint32State;
+        struct Id32_state id32State;
+        struct TransferableInputs_state inputsState;
+        struct EVMOutputs_state evmOutputsState;
+  };
+};
+
+struct CChainExportTransactionState {
+  int state;
+  union {
+        struct uint32_t_state uint32State;
+        struct Id32_state id32State;
+        struct TransferableOutputs_state outputsState;
+        struct EVMInputs_state inputsState;
+  };
 };
 
 struct ImportTransactionState {
@@ -174,7 +237,6 @@ struct ExportTransactionState {
         struct TransferableOutputs_state outputsState;
   };
 };
-
 struct Validator_state {
   int state;
   union {
@@ -211,11 +273,14 @@ struct TransactionState {
   union {
     struct uint16_t_state uint16State;
     struct uint32_t_state uint32State;
+    struct BaseTransactionHeaderState baseTxHdrState;
     struct BaseTransactionState baseTxState;
     struct ImportTransactionState importTxState;
     struct ExportTransactionState exportTxState;
     struct AddValidatorTransactionState addValidatorTxState;
     struct AddDelegatorTransactionState addDelegatorTxState;
+    struct CChainImportTransactionState cChainImportState;
+    struct CChainExportTransactionState cChainExportState;
   };
 };
 
@@ -225,10 +290,23 @@ typedef struct {
     size_t length;
 } parser_input_meta_state_t;
 
+
 typedef struct {
+  uint8_t val[32];
+} uint256_t;
+
+DEFINE_FIXED(uint256_t);
+
+typedef struct {
+  union {
     uint64_t amount;
-    network_id_t network_id;
-    Address address;
+    struct {
+      uint256_t amount;
+      uint256_t assetID;
+    } assetCall;
+  };
+  network_id_t network_id;
+  Address address;
 } output_prompt_t;
 
 typedef struct {
@@ -257,7 +335,14 @@ enum transaction_type_id_t {
     TRANSACTION_TYPE_ID_ADD_VALIDATOR = 0x0c,
     TRANSACTION_TYPE_ID_ADD_DELEGATOR = 0x0e,
     TRANSACTION_TYPE_ID_PLATFORM_IMPORT = 0x11,
-    TRANSACTION_TYPE_ID_PLATFORM_EXPORT = 0x12
+    TRANSACTION_TYPE_ID_PLATFORM_EXPORT = 0x12,
+    TRANSACTION_TYPE_ID_C_CHAIN_IMPORT = 0x00, // Yes, this is duplicate with BASE.
+    TRANSACTION_TYPE_ID_C_CHAIN_EXPORT = 0x01
+};
+
+enum SwapCounterpartChain {
+  SWAPCOUNTERPARTCHAIN_C = 1,
+  SWAPCOUNTERPARTCHAIN_P = 2,
 };
 
 typedef struct {
@@ -267,7 +352,12 @@ typedef struct {
         char const *labels[TRANSACTION_PROMPT_BATCH_SIZE + 1]; // For NULL at end
         prompt_entry_t entries[TRANSACTION_PROMPT_BATCH_SIZE];
     } prompt;
+    uint32_t raw_type_id;
     enum transaction_type_id_t type_id;
+    bool is_p_chain;
+    bool is_x_chain;
+    bool is_c_chain;
+    enum SwapCounterpartChain swapCounterpartChain;
     bool swap_output;
     uint64_t last_output_amount;
     network_id_t network_id;
@@ -275,8 +365,106 @@ typedef struct {
     uint64_t sum_of_outputs;
     uint64_t staking_weight;
     uint64_t staked;
+
+
 } parser_meta_state_t;
+
+// EVM stuff below this line
+
+enum assetCall_state_t {
+    ASSETCALL_ADDRESS,
+    ASSETCALL_ASSETID,
+    ASSETCALL_AMOUNT,
+    ASSETCALL_DATA,
+    ASSETCALL_DONE,
+};
+
+struct EVM_ABI_state { };
+
+struct EVM_assetCall_state {
+  enum assetCall_state_t state;
+  uint64_t data_length;
+    union {
+        struct Id32_state id32_state;
+        struct uint256_t_state uint256_state;
+        struct uint32_t_state selector_state;
+        struct {
+            struct Address_state address_state;
+            parser_input_meta_state_t chunk;
+            // union EVM_endpoint_states endpoint_state;
+        };
+    };
+};
+
+union EVM_endpoint_states {
+    struct EVM_ABI_state abi_state;
+    struct EVM_assetCall_state assetCall_state;
+};
+
+struct struct_evm_parser_meta_state_t;
+typedef struct struct_evm_parser_meta_state_t evm_parser_meta_state_t;
+
+typedef enum parse_rv (*known_destination_init)(union EVM_endpoint_states *const state, uint64_t length);
+typedef enum parse_rv (*known_destination_parser)(union EVM_endpoint_states *const state, parser_input_meta_state_t *const input, evm_parser_meta_state_t *const meta);
+
+struct known_destination {
+  uint8_t to[20];
+  known_destination_init init_value;
+  known_destination_parser handle_value;
+  known_destination_init init_data;
+  known_destination_parser handle_data;
+};
+
+struct struct_evm_parser_meta_state_t {
+    parser_input_meta_state_t input;
+    uint8_t chainIdLowByte;
+    struct known_destination const *known_destination;
+    struct {
+        size_t count;
+        char const *labels[TRANSACTION_PROMPT_BATCH_SIZE + 1]; // For NULL at end
+        prompt_entry_t entries[TRANSACTION_PROMPT_BATCH_SIZE];
+    } prompt;
+};
 
 void initTransaction(struct TransactionState *const state);
 
 enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta_state_t *const meta);
+
+#define MAX_EVM_BUFFER 20
+
+struct EVM_RLP_item_state {
+    int state;
+    uint64_t length;
+    uint64_t current;
+    uint8_t len_len;
+    bool do_init;
+    union {
+        struct uint64_t_state uint64_state;
+        uint8_t buffer[MAX_EVM_BUFFER];
+        struct {
+            parser_input_meta_state_t chunk;
+            union EVM_endpoint_states endpoint_state;
+        };
+    };
+};
+
+struct EVM_RLP_list_state {
+    int state;
+    uint64_t remaining;
+    uint8_t len_len;
+    uint8_t item_index;
+    union {
+        struct uint64_t_state uint64_state;
+        struct EVM_RLP_item_state rlpItem_state;
+    };
+};
+
+void initFixed(struct FixedState *const state, size_t const len);
+
+enum parse_rv parseFixed(struct FixedState *const state, parser_input_meta_state_t *const input, size_t const len);
+
+void init_rlp_list(struct EVM_RLP_list_state *const state);
+
+enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta);
+
+void strcpy_prompt(char *const out, size_t const out_size, char const *const in);
