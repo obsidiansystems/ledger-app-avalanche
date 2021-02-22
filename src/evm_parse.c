@@ -38,6 +38,12 @@ void init_rlp_item(struct EVM_RLP_item_state *const state) {
 
 #define REJECT(msg, ...) { PRINTF("Rejecting: " msg "\n", ##__VA_ARGS__); THROW_(EXC_PARSE_ERROR, "Rejected"); }
 
+static void output_evm_fee_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
+  check_null(out);
+  check_null(in);
+  wei_to_gwei_string(out, out_size, in->fee);
+}
+
 static void output_evm_prompt_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
     check_null(out);
     check_null(in);
@@ -145,6 +151,15 @@ static const struct contract_endpoints known_endpoints[] = {
 
 static const uint32_t known_endpoints_size=sizeof(known_endpoints)/sizeof(known_endpoints[0]);
 
+uint64_t enforceParsedScalarFits64Bits(struct EVM_RLP_item_state *const state) {
+  uint64_t value = 0;
+  if(state->length > 8)
+    REJECT("Can't support large numbers (yet)");
+  for(uint64_t i = 0; i < state->length; i++)
+    ((uint8_t*)(&value))[i] = state->buffer[state->length-i-1];
+  return value;
+}
+
 enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta) {
     enum parse_rv sub_rv;
     switch(state->state) {
@@ -191,12 +206,23 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
             FINISH_ITEM_CHUNK();
             // Don't need to do anything in particular with the nonce.
             // In particular, all values are at least plausible here. We could show it perhaps.
+
             PARSE_ITEM(EVM_TXN_GASPRICE, _to_buffer);
+            uint64_t gasPrice = enforceParsedScalarFits64Bits(&state->rlpItem_state);
+            size_t gasPriceLength = state->rlpItem_state.length;
+            state->gasPrice = gasPrice;
             FINISH_ITEM_CHUNK();
-            // Probably needs saved and/or prompted here
+
             PARSE_ITEM(EVM_TXN_STARTGAS, _to_buffer);
+            uint64_t startGas = enforceParsedScalarFits64Bits(&state->rlpItem_state);
+            size_t startGasLength = state->rlpItem_state.length;
+            state->startGas = startGas;
+            // TODO: We don't currently support the C-chain gas limit of 100 million,
+            // which would have a fee larger than what fits in a word
+            if(gasPriceLength + startGasLength > 8)
+              REJECT("Fee too large");
             FINISH_ITEM_CHUNK();
-            // Probably needs saved and/or prompted here
+
             PARSE_ITEM(EVM_TXN_TO, _to_buffer);
 
             if(state->rlpItem_state.length != ETHEREUM_ADDRESS_SIZE)
@@ -214,10 +240,8 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
             FINISH_ITEM_CHUNK();
             PARSE_ITEM(EVM_TXN_VALUE, _to_buffer);
 
-            uint64_t value = 0; // FIXME: support bigger numbers.
-            if(state->rlpItem_state.length > 8) REJECT("Can't support large numbers (yet)") // Fix this.
-            for(uint64_t i = 0; i < state->rlpItem_state.length; i++) // Should be a function.
-                ((uint8_t*)(&value))[i] = state->rlpItem_state.buffer[state->rlpItem_state.length-i-1];
+            // FIXME: support bigger numbers.
+            uint64_t value = enforceParsedScalarFits64Bits(&state->rlpItem_state);
 
             // As of now, there is no known reason to send AVAX to any precompiled contract we support
             // Given that, we take the less risky action with the intent of protecting from unintended transfers
@@ -254,6 +278,7 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
             if(sub_rv != PARSE_RV_DONE) return sub_rv;
             state->item_index++;
             uint64_t len=state->rlpItem_state.length;
+            state->hasData = len > 0;
             init_rlp_item(&state->rlpItem_state);
 
             if(!meta->known_destination && len != 0) {
@@ -275,6 +300,17 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
             PRINTF("Chain ID low byte: %x\n", meta->chainIdLowByte);
 
             FINISH_ITEM_CHUNK();
+
+            SET_PROMPT_VALUE(entry->data.output_prompt.fee = state->gasPrice * state->startGas);
+            if(state->hasData) {
+              if(ADD_ACCUM_PROMPT("Maximum Fee", output_evm_fee_to_string))
+                return PARSE_RV_PROMPT;
+            }
+            else {
+              if(ADD_ACCUM_PROMPT("Fee", output_evm_fee_to_string))
+                return PARSE_RV_PROMPT;
+            }
+
             PARSE_ITEM(EVM_TXN_SIG_R, _to_buffer);
 
             if(state->rlpItem_state.length != 0) REJECT("R value must be 0 for signing with EIP-155.");
