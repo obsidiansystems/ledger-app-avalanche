@@ -43,7 +43,7 @@ describe("Eth app compatibility tests", () => {
   it('can sign a transaction via the ethereum ledgerjs module', async function() {
       await testSigning(this, 43114,
                         transferPrompts('0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
-                                        '12340000 GWEI'),
+                                        '12340000 nAVAX'),
                         'ed018504e3b292008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080'
                        );
   })
@@ -62,7 +62,7 @@ describe("Eth app compatibility tests", () => {
 
   it('can sign a transaction with calldata via the ethereum ledgerjs module', async function() {
     await testSigning(this, 43112,
-        [[{header:"Transfer",body:"0.000000001 GWEI to 0x0102030400000000000000000000000000000002"}],
+        [[{header:"Transfer",body:"0.000000001 nAVAX to 0x0102030400000000000000000000000000000002"}],
          [{header:"Contract Data",body:"Is Present (unsafe)"}],
          [{header:"Finalize",body:"Transaction"}]
         ],
@@ -90,7 +90,7 @@ describe("Eth app compatibility tests", () => {
   it('can provide an ERC20 Token and sign with the ethereum ledgerjs module', async function() {
     const flow = await flowMultiPrompt(this.speculos,
       [
-        [{header:"Transfer", body: "12340000 GWEI to 0x28ee52a8f3d6e5d15f8b131996950d7f296c7952"}],
+        [{header:"Transfer", body: "12340000 nAVAX to 0x28ee52a8f3d6e5d15f8b131996950d7f296c7952"}],
         [{header:"Finalize", body: "Transaction"}]
       ]);
     ethTx = Buffer.from('ed018504e3b292008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080', 'hex');
