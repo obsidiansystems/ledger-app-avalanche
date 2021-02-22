@@ -29,15 +29,6 @@ describe("Basic Tests", () => {
       const key = await this.ava.getWalletAddress("44'/9000'/0'/1/0");
       expect(key).to.equalBytes('95250c0b1dccfe79388290381e44cdf6956b55e6');
     });
-    it('cannot retrieve a different account from the app', async function() {
-      try {
-        await this.ava.getWalletAddress("44'/9000'/1'/0/0");
-        throw "Expected failure";
-      } catch (e) {
-        expect(e).has.property('statusCode', 0x6982);
-        expect(e).has.property('statusText', 'SECURITY_STATUS_NOT_SATISFIED');
-      }
-    });
     it('cannot retrieve a non-hardened account from the app', async function() {
       try {
         await this.ava.getWalletAddress("44'/9000'/0/0/0");
