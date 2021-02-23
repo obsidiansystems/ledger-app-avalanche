@@ -1,5 +1,7 @@
 { pkgs ? import ./nixpkgs {} }:
 
+# Doesn't seem to work with instructions in https://ledger.readthedocs.io/en/latest/userspace/debugging.html
+# The 'log' command is not present in the github repo, only the vendored version provided in the link above
 pkgs.stdenv.mkDerivation {
   name = "usbtool";
   src = pkgs.fetchFromGitHub {
