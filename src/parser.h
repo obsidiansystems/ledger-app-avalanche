@@ -299,6 +299,7 @@ DEFINE_FIXED(uint256_t);
 
 typedef struct {
   union {
+    uint64_t fee;
     uint64_t amount;
     struct {
       uint256_t amount;
@@ -453,6 +454,9 @@ struct EVM_RLP_list_state {
     uint64_t remaining;
     uint8_t len_len;
     uint8_t item_index;
+    bool hasData;
+    uint64_t startGas;
+    uint64_t gasPrice;
     union {
         struct uint64_t_state uint64_state;
         struct EVM_RLP_item_state rlpItem_state;

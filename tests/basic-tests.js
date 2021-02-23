@@ -3,7 +3,7 @@ describe("Basic Tests", () => {
     it('can fetch the version of the app', async function () {
       const cfg = await this.ava.getAppConfiguration();
       expect(cfg).to.be.a('object');
-      expect(cfg).to.have.property("version", "0.4.0");
+      expect(cfg).to.have.property("version", "0.4.1");
       expect(cfg).to.have.property("name", "Avalanche");
     });
     it('returns the expected wallet ID', async function () {
@@ -28,15 +28,6 @@ describe("Basic Tests", () => {
       await flowAccept(this.speculos);
       const key = await this.ava.getWalletAddress("44'/9000'/0'/1/0");
       expect(key).to.equalBytes('95250c0b1dccfe79388290381e44cdf6956b55e6');
-    });
-    it('cannot retrieve a different account from the app', async function() {
-      try {
-        await this.ava.getWalletAddress("44'/9000'/1'/0/0");
-        throw "Expected failure";
-      } catch (e) {
-        expect(e).has.property('statusCode', 0x6982);
-        expect(e).has.property('statusText', 'SECURITY_STATUS_NOT_SATISFIED');
-      }
     });
     it('cannot retrieve a non-hardened account from the app', async function() {
       try {

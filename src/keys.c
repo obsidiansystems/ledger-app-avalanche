@@ -51,7 +51,7 @@ void check_bip32(bip32_path_t *const path, bool const check_full_path) {
             if (is_hardened && (component == BIP32_COIN_TYPE || component == BIP32_ETH_COIN_TYPE)) break;
             THROW_(EXC_SECURITY, "incorrect BIP32 coin type");
           case 2:
-            if (is_hardened && component == BIP32_ACCOUNT) break;
+            if (is_hardened) break;
             THROW_(EXC_SECURITY, "incorrect BIP32 account");
           case 3:
             if (!is_hardened && (component == BIP32_NON_CHANGE || component == BIP32_CHANGE)) break;
