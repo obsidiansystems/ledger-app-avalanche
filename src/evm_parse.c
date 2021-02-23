@@ -47,7 +47,7 @@ static void output_evm_fee_to_string(char *const out, size_t const out_size, out
 static void output_evm_prompt_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
     check_null(out);
     check_null(in);
-    size_t ix = wei_to_navax_string(out, out_size, in->amount);
+    size_t ix = wei_to_navax_string_256(out, out_size, &in->amount_big);
 
     static char const to[] = " to ";
     if (ix + sizeof(to) > out_size) THROW_(EXC_MEMORY_ERROR, "Can't fit ' to ' into prompt value string");
@@ -148,9 +148,24 @@ static const uint32_t known_endpoints_size=sizeof(known_endpoints)/sizeof(known_
 uint64_t enforceParsedScalarFits64Bits(struct EVM_RLP_item_state *const state) {
   uint64_t value = 0;
   if(state->length > sizeof(uint64_t))
-    REJECT("Can't support large numbers (yet)");
-  for(uint64_t i = 0; i < state->length; i++)
+    REJECT("Can't support > 64-bit large numbers (yet)");
+  for(size_t i = 0; i < state->length; i++)
     ((uint8_t*)(&value))[i] = state->buffer[state->length-i-1];
+  return value;
+}
+
+uint256_t enforceParsedScalarFits256Bits(struct EVM_RLP_item_state *const state) {
+  uint256_t value = {{ {{ 0, 0 }}, {{ 0, 0 }} }};
+  if(state->length > sizeof(uint256_t))
+    REJECT("Can't support > 256-bit large numbers (yet)");
+  for(size_t i = 0; i < state->length; i++) {
+    const size_t numSuperWords = 2;
+    const size_t numWords = 2;
+    size_t superWord = numSuperWords - 1 - i / 16;
+    size_t word = numWords - 1 - (i % 16) / 8;
+    size_t byte = (i % 16) % 8;
+    ((uint8_t *)&(value.elements[superWord].elements[word]))[byte] = state->buffer[state->length - 1 - i];
+  }
   return value;
 }
 
@@ -234,15 +249,14 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
             FINISH_ITEM_CHUNK();
             PARSE_ITEM(EVM_TXN_VALUE, _to_buffer);
 
-            // FIXME: support bigger numbers.
-            uint64_t value = enforceParsedScalarFits64Bits(&state->rlpItem_state);
+            uint256_t value = enforceParsedScalarFits256Bits(&state->rlpItem_state);
 
             // As of now, there is no known reason to send AVAX to any precompiled contract we support
             // Given that, we take the less risky action with the intent of protecting from unintended transfers
-            if(meta->known_destination && value)
+            if(meta->known_destination && !zero256(&value))
               REJECT("Transactions sent to precompiled contracts must have an amount of 0 WEI");
 
-            SET_PROMPT_VALUE(entry->data.output_prompt.amount = value);
+            SET_PROMPT_VALUE(entry->data.output_prompt.amount_big = value);
 
             FINISH_ITEM_CHUNK();
 

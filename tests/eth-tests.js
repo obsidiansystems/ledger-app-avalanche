@@ -51,6 +51,14 @@ describe("Eth app compatibility tests", () => {
                        );
   })
 
+  it('can sign a larger transaction via the ethereum ledgerjs module', async function() {
+      await testSigning(this, 43114,
+                        transferPrompts('0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
+                                        '238547462614852887054687704548455.429902335 nAVAX'),
+                        'f83801856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c79529202bd072a24087400000f0fff0f0fff0f0fff8082a86a8080'
+                       );
+  })
+
   it('A call to assetCall with incorrect call data rejects', async function() {
     try {
       const dat = await this.eth.signTransaction(
@@ -111,7 +119,20 @@ describe("Eth app compatibility tests", () => {
     await flow.promptsPromise;
   });
 
-  // TODO: something about this test having no prompts causes the ones ran after it to fail
+  // TODO: something about these should-fail tests having no prompts causes the ones ran after it to fail
+
+  it.skip('won\'t sign a transaction via a truely gargantuan number', async function() {
+    try {
+      await testSigning(this, 43114, [],
+                        'f85c01856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952b6002b0d072a024008740000000f0fff00f00fff0f00ff0f0fff00ff0f0fff0fff0fff0fff0fff0fff0fff0fff0fff0fff0fff0fff0fff8082a86a8080'
+                       );
+      throw "Signing should have been rejected";
+    } catch (e) {
+      expect(e).has.property('statusCode', 0x9405); // PARSE_ERROR
+      expect(e).has.property('statusText', 'UNKNOWN_ERROR');
+    }
+  })
+
   it.skip('rejects assetCall with non-zero AVAX', async function() {
     try {
       await testSigning(this, 43112, [],

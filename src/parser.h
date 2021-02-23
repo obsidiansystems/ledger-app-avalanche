@@ -296,6 +296,7 @@ typedef struct {
   union {
     uint64_t fee;
     uint64_t amount;
+    uint256_t amount_big;
     struct {
       uint256_t amount;
       uint256_t assetID;

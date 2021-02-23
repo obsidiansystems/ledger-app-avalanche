@@ -76,5 +76,6 @@ void divmod128(const uint128_t *l, const uint128_t *r, uint128_t *div, uint128_t
 void divmod256(const uint256_t *l, const uint256_t *r, uint256_t *div, uint256_t *mod);
 size_t tostring128(const uint128_t *number, size_t base, char *out, size_t outLength);
 size_t tostring256(const uint256_t *number, size_t base, char *out, size_t outLength);
+size_t tostring256_fixed_point(const uint256_t *number, size_t baseParam, size_t digits_of_resolution, char *out, size_t outLength);
 
 #endif /* _UINT256_H_ */

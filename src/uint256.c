@@ -481,3 +481,41 @@ size_t tostring256(const uint256_t *number, size_t baseParam, char *out, size_t 
     reverseString(out, offset);
     return offset;
 }
+
+size_t tostring256_fixed_point(const uint256_t *number, size_t baseParam, size_t digits_of_resolution, char *out, size_t outLength) {
+    uint256_t rDiv;
+    uint256_t rMod;
+    uint256_t base;
+    copy256(&rDiv, number);
+    clear256(&rMod);
+    clear256(&base);
+    UPPER(LOWER(base)) = 0;
+    LOWER(LOWER(base)) = baseParam;
+    size_t offset = 0;
+    if ((baseParam < 2) || (baseParam > 16)) {
+        return -1;
+    }
+    bool trailing = true;
+    size_t place = 0;
+    while (place <= digits_of_resolution || !zero256(&rDiv)) {
+        if (offset > (outLength - 1)) {
+            return -1;
+        }
+        divmod256(&rDiv, &base, &rDiv, &rMod);
+        char digit = HEXDIGITS[(uint8_t) LOWER(LOWER(rMod))];
+        if (place == digits_of_resolution) {
+            if (!trailing)
+                out[offset++] = '.';
+            trailing = false;
+        }
+        if (!(trailing && digit == '0')) {
+            out[offset++] = digit;
+            trailing = false;
+        }
+        place++;
+    }
+    out[offset] = '\0';
+    reverseString(out, offset);
+    return offset;
+}
+
