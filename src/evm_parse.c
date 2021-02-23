@@ -65,21 +65,15 @@ static void output_assetCall_prompt_to_string(char *const out, size_t const out_
   check_null(in);
   size_t ix = 0;
 
-  size_t leadingZeros = 0;
-  for(size_t i = 0; i < 32; i++) {
-    if(in->assetCall.amount.val[i])
-      break;
-    leadingZeros += 1;
-  }
-
   out[ix] = '0'; ix++;
   out[ix] = 'x'; ix++;
-  if(leadingZeros == 32) {
+  if(zero256(&in->assetCall.amount)) {
     out[ix] = '0'; ix++;
   } else {
-    size_t toCopy = 32 - leadingZeros;
-    bin_to_hex_lc(&out[ix], out_size, &in->assetCall.amount.val[leadingZeros], toCopy);
-    ix += toCopy * 2;
+    size_t res = tostring256(&in->assetCall.amount, 16, &out[ix], out_size - ix);
+    if (res == -1)
+      REJECT("Failed to render amount");
+    ix += res;
   }
 
   static char const of[] = " of ";
@@ -493,7 +487,7 @@ enum parse_rv parse_assetCall_data(struct EVM_assetCall_state *const state, pars
     case ASSETCALL_AMOUNT:
       sub_rv = parseFixed(&state->uint256_state, input, sizeof(uint256_t));
       if(sub_rv != PARSE_RV_DONE) return sub_rv;
-      SET_PROMPT_VALUE(memcpy(&entry->data.output_prompt.assetCall.amount, state->uint256_state.buf, sizeof(uint256_t)));
+      SET_PROMPT_VALUE(readu256BE(state->uint256_state.buf, &entry->data.output_prompt.assetCall.amount));
       PRINTF("Amount: %.*h\n", 32, state->uint256_state.buf);
       state->state++;
 

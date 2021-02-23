@@ -77,7 +77,7 @@ describe("Eth app compatibility tests", () => {
       await testSigning(this, 43112,
                         assetCallTransferPrompts('verma4Pa9biWKbjDGNsTXU47cYCyDSNGSU1iBkxucfVSFVXdv',
                                                  '0x41c9cc6fd27e26e70f951869fb09da685a696f0a',
-                                                 '0x0123456789abcdef'),
+                                                 '0x123456789abcdef'),
                         'f87c01856d6e2edc00830186a094010000000000000000000000000000000000000280b85441c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a00000000000000000000000000000000000000000000000000123456789abcdef82a8688080'
                        )
   })

@@ -7,6 +7,7 @@
 #include "os_cx.h"
 #include "types.h"
 #include "ui.h"
+#include "uint256.h"
 
 size_t nano_avax_to_string(char *const dest, size_t const buff_size, uint64_t nano_avax);
 size_t wei_to_gwei_string(char *const dest, size_t const buff_size, uint64_t wei);

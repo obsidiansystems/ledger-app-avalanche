@@ -1,6 +1,7 @@
 #pragma once
 
 #include "types.h"
+#include "uint256.h"
 #include "network_info.h"
 
 // some global definitions
@@ -50,17 +51,6 @@ struct FixedState {
 DEFINE_FIXED_BE(uint16_t);
 DEFINE_FIXED_BE(uint32_t);
 DEFINE_FIXED_BE(uint64_t);
-
-typedef struct {
-  union {
-    uint64_t _alignAway;
-    uint8_t val[32];
-  };
-} uint256_t;
-
-_Static_assert(sizeof(uint256_t) == 256 / 8, "256 bit unsigned is wrong size");
-_Static_assert(_Alignof(uint256_t) == 8, "256 bit unsigned is wrong alignment");
-
 DEFINE_FIXED_BE(uint256_t);
 
 typedef struct {
