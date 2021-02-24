@@ -6,5 +6,5 @@ in {
   release-nanos = ledger-app.nano.s.release.all;
   release-nanox = ledger-app.nano.x.release.all;
   debug-build = (import ./. { debug = true; inherit runTest gitDescribe; }).nano.s.release.all;
-  usbtool = import ./nix/dep/usbtool.nix {};
+  usbtool = import ./nix/usbtool.nix {};
 }

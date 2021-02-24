@@ -17,7 +17,7 @@ let
       then pkgs.fetchFromGitHub { inherit (builtins.fromJSON (builtins.readFile (p + /github.json))) owner repo rev sha256; }
     else p;
 
-  usbtool = import ./nix/dep/usbtool.nix { inherit pkgs; };
+  usbtool = import ./nix/usbtool.nix { inherit pkgs; };
 
   patchSDKBinBash = name: sdk: pkgs.stdenv.mkDerivation {
     # Replaces SDK's Makefile instances of /bin/bash with Nix's bash
