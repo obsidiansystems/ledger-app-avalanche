@@ -138,7 +138,7 @@ SDK_SOURCE_PATH  += lib_stusb lib_stusb_impl
 SDK_SOURCE_PATH  += lib_u2f lib_stusb_impl
 
 DEFINES   += USB_SEGMENT_SIZE=64
-# Must use ethereum scramleKey for MetaMask compatibility
+# Need to use the same magic as the eth app; else metamask (which still uses u2f) won't see us.
 DEFINES   += U2F_PROXY_MAGIC=\"w0w\"
 DEFINES   += HAVE_IO_U2F HAVE_U2F
 
