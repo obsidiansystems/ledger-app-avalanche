@@ -52,11 +52,14 @@ DEFINE_FIXED_BE(uint32_t);
 DEFINE_FIXED_BE(uint64_t);
 
 typedef struct {
-  uint8_t val[32];
+  union {
+    uint64_t _alignAway;
+    uint8_t val[32];
+  };
 } uint256_t;
 
 _Static_assert(sizeof(uint256_t) == 256 / 8, "256 bit unsigned is wrong size");
-_Static_assert(_Alignof(uint256_t) == 1, "256 bit unsigned is wrong alignment");
+_Static_assert(_Alignof(uint256_t) == 8, "256 bit unsigned is wrong alignment");
 
 DEFINE_FIXED_BE(uint256_t);
 
