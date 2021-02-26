@@ -484,16 +484,16 @@ enum parse_rv parse_assetCall_data(struct EVM_assetCall_state *const state, pars
       state->state++;
       initFixed(&state->id32_state, sizeof(state->id32_state));
     case ASSETCALL_ASSETID:
-      sub_rv = parseFixed(&state->id32_state, input, 32);
+      sub_rv = parseFixed(&state->id32_state, input, sizeof(Id32));
       if(sub_rv != PARSE_RV_DONE) return sub_rv;
-      SET_PROMPT_VALUE(memcpy(&entry->data.output_prompt.assetCall.assetID, state->id32_state.buf, 32));
+      SET_PROMPT_VALUE(memcpy(&entry->data.output_prompt.assetCall.assetID, state->id32_state.buf, sizeof(uint256_t)));
       PRINTF("Asset: %.*h\n", 32, state->id32_state.buf);
       state->state++;
       initFixed(&state->uint256_state, sizeof(state->uint256_state));
     case ASSETCALL_AMOUNT:
-      sub_rv = parseFixed(&state->uint256_state, input, 32);
+      sub_rv = parseFixed(&state->uint256_state, input, sizeof(uint256_t));
       if(sub_rv != PARSE_RV_DONE) return sub_rv;
-      SET_PROMPT_VALUE(memcpy(&entry->data.output_prompt.assetCall.amount, state->uint256_state.buf, 32));
+      SET_PROMPT_VALUE(memcpy(&entry->data.output_prompt.assetCall.amount, state->uint256_state.buf, sizeof(uint256_t)));
       PRINTF("Amount: %.*h\n", 32, state->uint256_state.buf);
       state->state++;
 
