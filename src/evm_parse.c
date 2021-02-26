@@ -47,7 +47,7 @@ static void output_evm_fee_to_string(char *const out, size_t const out_size, out
 static void output_evm_prompt_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
     check_null(out);
     check_null(in);
-    size_t ix = wei_to_navax_string(out, out_size, in->amount);
+    size_t ix = wei_to_navax_string_256(out, out_size, &in->amount_big);
 
     static char const to[] = " to ";
     if (ix + sizeof(to) > out_size) THROW_(EXC_MEMORY_ERROR, "Can't fit ' to ' into prompt value string");
@@ -65,21 +65,15 @@ static void output_assetCall_prompt_to_string(char *const out, size_t const out_
   check_null(in);
   size_t ix = 0;
 
-  size_t leadingZeros = 0;
-  for(size_t i = 0; i < 32; i++) {
-    if(in->assetCall.amount.val[i])
-      break;
-    leadingZeros += 1;
-  }
-
   out[ix] = '0'; ix++;
   out[ix] = 'x'; ix++;
-  if(leadingZeros == 32) {
+  if(zero256(&in->assetCall.amount)) {
     out[ix] = '0'; ix++;
   } else {
-    size_t toCopy = 32 - leadingZeros;
-    bin_to_hex_lc(&out[ix], out_size, &in->assetCall.amount.val[leadingZeros], toCopy);
-    ix += toCopy * 2;
+    size_t res = tostring256(&in->assetCall.amount, 16, &out[ix], out_size - ix);
+    if (res == -1)
+      REJECT("Failed to render amount");
+    ix += res;
   }
 
   static char const of[] = " of ";
@@ -154,9 +148,24 @@ static const uint32_t known_endpoints_size=sizeof(known_endpoints)/sizeof(known_
 uint64_t enforceParsedScalarFits64Bits(struct EVM_RLP_item_state *const state) {
   uint64_t value = 0;
   if(state->length > sizeof(uint64_t))
-    REJECT("Can't support large numbers (yet)");
-  for(uint64_t i = 0; i < state->length; i++)
+    REJECT("Can't support > 64-bit large numbers (yet)");
+  for(size_t i = 0; i < state->length; i++)
     ((uint8_t*)(&value))[i] = state->buffer[state->length-i-1];
+  return value;
+}
+
+uint256_t enforceParsedScalarFits256Bits(struct EVM_RLP_item_state *const state) {
+  uint256_t value = {{ {{ 0, 0 }}, {{ 0, 0 }} }};
+  if(state->length > sizeof(uint256_t))
+    REJECT("Can't support > 256-bit large numbers (yet)");
+  for(size_t i = 0; i < state->length; i++) {
+    const size_t numSuperWords = 2;
+    const size_t numWords = 2;
+    size_t superWord = numSuperWords - 1 - i / 16;
+    size_t word = numWords - 1 - (i % 16) / 8;
+    size_t byte = (i % 16) % 8;
+    ((uint8_t *)&(value.elements[superWord].elements[word]))[byte] = state->buffer[state->length - 1 - i];
+  }
   return value;
 }
 
@@ -240,15 +249,14 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
             FINISH_ITEM_CHUNK();
             PARSE_ITEM(EVM_TXN_VALUE, _to_buffer);
 
-            // FIXME: support bigger numbers.
-            uint64_t value = enforceParsedScalarFits64Bits(&state->rlpItem_state);
+            uint256_t value = enforceParsedScalarFits256Bits(&state->rlpItem_state);
 
             // As of now, there is no known reason to send AVAX to any precompiled contract we support
             // Given that, we take the less risky action with the intent of protecting from unintended transfers
-            if(meta->known_destination && value)
+            if(meta->known_destination && !zero256(&value))
               REJECT("Transactions sent to precompiled contracts must have an amount of 0 WEI");
 
-            SET_PROMPT_VALUE(entry->data.output_prompt.amount = value);
+            SET_PROMPT_VALUE(entry->data.output_prompt.amount_big = value);
 
             FINISH_ITEM_CHUNK();
 
@@ -484,16 +492,16 @@ enum parse_rv parse_assetCall_data(struct EVM_assetCall_state *const state, pars
       state->state++;
       initFixed(&state->id32_state, sizeof(state->id32_state));
     case ASSETCALL_ASSETID:
-      sub_rv = parseFixed(&state->id32_state, input, 32);
+      sub_rv = parseFixed(&state->id32_state, input, sizeof(Id32));
       if(sub_rv != PARSE_RV_DONE) return sub_rv;
-      SET_PROMPT_VALUE(memcpy(&entry->data.output_prompt.assetCall.assetID, state->id32_state.buf, 32));
+      SET_PROMPT_VALUE(memcpy(&entry->data.output_prompt.assetCall.assetID, state->id32_state.buf, sizeof(uint256_t)));
       PRINTF("Asset: %.*h\n", 32, state->id32_state.buf);
       state->state++;
       initFixed(&state->uint256_state, sizeof(state->uint256_state));
     case ASSETCALL_AMOUNT:
-      sub_rv = parseFixed(&state->uint256_state, input, 32);
+      sub_rv = parseFixed(&state->uint256_state, input, sizeof(uint256_t));
       if(sub_rv != PARSE_RV_DONE) return sub_rv;
-      SET_PROMPT_VALUE(memcpy(&entry->data.output_prompt.assetCall.amount, state->uint256_state.buf, 32));
+      SET_PROMPT_VALUE(readu256BE(state->uint256_state.buf, &entry->data.output_prompt.assetCall.amount));
       PRINTF("Amount: %.*h\n", 32, state->uint256_state.buf);
       state->state++;
 
