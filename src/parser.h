@@ -52,6 +52,12 @@ DEFINE_FIXED_BE(uint32_t);
 DEFINE_FIXED_BE(uint64_t);
 
 typedef struct {
+  uint8_t val[32];
+} uint256_t;
+
+DEFINE_FIXED_BE(uint256_t);
+
+typedef struct {
     uint8_t val[32];
 } Id32;
 
@@ -289,13 +295,6 @@ typedef struct {
     size_t consumed;
     size_t length;
 } parser_input_meta_state_t;
-
-
-typedef struct {
-  uint8_t val[32];
-} uint256_t;
-
-DEFINE_FIXED(uint256_t);
 
 typedef struct {
   union {

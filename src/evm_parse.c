@@ -153,7 +153,7 @@ static const uint32_t known_endpoints_size=sizeof(known_endpoints)/sizeof(known_
 
 uint64_t enforceParsedScalarFits64Bits(struct EVM_RLP_item_state *const state) {
   uint64_t value = 0;
-  if(state->length > 8)
+  if(state->length > sizeof(uint64_t))
     REJECT("Can't support large numbers (yet)");
   for(uint64_t i = 0; i < state->length; i++)
     ((uint8_t*)(&value))[i] = state->buffer[state->length-i-1];
