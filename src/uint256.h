@@ -33,6 +33,12 @@ typedef struct uint256_t {
     uint128_t elements[2];
 } uint256_t;
 
+_Static_assert(sizeof(uint128_t) == 128 / 8, "128 bit unsigned is wrong size");
+_Static_assert(sizeof(uint256_t) == 256 / 8, "256 bit unsigned is wrong size");
+
+_Static_assert(_Alignof(uint128_t) == 8, "128 bit unsigned is wrong alignment");
+_Static_assert(_Alignof(uint256_t) == 8, "256 bit unsigned is wrong alignment");
+
 #define UPPER_P(x) x->elements[0]
 #define LOWER_P(x) x->elements[1]
 #define UPPER(x)   x.elements[0]
