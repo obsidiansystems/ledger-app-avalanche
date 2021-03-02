@@ -1,6 +1,7 @@
 #pragma once
 
 #include "types.h"
+#include "uint256.h"
 #include "network_info.h"
 
 // some global definitions
@@ -50,6 +51,7 @@ struct FixedState {
 DEFINE_FIXED_BE(uint16_t);
 DEFINE_FIXED_BE(uint32_t);
 DEFINE_FIXED_BE(uint64_t);
+DEFINE_FIXED_BE(uint256_t);
 
 typedef struct {
     uint8_t val[32];
@@ -290,16 +292,11 @@ typedef struct {
     size_t length;
 } parser_input_meta_state_t;
 
-
-typedef struct {
-  uint8_t val[32];
-} uint256_t;
-
-DEFINE_FIXED(uint256_t);
-
 typedef struct {
   union {
+    uint64_t fee;
     uint64_t amount;
+    uint256_t amount_big;
     struct {
       uint256_t amount;
       uint256_t assetID;
@@ -453,6 +450,9 @@ struct EVM_RLP_list_state {
     uint64_t remaining;
     uint8_t len_len;
     uint8_t item_index;
+    bool hasData;
+    uint64_t startGas;
+    uint64_t gasPrice;
     union {
         struct uint64_t_state uint64_state;
         struct EVM_RLP_item_state rlpItem_state;

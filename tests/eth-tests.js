@@ -4,16 +4,19 @@ decode = require("rlp").decode;
 byContractAddress=require("@ledgerhq/hw-app-eth/erc20").byContractAddress;
 
 const transferPrompts = (address, amount) => [
-    [{header:"Transfer", body: amount + " to " + address}],
-    [{header:"Finalize", body: "Transaction"}]
+    [{header: "Transfer",    body: amount + " to " + address}],
+    [{header: "Fee",         body: "9870000 GWEI"}],
+    [{header: "Finalize",    body: "Transaction"}]
 ];
 const assetCallTransferPrompts = (assetID, address, amount) => [
-    [{header:"Transfer", body: amount + " of " + assetID + " to " + address}],
-    [{header:"Finalize", body: "Transaction"}]
+    [{header: "Transfer",    body: amount + " of " + assetID + " to " + address}],
+    [{header: "Maximum Fee", body: "47000000 GWEI"}],
+    [{header: "Finalize",    body: "Transaction"}]
 ];
 const assetCallDepositPrompts = (assetID, address, amount) => [
-    [{header: "Deposit", body: amount + " of " + assetID + " to " + address}],
-    [{header:"Finalize", body: "Transaction"}]
+    [{header: "Deposit",     body: amount + " of " + assetID + " to " + address}],
+    [{header: "Maximum Fee", body: "47000000 GWEI"}],
+    [{header: "Finalize",    body: "Transaction"}]
 ];
 
 async function testSigning(self, chainId, prompts, hexTx) {
@@ -43,8 +46,16 @@ describe("Eth app compatibility tests", () => {
   it('can sign a transaction via the ethereum ledgerjs module', async function() {
       await testSigning(this, 43114,
                         transferPrompts('0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
-                                        '12340000 GWEI'),
-                        'ed018504e3b292008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080'
+                                        '12340000 nAVAX'),
+                        'ed01856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080'
+                       );
+  })
+
+  it('can sign a larger transaction via the ethereum ledgerjs module', async function() {
+      await testSigning(this, 43114,
+                        transferPrompts('0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
+                                        '238547462614852887054687704548455.429902335 nAVAX'),
+                        'f83801856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c79529202bd072a24087400000f0fff0f0fff0f0fff8082a86a8080'
                        );
   })
 
@@ -62,9 +73,10 @@ describe("Eth app compatibility tests", () => {
 
   it('can sign a transaction with calldata via the ethereum ledgerjs module', async function() {
     await testSigning(this, 43112,
-        [[{header:"Transfer",body:"0.000000001 GWEI to 0x0102030400000000000000000000000000000002"}],
-         [{header:"Contract Data",body:"Is Present (unsafe)"}],
-         [{header:"Finalize",body:"Transaction"}]
+        [[{header:"Transfer",      body: "0.000000001 nAVAX to 0x0102030400000000000000000000000000000002"}],
+         [{header:"Contract Data", body: "Is Present (unsafe)"}],
+         [{header:"Maximum Fee",   body: "1410000000 GWEI"}],
+         [{header:"Finalize",      body: "Transaction"}]
         ],
         'f83880856d6e2edc00832dc6c0940102030400000000000000000000000000000002019190000102030405060708090a0b0c0d0e0f82a8688080');
   })
@@ -73,8 +85,8 @@ describe("Eth app compatibility tests", () => {
       await testSigning(this, 43112,
                         assetCallTransferPrompts('verma4Pa9biWKbjDGNsTXU47cYCyDSNGSU1iBkxucfVSFVXdv',
                                                  '0x41c9cc6fd27e26e70f951869fb09da685a696f0a',
-                                                 '0x012345'),
-                        'f87c01856d6e2edc00832dc6c094010000000000000000000000000000000000000280b85441c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a0000000000000000000000000000000000000000000000000000000000001234582a8688080'
+                                                 '0x123456789abcdef'),
+                        'f87c01856d6e2edc00830186a094010000000000000000000000000000000000000280b85441c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a00000000000000000000000000000000000000000000000000123456789abcdef82a8688080'
                        )
   })
 
@@ -83,14 +95,15 @@ describe("Eth app compatibility tests", () => {
                         assetCallDepositPrompts('verma4Pa9biWKbjDGNsTXU47cYCyDSNGSU1iBkxucfVSFVXdv',
                                                 '0x41c9cc6fd27e26e70f951869fb09da685a696f0a',
                                                 '0x0'),
-                         'f88001856d6e2edc00832dc6c094010000000000000000000000000000000000000280b85841c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a00000000000000000000000000000000000000000000000000000000000000000d0e30db082a8688080'
+                        'f88001856d6e2edc00830186a094010000000000000000000000000000000000000280b85841c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a00000000000000000000000000000000000000000000000000000000000000000d0e30db082a8688080'
                        )
   });
 
   it('can provide an ERC20 Token and sign with the ethereum ledgerjs module', async function() {
     const flow = await flowMultiPrompt(this.speculos,
       [
-        [{header:"Transfer", body: "12340000 GWEI to 0x28ee52a8f3d6e5d15f8b131996950d7f296c7952"}],
+        [{header:"Transfer", body: "12340000 nAVAX to 0x28ee52a8f3d6e5d15f8b131996950d7f296c7952"}],
+        [{header:"Fee",      body: "441000 GWEI"}],
         [{header:"Finalize", body: "Transaction"}]
       ]);
     ethTx = Buffer.from('ed018504e3b292008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080', 'hex');
@@ -106,7 +119,20 @@ describe("Eth app compatibility tests", () => {
     await flow.promptsPromise;
   });
 
-  // TODO: something about this test having no prompts causes the ones ran after it to fail
+  // TODO: something about these should-fail tests having no prompts causes the ones ran after it to fail
+
+  it.skip('won\'t sign a transaction via a truely gargantuan number', async function() {
+    try {
+      await testSigning(this, 43114, [],
+                        'f85c01856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952b6002b0d072a024008740000000f0fff00f00fff0f00ff0f0fff00ff0f0fff0fff0fff0fff0fff0fff0fff0fff0fff0fff0fff0fff0fff8082a86a8080'
+                       );
+      throw "Signing should have been rejected";
+    } catch (e) {
+      expect(e).has.property('statusCode', 0x9405); // PARSE_ERROR
+      expect(e).has.property('statusText', 'UNKNOWN_ERROR');
+    }
+  })
+
   it.skip('rejects assetCall with non-zero AVAX', async function() {
     try {
       await testSigning(this, 43112, [],

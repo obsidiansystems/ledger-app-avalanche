@@ -13,7 +13,7 @@ GIT_DESCRIBE ?= $(shell git describe --tags --abbrev=8 --always --long --dirty 2
 VERSION_TAG ?= $(shell echo "$(GIT_DESCRIBE)" | cut -f1 -d-)
 APPVERSION_M=0
 APPVERSION_N=4
-APPVERSION_P=0
+APPVERSION_P=2
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 
 # Only warn about version tags if specified/inferred
@@ -139,8 +139,8 @@ SDK_SOURCE_PATH  += lib_stusb lib_stusb_impl
 SDK_SOURCE_PATH  += lib_u2f lib_stusb_impl
 
 DEFINES   += USB_SEGMENT_SIZE=64
-
-DEFINES   += U2F_PROXY_MAGIC=\"Avalanche\"
+# Need to use the same magic as the eth app; else metamask (which still uses u2f) won't see us.
+DEFINES   += U2F_PROXY_MAGIC=\"w0w\"
 DEFINES   += HAVE_IO_U2F HAVE_U2F
 
 ### WebUSB support

@@ -41,8 +41,8 @@ static void check_asset_id(Id32 const *const asset_id, parser_meta_state_t *cons
 }
 
 void initFixed(struct FixedState *const state, size_t const len) {
-    state->filledTo = 0;
-    memset(&state->buffer, 0, len);
+    state->filledTo = 0; // should be redudant with the memset, but just in case
+    memset(state, 0, len);
 }
 
 enum transaction_type_id_t convert_type_id_to_type(uint32_t type_id, uint8_t is_c_chain) {
