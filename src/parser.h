@@ -87,17 +87,51 @@ struct SECP256K1OutputOwners_state {
     };
 };
 
-struct Output_state {
+// Nested Output_state and TransferableOutput_state for the TransferableOuptut
+// in a StakeableLockOutput.
+// Needed so that we don't build a loop in the sub-state unions.
+// MUST match the layout of Output_state and TransferableOutputState in all
+// other respects.
+struct Locked_Output_state {
     int state;
     uint32_t type;
+    bool noStakeableLock;
     union {
         NUMBER_STATES;
         struct SECP256K1TransferOutput_state secp256k1TransferOutput;
     };
 };
+struct Locked_TransferableOutput_state {
+    int state;
+    bool noStakeableLock;
+    union {
+        struct Id32_state id32State;
+        struct Locked_Output_state outputState;
+    };
+};
+
+struct StakeableLockOutput_state {
+    int state;
+    union {
+        NUMBER_STATES;
+        struct Locked_TransferableOutput_state outputState;
+    };
+};
+
+struct Output_state {
+    int state;
+    uint32_t type;
+    bool noStakeableLock;
+    union {
+        NUMBER_STATES;
+        struct SECP256K1TransferOutput_state secp256k1TransferOutput;
+        struct StakeableLockOutput_state stakeableLockOutput;
+    };
+};
 
 struct TransferableOutput_state {
     int state;
+    bool noStakeableLock;
     union {
         struct Id32_state id32State;
         struct Output_state outputState;
@@ -116,17 +150,48 @@ struct SECP256K1TransferInput_state {
     };
 };
 
-struct Input_state {
+struct Locked_Input_state {
     int state;
     uint32_t type;
+    bool noStakeableInput;
     union {
         NUMBER_STATES;
         struct SECP256K1TransferInput_state secp256k1TransferInput;
     };
 };
 
+struct Locked_TransferableInput_state {
+    int state;
+    bool noStakeableInput;
+    union {
+        NUMBER_STATES;
+        struct Id32_state id32State;
+        struct Locked_Input_state inputState;
+    };
+};
+
+struct StakeableLockInput_state {
+    int state;
+    union {
+        NUMBER_STATES;
+        struct Locked_TransferableInput_state inputState;
+    };
+};
+
+struct Input_state {
+    int state;
+    uint32_t type;
+    bool noStakeableInput;
+    union {
+        NUMBER_STATES;
+        struct SECP256K1TransferInput_state secp256k1TransferInput;
+        struct StakeableLockInput_state stakeableLockInput;
+    };
+};
+
 struct TransferableInput_state {
     int state;
+    bool noStakeableInput;
     union {
         NUMBER_STATES;
         struct Id32_state id32State;
