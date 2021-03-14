@@ -112,6 +112,7 @@ struct Locked_TransferableOutput_state {
 
 struct StakeableLockOutput_state {
     int state;
+    uint64_t locktime;
     union {
         NUMBER_STATES;
         struct Locked_TransferableOutput_state outputState;
@@ -375,6 +376,11 @@ typedef struct {
     network_id_t network_id;
     Address address;
 } address_prompt_t;
+
+typedef struct {
+    uint64_t amount;
+    uint64_t until;
+} locked_prompt_t;
 
 typedef struct {
     string_generation_callback to_string;

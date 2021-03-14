@@ -325,20 +325,46 @@ void init_Locked_TransferableOutput(struct Locked_TransferableOutput_state *cons
 
 enum parse_rv parse_Locked_TransferableOutput(struct Locked_TransferableOutput_state *const state, parser_meta_state_t *const meta);
 
+static void lockedFundsPrompt(char *const out, size_t const out_size, locked_prompt_t const *const in) {
+    check_null(out);
+    check_null(in);
+
+    size_t ix = nano_avax_to_string(out, out_size, in->amount);
+
+    static char const to[] = " until ";
+    if (ix + sizeof(to) > out_size) THROW_(EXC_MEMORY_ERROR, "Can't fit ' until ' into prompt value string");
+    memcpy(&out[ix], to, sizeof(to));
+    ix += sizeof(to) - 1;
+
+    ix += time_to_string(&out[ix], out_size - ix, &in->until);
+}
+
 void init_StakeableLockOutput(struct StakeableLockOutput_state *const state) {
     state->state=0;
     INIT_SUBPARSER(uint64State, uint64_t);
 }
+
 enum parse_rv parse_StakeableLockOutput(struct StakeableLockOutput_state *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
     switch (state->state) {
       case 0: // Locktime
         CALL_SUBPARSER(uint64State, uint64_t);
+        state->locktime=state->uint64State.val;
         PRINTF("StakeableLockOutput locktime: %.*h\n", 8, state->uint64State.buf);
         state->state++;
         INIT_SUBPARSER(outputState, Locked_TransferableOutput);
       case 1: // nested TransferrableOutput
         CALL_SUBPARSER(outputState, Locked_TransferableOutput); // Expanded call, we need to cast here.
+        locked_prompt_t promptData;
+        promptData.amount=meta->last_output_amount;
+        promptData.until=state->locktime;
+        state->state++;
+        if( ADD_PROMPT("Funds locked", &promptData, sizeof(locked_prompt_t), lockedFundsPrompt) ) {
+          break;
+        }
+      case 2:
+        sub_rv=PARSE_RV_DONE;
+        break;
     }
     return sub_rv;
 }
