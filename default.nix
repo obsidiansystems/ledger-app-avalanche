@@ -6,6 +6,7 @@
 let
   nix-thunk = import ./nix/dep/nix-thunk { inherit pkgs; };
   sources = nix-thunk.mapSubdirectories nix-thunk.thunkSource ./nix/dep;
+  gitignoreSource = (import sources."gitignore.nix" {}).gitignoreSource;
 
   usbtool = import ./nix/usbtool.nix { inherit pkgs; };
 
@@ -50,7 +51,7 @@ let
       };
     };
 
-  src = pkgs.nix-gitignore.gitignoreSource [] ./.;
+  src = gitignoreSource ./.;
   # src = foo: ./.;
   # src = let glyphsFilter = (p: _: let p' = baseNameOf p; in p' != "glyphs.c" && p' != "glyphs.h");
   #    in (pkgs.lib.sources.sourceFilesBySuffices
