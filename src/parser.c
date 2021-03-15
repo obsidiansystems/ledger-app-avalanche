@@ -384,7 +384,7 @@ enum parse_rv parse_Output(struct Output_state *const state, parser_meta_state_t
             PRINTF("Output Type: %d\n", state->type);
             state->state++;
             switch (state->type) {
-                default: REJECT("Unrecognized ouput type");
+                default: REJECT("Unrecognized output type");
                 case 0x00000007:
                     INIT_SUBPARSER(secp256k1TransferOutput, SECP256K1TransferOutput);
                     break;
@@ -395,7 +395,7 @@ enum parse_rv parse_Output(struct Output_state *const state, parser_meta_state_t
             }
         case 1:
             switch (state->type) {
-                default: REJECT("Unrecognized ouput type");
+                default: REJECT("Unrecognized output type");
                 case 0x00000007:
                     PRINTF("SECP256K1TransferOutput\n");
                     CALL_SUBPARSER(secp256k1TransferOutput, SECP256K1TransferOutput);
@@ -486,12 +486,12 @@ enum parse_rv parse_SECP256K1TransferInput(struct SECP256K1TransferInput_state *
 void init_Locked_TransferableInput(struct Locked_TransferableInput_state *const state);
 enum parse_rv parse_Locked_TransferableInput(struct Locked_TransferableInput_state *const state, parser_meta_state_t *const meta);
 
-void init_StakeableLockInput(struct StakeableLockInput_state *const state){ 
+void init_StakeableLockInput(struct StakeableLockInput_state *const state){
     state->state=0;
     INIT_SUBPARSER(uint64State, uint64_t);
 }
 
-enum parse_rv parse_StakeableLockInput(struct StakeableLockInput_state *const state, parser_meta_state_t *const meta){ 
+enum parse_rv parse_StakeableLockInput(struct StakeableLockInput_state *const state, parser_meta_state_t *const meta){
     enum parse_rv sub_rv = PARSE_RV_INVALID;
     switch (state->state) {
       case 0: // Locktime
@@ -499,7 +499,7 @@ enum parse_rv parse_StakeableLockInput(struct StakeableLockInput_state *const st
         PRINTF("StakeableLockInput locktime: %.*h\n", 8, state->uint64State.buf);
         state->state++;
         INIT_SUBPARSER(inputState, Locked_TransferableInput);
-      case 1: // nested TransferrableOutput
+      case 1: // nested TransferrableInput
         CALL_SUBPARSER(inputState, Locked_TransferableInput); // Expanded call, we need to cast here.
     }
     return sub_rv;
@@ -1077,9 +1077,7 @@ enum parse_rv parse_AddValidatorTransaction(struct AddValidatorTransactionState
 
         case 1: {// Value
             meta->swap_output = true;
-            PRINTF("DBG: Stake slot\n");
             CALL_SUBPARSER(outputsState, TransferableOutputs);
-            PRINTF("DBG: Stake slot done\n");
             state->state++;
             INIT_SUBPARSER(ownersState, SECP256K1OutputOwners);
         }
