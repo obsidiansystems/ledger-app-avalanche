@@ -20,13 +20,16 @@
 
 #define CALL_SUBPARSER(subFieldName, subParser) { \
         sub_rv = parse_ ## subParser(&state->subFieldName, meta); \
-        if (sub_rv != PARSE_RV_DONE) break; \
+        if (sub_rv != PARSE_RV_DONE) return sub_rv; \
     }
 
 #define BUBBLE_SWITCH_BREAK if (sub_rv != PARSE_RV_DONE) break
 
 #define INIT_SUBPARSER(subFieldName, subParser) \
     init_ ## subParser(&state->subFieldName);
+
+#define INIT_SUBPARSER_WITH(subFieldName, subParser, ...) \
+    init_ ## subParser(&state->subFieldName, __VA_ARGS__);
 
 static bool is_pchain(blockchain_id_t blockchain_id);
 
@@ -317,8 +320,58 @@ enum parse_rv parse_SECP256K1OutputOwners(struct SECP256K1OutputOwners_state *co
     return sub_rv;
 }
 
-void init_Output(struct Output_state *const state) {
+// Forward declarations because StakeableLockOutput is recursive
+void init_Locked_TransferableOutput(struct Locked_TransferableOutput_state *const state);
+
+enum parse_rv parse_Locked_TransferableOutput(struct Locked_TransferableOutput_state *const state, parser_meta_state_t *const meta);
+
+static void lockedFundsPrompt(char *const out, size_t const out_size, locked_prompt_t const *const in) {
+    check_null(out);
+    check_null(in);
+
+    size_t ix = nano_avax_to_string(out, out_size, in->amount);
+
+    static char const to[] = " until ";
+    if (ix + sizeof(to) > out_size) THROW_(EXC_MEMORY_ERROR, "Can't fit ' until ' into prompt value string");
+    memcpy(&out[ix], to, sizeof(to));
+    ix += sizeof(to) - 1;
+
+    ix += time_to_string(&out[ix], out_size - ix, &in->until);
+}
+
+void init_StakeableLockOutput(struct StakeableLockOutput_state *const state) {
+    state->state=0;
+    INIT_SUBPARSER(uint64State, uint64_t);
+}
+
+enum parse_rv parse_StakeableLockOutput(struct StakeableLockOutput_state *const state, parser_meta_state_t *const meta) {
+    enum parse_rv sub_rv = PARSE_RV_INVALID;
+    switch (state->state) {
+      case 0: // Locktime
+        CALL_SUBPARSER(uint64State, uint64_t);
+        state->locktime=state->uint64State.val;
+        PRINTF("StakeableLockOutput locktime: %.*h\n", 8, state->uint64State.buf);
+        state->state++;
+        INIT_SUBPARSER(outputState, Locked_TransferableOutput);
+      case 1: // nested TransferrableOutput
+        CALL_SUBPARSER(outputState, Locked_TransferableOutput); // Expanded call, we need to cast here.
+        locked_prompt_t promptData;
+        promptData.amount=meta->last_output_amount;
+        promptData.until=state->locktime;
+        state->state++;
+        if( ADD_PROMPT("Funds locked", &promptData, sizeof(locked_prompt_t), lockedFundsPrompt) ) {
+          break;
+        }
+      case 2:
+        sub_rv=PARSE_RV_DONE;
+        break;
+    }
+    return sub_rv;
+}
+
+void init_Output(struct Output_state *const state, bool noStakeableLock) {
     state->state = 0;
+    state->noStakeableLock = noStakeableLock;
     INIT_SUBPARSER(uint32State, uint32_t);
 }
 
@@ -328,18 +381,29 @@ enum parse_rv parse_Output(struct Output_state *const state, parser_meta_state_t
         case 0:
             CALL_SUBPARSER(uint32State, uint32_t);
             state->type = state->uint32State.val;
+            PRINTF("Output Type: %d\n", state->type);
             state->state++;
             switch (state->type) {
-                default: REJECT("Unrecognized ouput type");
+                default: REJECT("Unrecognized output type");
                 case 0x00000007:
                     INIT_SUBPARSER(secp256k1TransferOutput, SECP256K1TransferOutput);
+                    break;
+                case 0x00000016:
+                    if(state->noStakeableLock) REJECT("Can't parse nested StakeableLockOutput");
+                    INIT_SUBPARSER(stakeableLockOutput, StakeableLockOutput);
+                    break;
             }
         case 1:
             switch (state->type) {
-                default: REJECT("Unrecognized ouput type");
+                default: REJECT("Unrecognized output type");
                 case 0x00000007:
                     PRINTF("SECP256K1TransferOutput\n");
                     CALL_SUBPARSER(secp256k1TransferOutput, SECP256K1TransferOutput);
+                    break;
+                case 0x00000016:
+                    if(state->noStakeableLock) REJECT("Can't parse nested StakeableLockOutput");
+                    CALL_SUBPARSER(stakeableLockOutput, StakeableLockOutput);
+                    break;
             }
     }
     return sub_rv;
@@ -347,8 +411,16 @@ enum parse_rv parse_Output(struct Output_state *const state, parser_meta_state_t
 
 void init_TransferableOutput(struct TransferableOutput_state *const state) {
     state->state = 0;
+    state->noStakeableLock = false;
     INIT_SUBPARSER(id32State, Id32);
 }
+
+void init_Locked_TransferableOutput(struct Locked_TransferableOutput_state *const state) {
+    state->state = 0;
+    state->noStakeableLock = true;
+    INIT_SUBPARSER(id32State, Id32);
+}
+
 
 enum parse_rv parse_TransferableOutput(struct TransferableOutput_state *const state, parser_meta_state_t *const meta) {
     PRINTF("***Parse Transferable Output***\n");
@@ -360,11 +432,15 @@ enum parse_rv parse_TransferableOutput(struct TransferableOutput_state *const st
             PRINTF("Asset ID: %.*h\n", 32, state->id32State.buf);
             check_asset_id(&state->id32State.val, meta);
             state->state++;
-            INIT_SUBPARSER(outputState, Output);
+            INIT_SUBPARSER_WITH(outputState, Output, state->noStakeableLock);
         case 1:
             CALL_SUBPARSER(outputState, Output);
     }
     return sub_rv;
+}
+
+enum parse_rv parse_Locked_TransferableOutput(struct Locked_TransferableOutput_state *const state, parser_meta_state_t *const meta) {
+  return parse_TransferableOutput((struct TransferableOutput_state*) state, meta);
 }
 
 void init_SECP256K1TransferInput(struct SECP256K1TransferInput_state *const state) {
@@ -407,8 +483,31 @@ enum parse_rv parse_SECP256K1TransferInput(struct SECP256K1TransferInput_state *
 }
 
 
-void init_Input(struct Input_state *const state) {
+void init_Locked_TransferableInput(struct Locked_TransferableInput_state *const state);
+enum parse_rv parse_Locked_TransferableInput(struct Locked_TransferableInput_state *const state, parser_meta_state_t *const meta);
+
+void init_StakeableLockInput(struct StakeableLockInput_state *const state){
+    state->state=0;
+    INIT_SUBPARSER(uint64State, uint64_t);
+}
+
+enum parse_rv parse_StakeableLockInput(struct StakeableLockInput_state *const state, parser_meta_state_t *const meta){
+    enum parse_rv sub_rv = PARSE_RV_INVALID;
+    switch (state->state) {
+      case 0: // Locktime
+        CALL_SUBPARSER(uint64State, uint64_t);
+        PRINTF("StakeableLockInput locktime: %.*h\n", 8, state->uint64State.buf);
+        state->state++;
+        INIT_SUBPARSER(inputState, Locked_TransferableInput);
+      case 1: // nested TransferrableInput
+        CALL_SUBPARSER(inputState, Locked_TransferableInput); // Expanded call, we need to cast here.
+    }
+    return sub_rv;
+}
+
+void init_Input(struct Input_state *const state, bool noStakeableInput) {
     state->state = 0;
+    state->noStakeableInput = noStakeableInput;
     INIT_SUBPARSER(uint32State, uint32_t);
 }
 
@@ -419,11 +518,17 @@ enum parse_rv parse_Input(struct Input_state *const state, parser_meta_state_t *
         case 0:
             CALL_SUBPARSER(uint32State, uint32_t);
             state->type = state->uint32State.val;
+            PRINTF("INPUT TYPE: %d\n", state->type);
             state->state++;
             switch (state->type) {
                 default: REJECT("Unrecognized input type");
                 case 0x00000005: // SECP256K1 transfer input
                     INIT_SUBPARSER(secp256k1TransferInput, SECP256K1TransferInput);
+                    break;
+                case 0x00000015: // SECP256K1 transfer input
+                    if(state->noStakeableInput) REJECT("Nested StakeableLock not allowed");
+                    INIT_SUBPARSER(stakeableLockInput, StakeableLockInput);
+                    break;
             }
         case 1:
             switch (state->type) {
@@ -431,6 +536,11 @@ enum parse_rv parse_Input(struct Input_state *const state, parser_meta_state_t *
                 case 0x00000005: // SECP256K1 transfer input
                     PRINTF("SECP256K1 Input\n");
                     CALL_SUBPARSER(secp256k1TransferInput, SECP256K1TransferInput);
+                    break;
+                case 0x00000015: // SECP256K1 transfer input
+                    if(state->noStakeableInput) REJECT("Nested StakeableLock not allowed");
+                    CALL_SUBPARSER(stakeableLockInput, StakeableLockInput);
+                    break;
             }
     }
 
@@ -439,6 +549,13 @@ enum parse_rv parse_Input(struct Input_state *const state, parser_meta_state_t *
 
 void init_TransferableInput(struct TransferableInput_state *const state) {
     state->state = 0;
+    state->noStakeableInput = false;
+    INIT_SUBPARSER(id32State, Id32);
+}
+
+void init_Locked_TransferableInput(struct Locked_TransferableInput_state *const state) {
+    state->state = 0;
+    state->noStakeableInput = true;
     INIT_SUBPARSER(id32State, Id32);
 }
 
@@ -460,11 +577,15 @@ enum parse_rv parse_TransferableInput(struct TransferableInput_state *const stat
             PRINTF("ASSET ID: %.*h\n", 32, state->id32State.buf);
             check_asset_id(&state->id32State.val, meta);
             state->state++;
-            INIT_SUBPARSER(inputState, Input);
+            INIT_SUBPARSER_WITH(inputState, Input, state->noStakeableInput);
         case 3: // Input
             CALL_SUBPARSER(inputState, Input);
     }
     return sub_rv;
+}
+
+enum parse_rv parse_Locked_TransferableInput(struct Locked_TransferableInput_state *const state, parser_meta_state_t *const meta) {
+    return parse_TransferableInput((struct TransferableInput_state *) state, meta);
 }
 
 #define IMPL_ARRAY(name) \
@@ -961,7 +1082,7 @@ enum parse_rv parse_AddValidatorTransaction(struct AddValidatorTransactionState
             INIT_SUBPARSER(ownersState, SECP256K1OutputOwners);
         }
         case 2: {
-            if ( meta->staking_weight != meta->staked ) REJECT("Stake total did not match sum of stake UTXOs");
+            if ( meta->staking_weight != meta->staked ) REJECT("Stake total did not match sum of stake UTXOs: %.*h %.*h", 8, &meta->staking_weight, 8, &meta->staked);
             CALL_SUBPARSER(ownersState, SECP256K1OutputOwners);
             state->state++;
             INIT_SUBPARSER(uint32State, uint32_t);
@@ -1012,6 +1133,15 @@ static label_t type_id_to_label(enum transaction_type_id_t type_id, bool is_c_ch
   }
 }
 
+// Call the subparser and use break on end-of-chunk;
+// this allows doing chunkwise computation on the result, e.g. for hashing it.
+
+#define CALL_SUBPARSER_BREAK(subFieldName, subParser) { \
+        sub_rv = parse_ ## subParser(&state->subFieldName, meta); \
+        PRINTF(#subParser " RV: %d\n", sub_rv); \
+        if (sub_rv != PARSE_RV_DONE) break; \
+    }
+
 enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta_state_t *const meta) {
     check_null(state);
     check_null(meta);
@@ -1022,13 +1152,13 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
     size_t const start_consumed = meta->input.consumed;
     switch (state->state) {
         case 0: // codec ID
-            CALL_SUBPARSER(uint16State, uint16_t);
+            CALL_SUBPARSER_BREAK(uint16State, uint16_t);
             PRINTF("Codec ID: %d\n", state->uint16State.val);
             if (state->uint16State.val != 0) REJECT("Only codec ID 0 is supported");
             state->state++;
             INIT_SUBPARSER(uint32State, uint32_t);
         case 1: { // type ID
-            CALL_SUBPARSER(uint32State, uint32_t);
+            CALL_SUBPARSER_BREAK(uint32State, uint32_t);
             state->type = state->uint32State.val;
 
             // Rejects invalid tx types
@@ -1039,7 +1169,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             INIT_SUBPARSER(baseTxHdrState, BaseTransactionHeader);
         }
         case 2: { // Base transaction header
-            CALL_SUBPARSER(baseTxHdrState, BaseTransactionHeader);
+            CALL_SUBPARSER_BREAK(baseTxHdrState, BaseTransactionHeader);
             PRINTF("Parsed BTH\n");
             meta->type_id = convert_type_id_to_type(meta->raw_type_id, meta->is_c_chain);
             state->state++;
@@ -1059,7 +1189,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
         case 3: { // Base transaction
             if(! meta->is_c_chain) { // C-chain atomic transactions have a different format; skip here.
                 PRINTF("TRACE\n");
-                CALL_SUBPARSER(baseTxState, BaseTransaction);
+                CALL_SUBPARSER_BREAK(baseTxState, BaseTransaction);
                 PRINTF("TRACE\n");
             } else {
                 PRINTF("SKIPPING BASE TRANSACTION\n");
@@ -1100,26 +1230,26 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
                 sub_rv = PARSE_RV_DONE;
                 break;
               case TRANSACTION_TYPE_ID_IMPORT:
-                CALL_SUBPARSER(importTxState, ImportTransaction);
+                CALL_SUBPARSER_BREAK(importTxState, ImportTransaction);
                 break;
               case TRANSACTION_TYPE_ID_EXPORT:
-                CALL_SUBPARSER(exportTxState, ExportTransaction);
+                CALL_SUBPARSER_BREAK(exportTxState, ExportTransaction);
                 break;
               case TRANSACTION_TYPE_ID_ADD_VALIDATOR:
               case TRANSACTION_TYPE_ID_ADD_DELEGATOR:
-                CALL_SUBPARSER(addValidatorTxState, AddValidatorTransaction);
+                CALL_SUBPARSER_BREAK(addValidatorTxState, AddValidatorTransaction);
                 break;
               case TRANSACTION_TYPE_ID_PLATFORM_IMPORT:
-                CALL_SUBPARSER(importTxState, ImportTransaction);
+                CALL_SUBPARSER_BREAK(importTxState, ImportTransaction);
                 break;
               case TRANSACTION_TYPE_ID_PLATFORM_EXPORT:
-                CALL_SUBPARSER(exportTxState, ExportTransaction);
+                CALL_SUBPARSER_BREAK(exportTxState, ExportTransaction);
                 break;
               case 0x0100 | TRANSACTION_TYPE_ID_C_CHAIN_IMPORT:
-                CALL_SUBPARSER(cChainImportState, CChainImportTransaction);
+                CALL_SUBPARSER_BREAK(cChainImportState, CChainImportTransaction);
                 break;
               case 0x0100 | TRANSACTION_TYPE_ID_C_CHAIN_EXPORT:
-                CALL_SUBPARSER(cChainExportState, CChainExportTransaction);
+                CALL_SUBPARSER_BREAK(cChainExportState, CChainExportTransaction);
                 break;
               default:
                 REJECT("Only base, export, and import transactions are supported");
