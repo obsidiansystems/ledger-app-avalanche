@@ -4,18 +4,8 @@
 , runTest ? true
 }:
 let
-  # TODO: Replace this with hackGet for added safety checking once hackGet is separated from reflex-platform
-  fetchThunk = p:
-    if builtins.pathExists (p + /thunk.nix)
-      then (import (p + /thunk.nix))
-    else fetchThunkBackup p;
-
-  fetchThunkBackup = p:
-    if builtins.pathExists (p + /git.json)
-      then pkgs.fetchgit { inherit (builtins.fromJSON (builtins.readFile (p + /git.json))) url rev sha256; }
-    else if builtins.pathExists (p + /github.json)
-      then pkgs.fetchFromGitHub { inherit (builtins.fromJSON (builtins.readFile (p + /github.json))) owner repo rev sha256; }
-    else p;
+  nix-thunk = import ./nix/dep/nix-thunk { inherit pkgs; };
+  sources = nix-thunk.mapSubdirectories nix-thunk.thunkSource ./nix/dep;
 
   usbtool = import ./nix/usbtool.nix { inherit pkgs; };
 
@@ -34,7 +24,7 @@ let
     {
       s = rec {
         name = "s";
-        sdk = patchSDKBinBash "nanos-secure-sdk" (fetchThunk ./nix/dep/nanos-secure-sdk);
+        sdk = patchSDKBinBash "nanos-secure-sdk" (sources.nanos-secure-sdk);
         env = pkgs.callPackage ./nix/bolos-env.nix { clangVersion = 4; };
         target = "TARGET_NANOS";
         targetId = "0x31100004";
@@ -47,7 +37,7 @@ let
       };
       x = rec {
         name = "x";
-        sdk = patchSDKBinBash "ledger-nanox-sdk" (fetchThunk ./nix/dep/ledger-nanox-sdk);
+        sdk = patchSDKBinBash "ledger-nanox-sdk" (sources.ledger-nanox-sdk);
         env = pkgs.callPackage ./nix/bolos-env.nix { clangVersion = 7; };
         target = "TARGET_NANOX";
         targetId = "0x33000004";
