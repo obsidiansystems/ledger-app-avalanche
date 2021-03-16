@@ -71,7 +71,7 @@ static void output_assetCall_prompt_to_string(char *const out, size_t const out_
     out[ix] = '0'; ix++;
   } else {
     size_t res = tostring256(&in->assetCall.amount, 16, &out[ix], out_size - ix);
-    if (res == -1)
+    if (res == (size_t)(-1))
       REJECT("Failed to render amount");
     ix += res;
   }

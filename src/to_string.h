@@ -9,10 +9,10 @@
 #include "ui.h"
 #include "uint256.h"
 
-size_t nano_avax_to_string(char *const dest, size_t const buff_size, uint64_t nano_avax);
-size_t wei_to_gwei_string(char *const dest, size_t const buff_size, uint64_t wei);
-size_t wei_to_navax_string(char *const dest, size_t const buff_size, uint64_t wei);
-size_t wei_to_navax_string_256(char *const dest, size_t const buff_size, uint256_t *wei);
+size_t nano_avax_to_string(char *const dest, size_t const buff_size, uint64_t const nano_avax);
+size_t wei_to_gwei_string(char *const dest, size_t const buff_size, uint64_t const wei);
+size_t wei_to_navax_string(char *const dest, size_t const buff_size, uint64_t const wei);
+size_t wei_to_navax_string_256(char *const dest, size_t const buff_size, uint256_t const *const wei);
 
 void bip32_path_to_string(char *const out, size_t const out_size, bip32_path_t const *const path);
 size_t pkh_to_string(char *const out, size_t const out_size, char const *const hrp, size_t const hrp_size,
@@ -21,7 +21,6 @@ size_t nodeid_to_string(char *const out, size_t const out_size, public_key_hash_
 
 // dest must be at least MAX_INT_DIGITS
 size_t number_to_string(char *const dest, uint64_t number);
-size_t nano_avax_to_string(char *const dest, size_t const buff_size, uint64_t nano_avax);
 
 // These take their number parameter through a pointer and take a length
 void nano_avax_to_string_indirect64(char *const dest, size_t const buff_size, uint64_t const *const number);
