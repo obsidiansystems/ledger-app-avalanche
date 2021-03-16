@@ -87,12 +87,22 @@ struct SECP256K1OutputOwners_state {
     };
 };
 
+struct StakeableLockOutput_state {
+    int state;
+    uint64_t locktime;
+    union {
+        NUMBER_STATES;
+        struct SECP256K1TransferOutput_state secp256k1TransferOutput;
+    };
+};
+
 struct Output_state {
     int state;
     uint32_t type;
     union {
         NUMBER_STATES;
         struct SECP256K1TransferOutput_state secp256k1TransferOutput;
+        struct StakeableLockOutput_state stakeableLockOutput;
     };
 };
 
@@ -116,12 +126,21 @@ struct SECP256K1TransferInput_state {
     };
 };
 
+struct StakeableLockInput_state {
+    int state;
+    union {
+        NUMBER_STATES;
+        struct SECP256K1TransferInput_state secp256k1TransferInput;
+    };
+};
+
 struct Input_state {
     int state;
     uint32_t type;
     union {
         NUMBER_STATES;
         struct SECP256K1TransferInput_state secp256k1TransferInput;
+        struct StakeableLockInput_state stakeableLockInput;
     };
 };
 
@@ -310,6 +329,11 @@ typedef struct {
     network_id_t network_id;
     Address address;
 } address_prompt_t;
+
+typedef struct {
+    uint64_t amount;
+    uint64_t until;
+} locked_prompt_t;
 
 typedef struct {
     string_generation_callback to_string;
