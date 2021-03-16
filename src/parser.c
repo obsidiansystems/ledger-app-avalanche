@@ -320,11 +320,6 @@ enum parse_rv parse_SECP256K1OutputOwners(struct SECP256K1OutputOwners_state *co
     return sub_rv;
 }
 
-// Forward declarations because StakeableLockOutput is recursive
-void init_Locked_TransferableOutput(struct Locked_TransferableOutput_state *const state);
-
-enum parse_rv parse_Locked_TransferableOutput(struct Locked_TransferableOutput_state *const state, parser_meta_state_t *const meta);
-
 static void lockedFundsPrompt(char *const out, size_t const out_size, locked_prompt_t const *const in) {
     check_null(out);
     check_null(in);
@@ -352,9 +347,14 @@ enum parse_rv parse_StakeableLockOutput(struct StakeableLockOutput_state *const 
         state->locktime=state->uint64State.val;
         PRINTF("StakeableLockOutput locktime: %.*h\n", 8, state->uint64State.buf);
         state->state++;
-        INIT_SUBPARSER(outputState, Locked_TransferableOutput);
-      case 1: // nested TransferrableOutput
-        CALL_SUBPARSER(outputState, Locked_TransferableOutput); // Expanded call, we need to cast here.
+        INIT_SUBPARSER(uint32State, uint32_t);
+      case 1: // Parse the type field of the nested output here, rather than dispatching through Output.
+        CALL_SUBPARSER(uint32State, uint32_t);
+        if(state->uint32State.val != 0x00000007) REJECT("Can only parse SECP256K1TransferableOutput nested in StakeableLockoutput");
+        state->state++;
+        INIT_SUBPARSER(secp256k1TransferOutput, SECP256K1TransferOutput);
+      case 2: // nested TransferrableOutput
+        CALL_SUBPARSER(secp256k1TransferOutput, SECP256K1TransferOutput);
         locked_prompt_t promptData;
         promptData.amount=meta->last_output_amount;
         promptData.until=state->locktime;
@@ -362,16 +362,15 @@ enum parse_rv parse_StakeableLockOutput(struct StakeableLockOutput_state *const 
         if( ADD_PROMPT("Funds locked", &promptData, sizeof(locked_prompt_t), lockedFundsPrompt) ) {
           break;
         }
-      case 2:
+      case 3:
         sub_rv=PARSE_RV_DONE;
         break;
     }
     return sub_rv;
 }
 
-void init_Output(struct Output_state *const state, bool noStakeableLock) {
+void init_Output(struct Output_state *const state) {
     state->state = 0;
-    state->noStakeableLock = noStakeableLock;
     INIT_SUBPARSER(uint32State, uint32_t);
 }
 
@@ -389,7 +388,6 @@ enum parse_rv parse_Output(struct Output_state *const state, parser_meta_state_t
                     INIT_SUBPARSER(secp256k1TransferOutput, SECP256K1TransferOutput);
                     break;
                 case 0x00000016:
-                    if(state->noStakeableLock) REJECT("Can't parse nested StakeableLockOutput");
                     INIT_SUBPARSER(stakeableLockOutput, StakeableLockOutput);
                     break;
             }
@@ -401,7 +399,6 @@ enum parse_rv parse_Output(struct Output_state *const state, parser_meta_state_t
                     CALL_SUBPARSER(secp256k1TransferOutput, SECP256K1TransferOutput);
                     break;
                 case 0x00000016:
-                    if(state->noStakeableLock) REJECT("Can't parse nested StakeableLockOutput");
                     CALL_SUBPARSER(stakeableLockOutput, StakeableLockOutput);
                     break;
             }
@@ -411,16 +408,8 @@ enum parse_rv parse_Output(struct Output_state *const state, parser_meta_state_t
 
 void init_TransferableOutput(struct TransferableOutput_state *const state) {
     state->state = 0;
-    state->noStakeableLock = false;
     INIT_SUBPARSER(id32State, Id32);
 }
-
-void init_Locked_TransferableOutput(struct Locked_TransferableOutput_state *const state) {
-    state->state = 0;
-    state->noStakeableLock = true;
-    INIT_SUBPARSER(id32State, Id32);
-}
-
 
 enum parse_rv parse_TransferableOutput(struct TransferableOutput_state *const state, parser_meta_state_t *const meta) {
     PRINTF("***Parse Transferable Output***\n");
@@ -432,15 +421,11 @@ enum parse_rv parse_TransferableOutput(struct TransferableOutput_state *const st
             PRINTF("Asset ID: %.*h\n", 32, state->id32State.buf);
             check_asset_id(&state->id32State.val, meta);
             state->state++;
-            INIT_SUBPARSER_WITH(outputState, Output, state->noStakeableLock);
+            INIT_SUBPARSER(outputState, Output);
         case 1:
             CALL_SUBPARSER(outputState, Output);
     }
     return sub_rv;
-}
-
-enum parse_rv parse_Locked_TransferableOutput(struct Locked_TransferableOutput_state *const state, parser_meta_state_t *const meta) {
-  return parse_TransferableOutput((struct TransferableOutput_state*) state, meta);
 }
 
 void init_SECP256K1TransferInput(struct SECP256K1TransferInput_state *const state) {
@@ -482,10 +467,6 @@ enum parse_rv parse_SECP256K1TransferInput(struct SECP256K1TransferInput_state *
     return sub_rv;
 }
 
-
-void init_Locked_TransferableInput(struct Locked_TransferableInput_state *const state);
-enum parse_rv parse_Locked_TransferableInput(struct Locked_TransferableInput_state *const state, parser_meta_state_t *const meta);
-
 void init_StakeableLockInput(struct StakeableLockInput_state *const state){
     state->state=0;
     INIT_SUBPARSER(uint64State, uint64_t);
@@ -498,16 +479,20 @@ enum parse_rv parse_StakeableLockInput(struct StakeableLockInput_state *const st
         CALL_SUBPARSER(uint64State, uint64_t);
         PRINTF("StakeableLockInput locktime: %.*h\n", 8, state->uint64State.buf);
         state->state++;
-        INIT_SUBPARSER(inputState, Locked_TransferableInput);
-      case 1: // nested TransferrableInput
-        CALL_SUBPARSER(inputState, Locked_TransferableInput); // Expanded call, we need to cast here.
+        INIT_SUBPARSER(uint32State, uint32_t);
+      case 1: // Parse the type field of the nested input here, rather than dispatching through Output.
+        CALL_SUBPARSER(uint32State, uint32_t);
+        if(state->uint32State.val != 0x00000005) REJECT("Can only parse SECP256K1TransferableInput nested in StakeableLockInput");
+        state->state++;
+        INIT_SUBPARSER(secp256k1TransferInput, SECP256K1TransferInput);
+      case 2: // nested Input
+        CALL_SUBPARSER(secp256k1TransferInput, SECP256K1TransferInput);
     }
     return sub_rv;
 }
 
-void init_Input(struct Input_state *const state, bool noStakeableInput) {
+void init_Input(struct Input_state *const state) {
     state->state = 0;
-    state->noStakeableInput = noStakeableInput;
     INIT_SUBPARSER(uint32State, uint32_t);
 }
 
@@ -526,7 +511,6 @@ enum parse_rv parse_Input(struct Input_state *const state, parser_meta_state_t *
                     INIT_SUBPARSER(secp256k1TransferInput, SECP256K1TransferInput);
                     break;
                 case 0x00000015: // SECP256K1 transfer input
-                    if(state->noStakeableInput) REJECT("Nested StakeableLock not allowed");
                     INIT_SUBPARSER(stakeableLockInput, StakeableLockInput);
                     break;
             }
@@ -538,7 +522,6 @@ enum parse_rv parse_Input(struct Input_state *const state, parser_meta_state_t *
                     CALL_SUBPARSER(secp256k1TransferInput, SECP256K1TransferInput);
                     break;
                 case 0x00000015: // SECP256K1 transfer input
-                    if(state->noStakeableInput) REJECT("Nested StakeableLock not allowed");
                     CALL_SUBPARSER(stakeableLockInput, StakeableLockInput);
                     break;
             }
@@ -549,13 +532,6 @@ enum parse_rv parse_Input(struct Input_state *const state, parser_meta_state_t *
 
 void init_TransferableInput(struct TransferableInput_state *const state) {
     state->state = 0;
-    state->noStakeableInput = false;
-    INIT_SUBPARSER(id32State, Id32);
-}
-
-void init_Locked_TransferableInput(struct Locked_TransferableInput_state *const state) {
-    state->state = 0;
-    state->noStakeableInput = true;
     INIT_SUBPARSER(id32State, Id32);
 }
 
@@ -577,15 +553,11 @@ enum parse_rv parse_TransferableInput(struct TransferableInput_state *const stat
             PRINTF("ASSET ID: %.*h\n", 32, state->id32State.buf);
             check_asset_id(&state->id32State.val, meta);
             state->state++;
-            INIT_SUBPARSER_WITH(inputState, Input, state->noStakeableInput);
+            INIT_SUBPARSER(inputState, Input);
         case 3: // Input
             CALL_SUBPARSER(inputState, Input);
     }
     return sub_rv;
-}
-
-enum parse_rv parse_Locked_TransferableInput(struct Locked_TransferableInput_state *const state, parser_meta_state_t *const meta) {
-    return parse_TransferableInput((struct TransferableInput_state *) state, meta);
 }
 
 #define IMPL_ARRAY(name) \
