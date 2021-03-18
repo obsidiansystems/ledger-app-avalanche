@@ -6,7 +6,7 @@ const spawn = require('child_process').spawn;
 const fc = require('fast-check');
 const chai = require('chai');
 const { expect } = chai.use(require('chai-bytes'));
-const { recover } = require('bcrypto/lib/secp256k1')
+const { recover } = require('bcrypto/lib/secp256k1');
 const BIPPath = require("bip32-path");
 
 const APDU_PORT = 9999;
@@ -79,7 +79,7 @@ exports.mochaHooks = {
       }
     }
   }
-}
+};
 
 async function flowAccept(speculos, expectedPrompts, acceptPrompt="Accept") {
   return await automationStart(speculos, acceptPrompts(expectedPrompts, acceptPrompt));
@@ -107,7 +107,7 @@ async function automationStart(speculos, interactionFunc) {
   // end up with two flowAccept calls active at once, causing issues.
   let subNum = speculos.handlerNum++;
   let promptLockResolve;
-  let promptsLock=new Promise(r=>{promptLockResolve=r});
+  let promptsLock=new Promise(r=>{promptLockResolve=r;});
   if(speculos.promptsEndPromise) {
     await speculos.promptsEndPromise;
   }
@@ -133,7 +133,7 @@ async function automationStart(speculos, interactionFunc) {
   let readyPromise = syncWithLedger(speculos, asyncEventIter, interactionFunc);
 
   // Resolve our lock when we're done
-  readyPromise.then(r=>r.promptsPromise.then(()=>{promptLockResolve(true)}));
+  readyPromise.then(r=>r.promptsPromise.then(()=>{promptLockResolve(true);}));
 
   let header;
   let body;
@@ -222,7 +222,7 @@ function acceptPrompts(expectedPrompts, selectPrompt) {
         }
       }
       console.log("Please %s this prompt", selectPrompt);
-      return { expectedPrompts, promptsMatch: true }
+      return { expectedPrompts, promptsMatch: true };
     } else {
       let promptList = [];
       let done = false;
@@ -245,7 +245,7 @@ function acceptPrompts(expectedPrompts, selectPrompt) {
         return { promptList };
       }
     }
-  }
+  };
 }
 
 async function flowMultiPrompt(speculos, prompts, nextPrompt="Next", finalPrompt="Accept") {
