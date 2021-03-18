@@ -347,7 +347,7 @@ typedef struct {
     } data;
 } prompt_entry_t;
 
-#define TRANSACTION_PROMPT_BATCH_SIZE 1
+#define TRANSACTION_PROMPT_MAX_BATCH_SIZE 2
 
 enum transaction_type_id_t {
     TRANSACTION_TYPE_ID_BASE = 0,
@@ -366,13 +366,16 @@ enum SwapCounterpartChain {
   SWAPCOUNTERPARTCHAIN_P = 2,
 };
 
+typedef struct  {
+  size_t count;
+  size_t flushIndex;
+  char const *labels[TRANSACTION_PROMPT_MAX_BATCH_SIZE + 1]; // For NULL at end
+  prompt_entry_t entries[TRANSACTION_PROMPT_MAX_BATCH_SIZE];
+} prompt_batch_t;
+
 typedef struct {
     parser_input_meta_state_t input;
-    struct {
-        size_t count;
-        char const *labels[TRANSACTION_PROMPT_BATCH_SIZE + 1]; // For NULL at end
-        prompt_entry_t entries[TRANSACTION_PROMPT_BATCH_SIZE];
-    } prompt;
+    prompt_batch_t prompt;
     uint32_t raw_type_id;
     enum transaction_type_id_t type_id;
     bool is_p_chain;
@@ -440,11 +443,7 @@ struct struct_evm_parser_meta_state_t {
     parser_input_meta_state_t input;
     uint8_t chainIdLowByte;
     struct known_destination const *known_destination;
-    struct {
-        size_t count;
-        char const *labels[TRANSACTION_PROMPT_BATCH_SIZE + 1]; // For NULL at end
-        prompt_entry_t entries[TRANSACTION_PROMPT_BATCH_SIZE];
-    } prompt;
+    prompt_batch_t prompt;
 };
 
 void initTransaction(struct TransactionState *const state);
@@ -492,3 +491,7 @@ void init_rlp_list(struct EVM_RLP_list_state *const state);
 enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta);
 
 void strcpy_prompt(char *const out, size_t const out_size, char const *const in);
+
+bool should_flush(prompt_batch_t prompt);
+
+void set_next_batch_size(prompt_batch_t *const prompt, size_t size);

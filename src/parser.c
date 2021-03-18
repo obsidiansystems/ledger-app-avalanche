@@ -6,6 +6,14 @@
 #include "types.h"
 #include "network_info.h"
 
+bool should_flush(prompt_batch_t prompt) {
+  return prompt.count > prompt.flushIndex;
+}
+void set_next_batch_size(prompt_batch_t *const prompt, size_t size) {
+  if(!size) size = NUM_ELEMENTS(prompt->entries);
+  prompt->flushIndex = size-1;
+}
+
 #define REJECT(msg, ...) { PRINTF("Rejecting: " msg "\n", ##__VA_ARGS__); THROW_(EXC_PARSE_ERROR, "Rejected"); }
 
 #define ADD_PROMPT(label_, data_, size_, to_string_) ({ \
@@ -15,7 +23,7 @@
         meta->prompt.entries[meta->prompt.count].to_string = to_string_; \
         memcpy(&meta->prompt.entries[meta->prompt.count].data, data_, size_); \
         meta->prompt.count++; \
-        meta->prompt.count >= NUM_ELEMENTS(meta->prompt.entries); \
+        should_flush(meta->prompt); \
     })
 
 #define CALL_SUBPARSER(subFieldName, subParser) { \
@@ -644,7 +652,7 @@ static bool prompt_fee(parser_meta_state_t *const meta) {
     meta->prompt.entries[meta->prompt.count].to_string = nano_avax_to_string_indirect64;
     memcpy(&meta->prompt.entries[meta->prompt.count].data, &fee, sizeof(fee));
     meta->prompt.count++;
-    bool should_break = meta->prompt.count >= NUM_ELEMENTS(meta->prompt.entries);
+    bool should_break = should_flush(meta->prompt);
     return should_break;
 }
 
