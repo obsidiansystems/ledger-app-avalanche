@@ -96,7 +96,7 @@ const headerOnlyScreens = {
 
 /* State machine to read screen events and turn them into screens of prompts. */
 async function automationStart(speculos, interactionFunc) {
-  // If this doens't exist, we're running against a hardware ledger; just call
+  // If this doesn't exist, we're running against a hardware ledger; just call
   // interactionFunc with no events iterator.
   if(!speculos.automationEvents) {
     return new Promise(r=>r({ promptsPromise: interactionFunc(speculos) }));
@@ -179,7 +179,7 @@ async function syncWithLedger(speculos, source, interactionFunc) {
     screen = await source.next();
   }
   // Sink some extra homescreens to make us a bit more durable to failing tests.
-  while(await source.peek().header == "Avalanche" || await source.peek().header == "Configuration" || await source.peek().body == "Quit") {
+  while(await source.peek().header == "Avalanche" || await source.peek().body == "Configuration" || await source.peek().body == "Quit") {
     await source.next();
   }
   // And continue on to interactionFunc
@@ -249,14 +249,17 @@ function acceptPrompts(expectedPrompts, selectPrompt) {
 }
 
 async function flowMultiPrompt(speculos, prompts, nextPrompt="Next", finalPrompt="Accept") {
+  // We bounce off the home screen sometimes during this process
+  const isHomeScreen = p => p.header == "Avalanche" || p.body == "Configuration" || p.body == "Quit";
+  const appScreens = ps => ps.filter(p => !isHomeScreen(p));
+
   return await automationStart(speculos, async (speculos, screens) => {
     for (p of prompts.slice(0,-1)) {
       const rp = (await acceptPrompts(undefined, nextPrompt)(speculos, screens)).promptList;
-      // Only looking at the last prompt, because we bounce off the home screen sometimes during this process:
-      expect([ rp[rp.length-1] ]).to.deep.equal(p);
+      expect(appScreens(rp)).to.deep.equal(p);
     }
     const rp = (await acceptPrompts(undefined, finalPrompt)(speculos, screens)).promptList;
-    expect([ rp[rp.length-1] ]).to.deep.equal(prompts[prompts.length-1]);
+    expect(appScreens(rp)).to.deep.equal(prompts[prompts.length-1]);
     return true;
   });
 }
