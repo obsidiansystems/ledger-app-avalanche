@@ -90,9 +90,13 @@ exports.mochaHooks = {
   afterEach: async function () {
     clearInterval(this.flusher);
     this.readBuffers();
+    const maxOutput = 5000;
     if (this.currentTest.state === 'failed') {
-      console.log("SPECULOS STDOUT:\n" + stdoutVal);
-      console.log("SPECULOS STDERR:\n" + stderrVal);
+      console.log("SPECULOS STDOUT" + ":\n" + stdoutVal);
+      console.log("SPECULOS STDERR" +
+                  (stderrVal.length <= maxOutput
+                   ? ":\n" + stderrVal
+                   : (" (showing last " + maxOutput + " characters)" + ":\n" + stderrVal.slice(-maxOutput))));
     }
   }
 };
