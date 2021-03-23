@@ -37,10 +37,21 @@ void init_rlp_item(struct EVM_RLP_item_state *const state) {
 
 #define REJECT(msg, ...) { PRINTF("Rejecting: " msg "\n", ##__VA_ARGS__); THROW_(EXC_PARSE_ERROR, "Rejected"); }
 
+static void output_evm_gas_limit_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
+  check_null(out);
+  check_null(in);
+  number_to_string(out, in->start_gas);
+}
+
 static void output_evm_fee_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
   check_null(out);
   check_null(in);
   wei_to_gwei_string(out, out_size, in->fee);
+}
+static void output_evm_fund_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
+  check_null(out);
+  check_null(in);
+  wei_to_navax_string_256(out, out_size, &in->amount_big);
 }
 
 static void output_evm_prompt_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
@@ -233,37 +244,60 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
 
             PARSE_ITEM(EVM_TXN_TO, _to_buffer);
 
-            if(state->rlpItem_state.length != ETHEREUM_ADDRESS_SIZE)
+            switch (state->rlpItem_state.length) {
+            case 0:
+              state->hasTo = false;
+              break;
+            case ETHEREUM_ADDRESS_SIZE:
+              state->hasTo = true;
+              break;
+            default:
               REJECT("Destination address not %d bytes", ETHEREUM_ADDRESS_SIZE);
-
-            for(uint64_t i = 0; i < sizeof(precompiled) / sizeof(struct known_destination); i++) {
-                if(!memcmp(precompiled[i].to, state->rlpItem_state.buffer, ETHEREUM_ADDRESS_SIZE)) {
-                    meta->known_destination = &precompiled[i];
-                    break;
-                }
             }
-            if(!meta->known_destination)
-                SET_PROMPT_VALUE(memcpy(entry->data.output_prompt.address.val, state->rlpItem_state.buffer, ETHEREUM_ADDRESS_SIZE));
 
-            FINISH_ITEM_CHUNK();
+            if(state->hasTo) {
+              for(uint64_t i = 0; i < sizeof(precompiled) / sizeof(struct known_destination); i++) {
+                if(!memcmp(precompiled[i].to, state->rlpItem_state.buffer, ETHEREUM_ADDRESS_SIZE)) {
+                  meta->known_destination = &precompiled[i];
+                  break;
+                }
+              }
+              if(!meta->known_destination)
+                SET_PROMPT_VALUE(memcpy(entry->data.output_prompt.address.val, state->rlpItem_state.buffer, ETHEREUM_ADDRESS_SIZE));
+              FINISH_ITEM_CHUNK();
+            }
+            else {
+              FINISH_ITEM_CHUNK();
+              static char const label []="Creation";
+              set_next_batch_size(&meta->prompt, 2);
+              if(({
+                  ADD_PROMPT("Contract", label, sizeof(label), strcpy_prompt);
+                  SET_PROMPT_VALUE(entry->data.output_prompt.start_gas = state->startGas);
+                  ADD_ACCUM_PROMPT("Gas Limit", output_evm_gas_limit_to_string);
+                }))
+                return PARSE_RV_PROMPT;
+            }
+
             PARSE_ITEM(EVM_TXN_VALUE, _to_buffer);
 
             uint256_t value = enforceParsedScalarFits256Bits(&state->rlpItem_state);
-
-            // As of now, there is no known reason to send AVAX to any precompiled contract we support
-            // Given that, we take the less risky action with the intent of protecting from unintended transfers
-            if(meta->known_destination && !zero256(&value))
-              REJECT("Transactions sent to precompiled contracts must have an amount of 0 WEI");
-
             SET_PROMPT_VALUE(entry->data.output_prompt.amount_big = value);
 
             FINISH_ITEM_CHUNK();
 
-            if(!meta->known_destination) {
-                if(ADD_ACCUM_PROMPT(
-                      "Transfer",
-                      output_evm_prompt_to_string
-                      )) return PARSE_RV_PROMPT;
+            if(state->hasTo) {
+              // As of now, there is no known reason to send AVAX to any precompiled contract we support
+              // Given that, we take the less risky action with the intent of protecting from unintended transfers
+              if(meta->known_destination) {
+                if (!zero256(&value))
+                  REJECT("Transactions sent to precompiled contracts must have an amount of 0 WEI");
+              }
+              else {
+                if(ADD_ACCUM_PROMPT("Transfer", output_evm_prompt_to_string)) return PARSE_RV_PROMPT;
+              }
+            } else {
+              if(!zero256(&value))
+                if(ADD_ACCUM_PROMPT("Funding Contract", output_evm_fund_to_string)) return PARSE_RV_PROMPT;
             }
 
             PARSE_ITEM(EVM_TXN_DATA, );
@@ -284,15 +318,21 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
             // Can't use the macro here because we need to do a prompt in the middle of it.
             if(sub_rv != PARSE_RV_DONE) return sub_rv;
             state->item_index++;
-            uint64_t len=state->rlpItem_state.length;
+            uint64_t len = state->rlpItem_state.length;
             state->hasData = len > 0;
             init_rlp_item(&state->rlpItem_state);
 
-            if(!meta->known_destination && len != 0) {
+            if(state->hasTo) {
+              if(!meta->known_destination && len != 0) {
                 // Probably we have to allow this, as the metamask constraint means _this_ endpoint will be getting stuff it doesn't understand a lot.
                 static char const isPresentLabel[]="Is Present (unsafe)";
                 if(ADD_PROMPT("Contract Data", isPresentLabel, sizeof(isPresentLabel), strcpy_prompt))
-                    return PARSE_RV_PROMPT;
+                  return PARSE_RV_PROMPT;
+              }
+            } else {
+              static char const isPresentLabel[]="Is Present";
+              if(ADD_PROMPT("Contract Data", isPresentLabel, sizeof(isPresentLabel), strcpy_prompt))
+                return PARSE_RV_PROMPT;
             }
 
             PARSE_ITEM(EVM_TXN_CHAINID, _to_buffer);

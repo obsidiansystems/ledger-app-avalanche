@@ -316,6 +316,7 @@ typedef struct {
     uint64_t fee;
     uint64_t amount;
     uint256_t amount_big;
+    uint64_t start_gas;
     struct {
       uint256_t amount;
       uint256_t assetID;
@@ -473,6 +474,7 @@ struct EVM_RLP_list_state {
     uint64_t remaining;
     uint8_t len_len;
     uint8_t item_index;
+    bool hasTo;
     bool hasData;
     uint64_t startGas;
     uint64_t gasPrice;

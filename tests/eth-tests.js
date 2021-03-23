@@ -3,21 +3,38 @@ Common = require("@ethereumjs/common").default;
 decode = require("rlp").decode;
 byContractAddress=require("@ledgerhq/hw-app-eth/erc20").byContractAddress;
 
+const finalizePrompt = {header: "Finalize", body: "Transaction"};
+
 const transferPrompts = (address, amount, fee) => [
     [{header: "Transfer",    body: amount + " to " + address}],
     [{header: "Fee",         body: fee}],
-    [{header: "Finalize",    body: "Transaction"}]
+    [finalizePrompt]
 ];
 const assetCallTransferPrompts = (assetID, address, amount) => [
     [{header: "Transfer",    body: amount + " of " + assetID + " to " + address}],
     [{header: "Maximum Fee", body: "47000000 GWEI"}],
-    [{header: "Finalize",    body: "Transaction"}]
+    [finalizePrompt]
 ];
 const assetCallDepositPrompts = (assetID, address, amount) => [
     [{header: "Deposit",     body: amount + " of " + assetID + " to " + address}],
     [{header: "Maximum Fee", body: "47000000 GWEI"}],
-    [{header: "Finalize",    body: "Transaction"}]
+    [finalizePrompt]
 ];
+const contractDeployPrompts = (bytes, amount, fee, gas) => {
+  const creationPrompt = {header: "Contract",          body: "Creation"};
+  const gasPrompt      = {header: "Gas Limit",         body: gas};
+  const fundingPrompt  = {header: "Funding Contract",  body: amount};
+  const dataPrompt     = {header: "Contract Data",     body: "Is Present"};
+  const feePrompt      = {header: "Maximum Fee",       body: fee};
+  return [].concat(
+      [[creationPrompt, gasPrompt]],
+      amount ? [[fundingPrompt]] : [],
+      [[dataPrompt],
+       [feePrompt],
+       [finalizePrompt]
+      ]
+  );
+};
 
 async function testSigning(self, chainId, prompts, hexTx) {
   const ethTx = Buffer.from(hexTx, 'hex');
@@ -33,7 +50,18 @@ async function testSigning(self, chainId, prompts, hexTx) {
   await flow.promptsPromise;
 }
 
-describe("Eth app compatibility tests", () => {
+async function testDeploy(self, chainId, withAmount) {
+    const [amountPrompt, amountHex] = withAmount ? ['0.000000001 nAVAX', '01'] : [null, '80'];
+    await testSigning(self, chainId,
+                      contractDeployPrompts(erc20presetMinterPauser.bytecodeHex, amountPrompt, '1428785900 GWEI', '3039970'),
+                      ('f93873' + '03' + '856d6e2edc00' + '832e62e2' + '80' + amountHex
+                       + ('b9385e' + erc20presetMinterPauser.bytecodeHex)
+                       + '82a868' + '80' + '80'
+                      )
+                     );
+}
+
+describe("Eth app compatibility tests", async function () {
   it('can get a key from the app with the ethereum ledgerjs module', async function() {
     const flow = await flowAccept(this.speculos);
     const dat = await this.eth.getAddress("44'/60'/0'/0/0", false, true);
@@ -76,13 +104,17 @@ describe("Eth app compatibility tests", () => {
 
   it('can sign a transaction with calldata via the ethereum ledgerjs module', async function() {
     await testSigning(this, 43112,
-        [[{header:"Transfer",      body: "0.000000001 nAVAX to 0x0102030400000000000000000000000000000002"}],
-         [{header:"Contract Data", body: "Is Present (unsafe)"}],
-         [{header:"Maximum Fee",   body: "1410000000 GWEI"}],
-         [{header:"Finalize",      body: "Transaction"}]
-        ],
-        'f83880856d6e2edc00832dc6c0940102030400000000000000000000000000000002019190000102030405060708090a0b0c0d0e0f82a8688080');
+                      [[{header:"Transfer",      body: "0.000000001 nAVAX to 0x0102030400000000000000000000000000000002"}],
+                       [{header:"Contract Data", body: "Is Present (unsafe)"}],
+                       [{header:"Maximum Fee",   body: "1410000000 GWEI"}],
+                       [{header:"Finalize",      body: "Transaction"}]
+                      ],
+                      'f83880856d6e2edc00832dc6c0940102030400000000000000000000000000000002019190000102030405060708090a0b0c0d0e0f82a8688080'
+                     );
   });
+
+  it('can sign a transaction deploying erc20 contract without funding', async function() { await testDeploy(this, 43112, false); });
+  it('can sign a transaction deploying erc20 contract with funding',    async function() { await testDeploy(this, 43112, true);  });
 
   it('can sign a transaction with assetCall via the ethereum ledgerjs module', async function() {
       await testSigning(this, 43112,
