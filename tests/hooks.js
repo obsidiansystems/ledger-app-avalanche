@@ -60,23 +60,39 @@ exports.mochaHooks = {
     this.speculos.waitingQueue=[];
     this.ava = new Avalanche(this.speculos, "Avalanche", _ => { return; });
     this.eth = new Eth(this.speculos);
-    this.flushStderr = function() {
-      if (this.speculosProcess && this.speculosProcess.stdio[2]) this.speculosProcess.stdio[2].read();
+
+    this.flushStdio = (n) => () => {
+        if (this.speculosProcess && this.speculosProcess.stdio[n])
+            return this.speculosProcess.stdio[n].read();
+        else
+            return "";
+    };
+    this.flushStdout = this.flushStdio(1);
+    this.flushStderr = this.flushStdio(2);
+    this.readBuffers = () => {
+        stdoutVal += (this.flushStdout() || "");
+        stderrVal += (this.flushStderr() || "");
     };
   },
+
   afterAll: async function () {
     if (this.speculosProcess) {
       this.speculosProcess.kill();
     }
   },
+
+  beforeEach: async function () {
+    stdoutVal = "";
+    stderrVal = "";
+    this.flusher = setInterval(this.readBuffers, 100);
+  },
+
   afterEach: async function () {
-    if (this.speculosProcess) {
-      stdoutVal = this.speculosProcess.stdio[1] && this.speculosProcess.stdio[1].read();
-      stderrVal = this.speculosProcess.stdio[2] && this.speculosProcess.stdio[2].read();
-      if (this.currentTest.state === 'failed') {
-        console.log("SPECULOS STDOUT:\n" + stdoutVal);
-        console.log("SPECULOS STDERR:\n" + stderrVal);
-      }
+    clearInterval(this.flusher);
+    this.readBuffers();
+    if (this.currentTest.state === 'failed') {
+      console.log("SPECULOS STDOUT:\n" + stdoutVal);
+      console.log("SPECULOS STDERR:\n" + stderrVal);
     }
   }
 };
