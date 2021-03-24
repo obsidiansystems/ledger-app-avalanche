@@ -384,20 +384,29 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
     return sub_rv;
 }
 
-enum parse_rv parse_rlp_item(struct EVM_RLP_item_state *const state, evm_parser_meta_state_t *const meta) {
+enum parse_rv impl_parse_rlp_item(struct EVM_RLP_item_state *const state, evm_parser_meta_state_t *const meta, bool buffer) {
     enum parse_rv sub_rv;
-    state->chunk.src=0;
-    state->chunk.length=0;
-    state->chunk.consumed=0;
-    state->do_init=false;
+    if(!buffer) {
+      state->chunk.src=0;
+      state->chunk.length=0;
+      state->chunk.consumed=0;
+      state->do_init=false;
+    }
     switch(state->state) {
       case 0: {
           if(meta->input.consumed >= meta->input.length) return PARSE_RV_NEED_MORE;
-          uint8_t first = meta->input.src[meta->input.consumed++];
+          uint8_t const* first_ptr = &meta->input.src[meta->input.consumed++];
+          uint8_t first = *first_ptr;
           if(first <= 0x7f) {
-              state->chunk.src = &meta->input.src[meta->input.consumed-1];
-              state->chunk.consumed = 0;
-              state->chunk.length = 1;
+              if(buffer) {
+                state->buffer[0] = first;
+                state->length = 1;
+              }
+              else {
+                state->chunk.src = first_ptr;
+                state->chunk.consumed = 0;
+                state->chunk.length = 1;
+              }
               return PARSE_RV_DONE;
           } else if (first < 0xb8) {
               state->length = first - 0x80;
@@ -421,84 +430,47 @@ enum parse_rv parse_rlp_item(struct EVM_RLP_item_state *const state, evm_parser_
                 ((uint8_t*)(&state->length))[i] = state->uint64_state.buf[state->len_len-i-1];
             }
         }
-        state->do_init=true;
+        if(buffer) {
+          if(state->length>MAX_EVM_BUFFER) REJECT("RLP field too large for buffer");
+        }
+        else {
+          state->do_init=true;
+        }
         state->state = 2;
       case 2: {
           uint64_t remaining = state->length-state->current;
           uint64_t available = meta->input.length - meta->input.consumed;
+          uint64_t consumable = MIN(remaining, available);
 
-          state->chunk.src=&meta->input.src[meta->input.consumed];
-          state->chunk.consumed = 0;
+          if(buffer) {
+            memcpy(state->buffer+state->current, meta->input.src + meta->input.consumed, consumable);
+          }
+          else {
+            state->chunk.src=&meta->input.src[meta->input.consumed];
+            state->chunk.consumed = 0;
+            state->chunk.length = consumable;
+          }
+
+          meta->input.consumed += consumable;
+          state->current += consumable;
+
           if(remaining <= available) {
-              state->chunk.length=remaining;
-              state->state = 3;
-              state->current = state->length;
-              meta->input.consumed += remaining;
-
-              sub_rv=PARSE_RV_DONE;
+            state->state = 3;
+            return PARSE_RV_DONE;
           } else {
-              state->chunk.length = available;
-              state->current += available;
-              meta->input.consumed = meta->input.length;
-              sub_rv = PARSE_RV_NEED_MORE;
+            return PARSE_RV_NEED_MORE;
           }
       }
     }
     return sub_rv;
 }
 
+enum parse_rv parse_rlp_item(struct EVM_RLP_item_state *const state, evm_parser_meta_state_t *const meta) {
+  return impl_parse_rlp_item(state, meta, false);
+}
+
 enum parse_rv parse_rlp_item_to_buffer(struct EVM_RLP_item_state *const state, evm_parser_meta_state_t *const meta) {
-    enum parse_rv sub_rv;
-    switch(state->state) {
-      case 0: {
-          if(meta->input.consumed >= meta->input.length) return PARSE_RV_NEED_MORE;
-          uint8_t first = meta->input.src[meta->input.consumed++];
-          if(first <= 0x7f) {
-              state->buffer[0] = first;
-              state->length = 1;
-              return PARSE_RV_DONE;
-          } else if (first < 0xb8) {
-              state->length = first - 0x80;
-              state->state = 2;
-          } else if (first < 0xc0) {
-              state->len_len = first - 0xb7;
-              state->state = 1;
-          } else if(first < 0xf8) {
-              state->length = first - 0xc0;
-              state->state = 2;
-          } else {
-              state->len_len = first - 0xf7;
-              state->state = 1;
-          }
-      }
-      case 1:
-        if(state->state == 1) {
-            sub_rv = parseFixed((struct FixedState *)&state->uint64_state, &meta->input, state->len_len);
-            if(sub_rv != PARSE_RV_DONE) return sub_rv;
-            for(size_t i = 0; i < state->len_len; i++) {
-                ((uint8_t*)(&state->length))[i] = state->uint64_state.buf[state->len_len-i-1];
-            }
-        }
-        if(state->length>MAX_EVM_BUFFER) REJECT("RLP field too large for buffer");
-        state->state = 2;
-      case 2: {
-          uint64_t remaining = state->length-state->current;
-          uint64_t available = meta->input.length - meta->input.consumed;
-          if(remaining <= available) {
-              state->state=3;
-              memcpy(state->buffer+state->current, meta->input.src + meta->input.consumed, remaining);
-              meta->input.consumed += remaining;
-              return PARSE_RV_DONE;
-          } else {
-              memcpy(state->buffer+state->current, meta->input.src + meta->input.consumed, available);
-              state->current += available;
-              meta->input.consumed = meta->input.length;
-              return PARSE_RV_NEED_MORE;
-          }
-      }
-      default:
-        return PARSE_RV_DONE;
-    }
+  return impl_parse_rlp_item(state, meta, true);
 }
 
 IMPL_FIXED(uint256_t);
