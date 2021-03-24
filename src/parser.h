@@ -311,6 +311,8 @@ typedef struct {
     size_t length;
 } parser_input_meta_state_t;
 
+#define MAX_CALLDATA_PREVIEW 20
+
 typedef struct {
   union {
     uint64_t fee;
@@ -321,6 +323,11 @@ typedef struct {
       uint256_t amount;
       uint256_t assetID;
     } assetCall;
+    struct {
+      bool cropped;
+      size_t count;
+      uint8_t buffer[MAX_CALLDATA_PREVIEW];
+    } calldata_preview;
   };
   network_id_t network_id;
   Address address;

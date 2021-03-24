@@ -37,6 +37,23 @@ void init_rlp_item(struct EVM_RLP_item_state *const state) {
 
 #define REJECT(msg, ...) { PRINTF("Rejecting: " msg "\n", ##__VA_ARGS__); THROW_(EXC_PARSE_ERROR, "Rejected"); }
 
+static void output_evm_calldata_preview_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
+  check_null(out);
+  check_null(in);
+  size_t ix = 0;
+  out[ix] = '0'; ix++;
+  out[ix] = 'x'; ix++;
+  bin_to_hex_lc(&out[ix], out_size - ix, &in->calldata_preview.buffer, in->calldata_preview.count);
+  ix += 2 * in->calldata_preview.count;
+  if(in->calldata_preview.cropped) {
+    if (ix + 3 > out_size) THROW_(EXC_MEMORY_ERROR, "Can't fit into prompt value string");
+    out[ix] = '.'; ix++;
+    out[ix] = '.'; ix++;
+    out[ix] = '.'; ix++;
+  }
+  out[ix] = '\0';
+}
+
 static void output_evm_gas_limit_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
   check_null(out);
   check_null(in);
@@ -107,8 +124,9 @@ static void output_assetCall_prompt_to_string(char *const out, size_t const out_
   ix += 2 * ETHEREUM_ADDRESS_SIZE + 1;
 }
 
-enum parse_rv parse_rlp_item(struct EVM_RLP_item_state *const state, evm_parser_meta_state_t *const meta);
-enum parse_rv parse_rlp_item_to_buffer(struct EVM_RLP_item_state *const state, evm_parser_meta_state_t *const meta);
+enum parse_rv parse_rlp_item(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta);
+enum parse_rv parse_rlp_item_to_buffer(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta);
+enum parse_rv parse_rlp_item_data(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta);
 
 enum eth_txn_items {
   EVM_TXN_NONCE,
@@ -212,7 +230,7 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
             case ITEM: {\
                 itemStartIdx = meta->input.consumed; \
                 PRINTF("Entering " #ITEM "\n");                          \
-                sub_rv = parse_rlp_item ## save(&state->rlpItem_state, meta); \
+                sub_rv = parse_rlp_item ## save(state, meta); \
                 PRINTF("Exiting " #ITEM "\n");                          \
                 state->remaining -= meta->input.consumed - itemStartIdx; \
             } (void)0
@@ -300,9 +318,10 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
                 if(ADD_ACCUM_PROMPT("Funding Contract", output_evm_fund_to_string)) return PARSE_RV_PROMPT;
             }
 
-            PARSE_ITEM(EVM_TXN_DATA, );
+            PARSE_ITEM(EVM_TXN_DATA, _data);
 
-            if(meta->known_destination) {
+            if(state->hasTo) {
+              if(meta->known_destination) {
                 if(state->rlpItem_state.do_init && meta->known_destination->init_data)
                   ((known_destination_init)PIC(meta->known_destination->init_data))(&(state->rlpItem_state.endpoint_state), state->rlpItem_state.length);
                 PRINTF("INIT: %u\n", state->rlpItem_state.do_init);
@@ -313,12 +332,20 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
                 }
                 PRINTF("PARSER CALLED [sub_rv: %u]\n", sub_rv);
                 if(sub_rv != PARSE_RV_DONE) return sub_rv;
+              }
             }
 
             // Can't use the macro here because we need to do a prompt in the middle of it.
             if(sub_rv != PARSE_RV_DONE) return sub_rv;
             state->item_index++;
             uint64_t len = state->rlpItem_state.length;
+            if(!state->hasTo) {
+              SET_PROMPT_VALUE(entry->data.output_prompt.calldata_preview.cropped = len > MAX_CALLDATA_PREVIEW);
+              SET_PROMPT_VALUE(entry->data.output_prompt.calldata_preview.count = MIN(len, (uint64_t)MAX_CALLDATA_PREVIEW));
+              SET_PROMPT_VALUE(memcpy(entry->data.output_prompt.calldata_preview.buffer,
+                                      &state->rlpItem_state.buffer,
+                                      entry->data.output_prompt.calldata_preview.count));
+            }
             state->hasData = len > 0;
             init_rlp_item(&state->rlpItem_state);
 
@@ -330,8 +357,7 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
                   return PARSE_RV_PROMPT;
               }
             } else {
-              static char const isPresentLabel[]="Is Present";
-              if(ADD_PROMPT("Contract Data", isPresentLabel, sizeof(isPresentLabel), strcpy_prompt))
+              if(ADD_ACCUM_PROMPT("Data", output_evm_calldata_preview_to_string))
                 return PARSE_RV_PROMPT;
             }
 
@@ -384,9 +410,9 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
     return sub_rv;
 }
 
-enum parse_rv impl_parse_rlp_item(struct EVM_RLP_item_state *const state, evm_parser_meta_state_t *const meta, bool buffer) {
+enum parse_rv impl_parse_rlp_item(struct EVM_RLP_item_state *const state, evm_parser_meta_state_t *const meta, size_t max_bytes_to_buffer) {
     enum parse_rv sub_rv;
-    if(!buffer) {
+    if(!max_bytes_to_buffer) {
       state->chunk.src=0;
       state->chunk.length=0;
       state->chunk.consumed=0;
@@ -398,7 +424,7 @@ enum parse_rv impl_parse_rlp_item(struct EVM_RLP_item_state *const state, evm_pa
           uint8_t const* first_ptr = &meta->input.src[meta->input.consumed++];
           uint8_t first = *first_ptr;
           if(first <= 0x7f) {
-              if(buffer) {
+              if(max_bytes_to_buffer) {
                 state->buffer[0] = first;
                 state->length = 1;
               }
@@ -430,21 +456,23 @@ enum parse_rv impl_parse_rlp_item(struct EVM_RLP_item_state *const state, evm_pa
                 ((uint8_t*)(&state->length))[i] = state->uint64_state.buf[state->len_len-i-1];
             }
         }
-        if(buffer) {
-          if(state->length>MAX_EVM_BUFFER) REJECT("RLP field too large for buffer");
+        if(max_bytes_to_buffer) {
+          if(MIN(state->length, max_bytes_to_buffer) > NUM_ELEMENTS(state->buffer)) REJECT("RLP field too large for buffer");
         }
         else {
           state->do_init=true;
         }
         state->state = 2;
       case 2: {
-          uint64_t remaining = state->length-state->current;
-          uint64_t available = meta->input.length - meta->input.consumed;
-          uint64_t consumable = MIN(remaining, available);
+          uint64_t
+            remaining = state->length-state->current,
+            available = meta->input.length - meta->input.consumed,
+            consumable = MIN(remaining, available),
+            bufferable = MIN(state->length, max_bytes_to_buffer),
+            unbuffered = MAX(0, (int64_t)bufferable - (int64_t)state->current);
 
-          if(buffer) {
-            memcpy(state->buffer+state->current, meta->input.src + meta->input.consumed, consumable);
-          }
+          if(max_bytes_to_buffer)
+            memcpy(state->buffer+state->current, meta->input.src + meta->input.consumed, MIN(consumable, unbuffered));
           else {
             state->chunk.src=&meta->input.src[meta->input.consumed];
             state->chunk.consumed = 0;
@@ -465,12 +493,15 @@ enum parse_rv impl_parse_rlp_item(struct EVM_RLP_item_state *const state, evm_pa
     return sub_rv;
 }
 
-enum parse_rv parse_rlp_item(struct EVM_RLP_item_state *const state, evm_parser_meta_state_t *const meta) {
-  return impl_parse_rlp_item(state, meta, false);
+enum parse_rv parse_rlp_item(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta) {
+  return impl_parse_rlp_item(&state->rlpItem_state, meta, 0);
 }
 
-enum parse_rv parse_rlp_item_to_buffer(struct EVM_RLP_item_state *const state, evm_parser_meta_state_t *const meta) {
-  return impl_parse_rlp_item(state, meta, true);
+enum parse_rv parse_rlp_item_to_buffer(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta) {
+  return impl_parse_rlp_item(&state->rlpItem_state, meta, NUM_ELEMENTS(state->rlpItem_state.buffer));
+}
+enum parse_rv parse_rlp_item_data(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta) {
+  return impl_parse_rlp_item(&state->rlpItem_state, meta, state->hasTo ? 0 : MAX_CALLDATA_PREVIEW);
 }
 
 IMPL_FIXED(uint256_t);

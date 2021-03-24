@@ -24,7 +24,7 @@ const contractDeployPrompts = (bytes, amount, fee, gas) => {
   const creationPrompt = {header: "Contract",          body: "Creation"};
   const gasPrompt      = {header: "Gas Limit",         body: gas};
   const fundingPrompt  = {header: "Funding Contract",  body: amount};
-  const dataPrompt     = {header: "Contract Data",     body: "Is Present"};
+  const dataPrompt     = {header: "Data",              body: "0x60806040523480156200001157600080fd5b5060..."};
   const feePrompt      = {header: "Maximum Fee",       body: fee};
   return [].concat(
       [[creationPrompt, gasPrompt]],
