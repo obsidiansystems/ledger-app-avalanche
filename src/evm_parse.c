@@ -7,6 +7,7 @@
 #include "types.h"
 
 #define ETHEREUM_ADDRESS_SIZE 20
+#define ETHEREUM_SELECTOR_SIZE 4
 
 void init_rlp_list(struct EVM_RLP_list_state *const state) {
     memset(state, 0, sizeof(*state));
@@ -150,25 +151,31 @@ const static struct known_destination precompiled[] = {
   }
 };
 
+void init_abi_call_data(struct EVM_ABI_state *const state, uint64_t length);
+enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state, parser_input_meta_state_t *const input, evm_parser_meta_state_t *const meta);
+
 enum abi_type {
     ABI_TYPE_UINT256
 };
 
 #define MAX_PARAMS 1
 
-struct contract_endpoints {
-  uint32_t selector;
+struct contract_endpoint {
+  char *method_name;
+  uint8_t selector[4];
   uint8_t parameter_count;
   enum abi_type parameters[MAX_PARAMS];
 };
 
-// keccak256('deposit()')
-#define DEPOSIT_SELECTOR 0xd0e30db0
-
-static const struct contract_endpoints known_endpoints[] = {
-  { .selector = DEPOSIT_SELECTOR
-      , .parameter_count=1,
-        .parameters = { ABI_TYPE_UINT256 } }
+static const struct contract_endpoint known_endpoints[] = {
+  { .method_name = "pause",
+    .selector = { 0x84, 0x56, 0xcb, 0x59 },
+    .parameter_count = 0,
+    .parameters = {}},
+  { .method_name = "unpause",
+    .selector = { 0x3f, 0x4b, 0xa8, 0x3a },
+    .parameter_count = 0,
+    .parameters = {}}
 };
 
 static const uint32_t known_endpoints_size=sizeof(known_endpoints)/sizeof(known_endpoints[0]);
@@ -270,11 +277,11 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
               state->hasTo = true;
               break;
             default:
-              REJECT("Destination address not %d bytes", ETHEREUM_ADDRESS_SIZE);
+              REJECT("When present, destination address must have exactly %u bytes", ETHEREUM_ADDRESS_SIZE);
             }
 
             if(state->hasTo) {
-              for(uint64_t i = 0; i < sizeof(precompiled) / sizeof(struct known_destination); i++) {
+              for(size_t i = 0; i < NUM_ELEMENTS(precompiled); i++) {
                 if(!memcmp(precompiled[i].to, state->rlpItem_state.buffer, ETHEREUM_ADDRESS_SIZE)) {
                   meta->known_destination = &precompiled[i];
                   break;
@@ -331,7 +338,13 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
                   sub_rv = ((known_destination_parser)PIC(meta->known_destination->handle_data))(&(state->rlpItem_state.endpoint_state), &(state->rlpItem_state.chunk), meta);
                 }
                 PRINTF("PARSER CALLED [sub_rv: %u]\n", sub_rv);
-                if(sub_rv != PARSE_RV_DONE) return sub_rv;
+              }
+              else {
+                if(state->rlpItem_state.do_init)
+                  init_abi_call_data(&(state->rlpItem_state.endpoint_state), state->rlpItem_state.length);
+                sub_rv = parse_abi_call_data(&(state->rlpItem_state.endpoint_state),
+                                             &(state->rlpItem_state.chunk),
+                                             meta);
               }
             }
 
@@ -349,18 +362,10 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
             state->hasData = len > 0;
             init_rlp_item(&state->rlpItem_state);
 
-            if(state->hasTo) {
-              if(!meta->known_destination && len != 0) {
-                // Probably we have to allow this, as the metamask constraint means _this_ endpoint will be getting stuff it doesn't understand a lot.
-                static char const isPresentLabel[]="Is Present (unsafe)";
-                if(ADD_PROMPT("Contract Data", isPresentLabel, sizeof(isPresentLabel), strcpy_prompt))
-                  return PARSE_RV_PROMPT;
-              }
-            } else {
+            if(!state->hasTo) {
               if(ADD_ACCUM_PROMPT("Data", output_evm_calldata_preview_to_string))
                 return PARSE_RV_PROMPT;
             }
-
             PARSE_ITEM(EVM_TXN_CHAINID, _to_buffer);
 
             if(state->rlpItem_state.length != 2
@@ -509,13 +514,49 @@ IMPL_FIXED(uint256_t);
 #define ASSETCALL_FIXED_DATA_WIDTH (20 + 32 + 32)
 
 void init_assetCall_data(struct EVM_assetCall_state *const state, uint64_t length) {
-    state->state=0;
+    state->state = 0;
     PRINTF("Initing assetCall Data\n");
     if(length < ASSETCALL_FIXED_DATA_WIDTH)
       REJECT("Calldata too small for assetCall");
     state->data_length = length - ASSETCALL_FIXED_DATA_WIDTH;
     initFixed(&state->address_state, sizeof(state->address_state));
     PRINTF("Initing assetCall Data\n");
+}
+
+void init_abi_call_data(struct EVM_ABI_state *const state, uint64_t length) {
+  state->argument_index = 0;
+  state->data_length = length;
+}
+
+enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state, parser_input_meta_state_t *const input, evm_parser_meta_state_t *const meta) {
+  if(state->data_length == 0) return PARSE_RV_DONE;
+  if(state->data_length < ETHEREUM_SELECTOR_SIZE) REJECT("When present, calldata must have at least %u bytes", ETHEREUM_SELECTOR_SIZE);
+
+  enum parse_rv sub_rv = parseFixed(&state->selector_state, input, ETHEREUM_SELECTOR_SIZE);
+  if(sub_rv != PARSE_RV_DONE) return sub_rv;
+
+  for(size_t i = 0; i < NUM_ELEMENTS(known_endpoints); i++) {
+    if(!memcmp(&known_endpoints[i].selector, state->selector_state.buf, ETHEREUM_SELECTOR_SIZE)) {
+      meta->known_endpoint = &known_endpoints[i];
+      break;
+    }
+  }
+
+  if(meta->known_endpoint) {
+    if(state->argument_index > meta->known_endpoint->parameter_count)
+      return PARSE_RV_DONE;
+    state->argument_index++;
+
+    char *method_name = PIC(meta->known_endpoint->method_name);
+    ADD_PROMPT("Contract Call", method_name, strlen(method_name), strcpy_prompt);
+    return PARSE_RV_PROMPT;
+  } else {
+    // Probably we have to allow this, as the metamask constraint means _this_ endpoint will be getting stuff it doesn't understand a lot.
+    state->data_length = 0;
+    static char const isPresentLabel[]="Is Present (unsafe)";
+    if(ADD_PROMPT("Contract Data", isPresentLabel, sizeof(isPresentLabel), strcpy_prompt))
+      return PARSE_RV_PROMPT;
+  }
 }
 
 enum parse_rv parse_assetCall_data(struct EVM_assetCall_state *const state, parser_input_meta_state_t *const input, evm_parser_meta_state_t *const meta) {

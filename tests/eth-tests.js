@@ -10,16 +10,26 @@ const transferPrompts = (address, amount, fee) => [
     [{header: "Fee",         body: fee}],
     [finalizePrompt]
 ];
+
 const assetCallTransferPrompts = (assetID, address, amount) => [
     [{header: "Transfer",    body: amount + " of " + assetID + " to " + address}],
     [{header: "Maximum Fee", body: "47000000 GWEI"}],
     [finalizePrompt]
 ];
+
 const assetCallDepositPrompts = (assetID, address, amount) => [
     [{header: "Deposit",     body: amount + " of " + assetID + " to " + address}],
     [{header: "Maximum Fee", body: "47000000 GWEI"}],
     [finalizePrompt]
 ];
+
+const contractCallPrompts = (address, method) => [
+    [{header: "Transfer",      body: "0 nAVAX to " + address}],
+    [{header: "Contract Call", body: method}],
+    [{header: "Maximum Fee",   body: "10229175 GWEI"}],
+    [finalizePrompt]
+];
+
 const contractDeployPrompts = (bytes, amount, fee, gas) => {
   const creationPrompt = {header: "Contract",          body: "Creation"};
   const gasPrompt      = {header: "Gas Limit",         body: gas};
@@ -60,6 +70,24 @@ async function testDeploy(self, chainId, withAmount) {
                       )
                      );
 }
+
+const testCall = (chainId, data, method) => async function () {
+    const address = 'df073477da421520cf03af261b782282c304ad66';
+    const txHex = [
+        'ea',
+        '0a',
+        '8534630b8a00',
+        '82b197',
+        '94' + address,
+        '80',
+        data,
+        '82a869',
+        '80',
+        '80'
+    ].join('');
+
+    await testSigning(this, chainId, contractCallPrompts('0x' + address, method), txHex);
+};
 
 describe("Eth app compatibility tests", async function () {
   it('can get a key from the app with the ethereum ledgerjs module', async function() {
@@ -112,6 +140,9 @@ describe("Eth app compatibility tests", async function () {
                       'f83880856d6e2edc00832dc6c0940102030400000000000000000000000000000002019190000102030405060708090a0b0c0d0e0f82a8688080'
                      );
   });
+
+  it('can sign a ERC20PresetMinterPauser pause contract call', testCall(43113, '848456cb59', 'pause'));
+  it('can sign a ERC20PresetMinterPauser unpause contract call', testCall(43113, '843f4ba83a', 'unpause'));
 
   it('can sign a transaction deploying erc20 contract without funding', async function() { await testDeploy(this, 43112, false); });
   it('can sign a transaction deploying erc20 contract with funding',    async function() { await testDeploy(this, 43112, true);  });

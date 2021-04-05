@@ -411,8 +411,6 @@ enum assetCall_state_t {
     ASSETCALL_DONE,
 };
 
-struct EVM_ABI_state { };
-
 struct EVM_assetCall_state {
   enum assetCall_state_t state;
   uint64_t data_length;
@@ -426,6 +424,12 @@ struct EVM_assetCall_state {
             // union EVM_endpoint_states endpoint_state;
         };
     };
+};
+
+struct EVM_ABI_state {
+  size_t argument_index;
+  uint64_t data_length;
+  struct uint32_t_state selector_state;
 };
 
 union EVM_endpoint_states {
@@ -451,6 +455,7 @@ struct struct_evm_parser_meta_state_t {
     parser_input_meta_state_t input;
     uint8_t chainIdLowByte;
     struct known_destination const *known_destination;
+    struct contract_endpoint const *known_endpoint;
     prompt_batch_t prompt;
 };
 
