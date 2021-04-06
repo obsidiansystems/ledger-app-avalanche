@@ -1,7 +1,27 @@
-Transaction = require("@ethereumjs/tx").Transaction;
-Common = require("@ethereumjs/common").default;
-decode = require("rlp").decode;
-byContractAddress=require("@ledgerhq/hw-app-eth/erc20").byContractAddress;
+const Transaction = require("@ethereumjs/tx").Transaction;
+const Common = require("@ethereumjs/common").default;
+const BN = require("bn.js");
+const {bnToRlp, rlp} = require("ethereumjs-util");
+const decode = require("rlp").decode;
+const byContractAddress=require("@ledgerhq/hw-app-eth/erc20").byContractAddress;
+
+const rawUnsignedTransaction = (chainId, unsignedTxParams) => {
+    const common = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId });
+    const unsignedTx = Transaction.fromTxData({...unsignedTxParams}, { common });
+
+    // https://github.com/ethereumjs/ethereumjs-monorepo/issues/1188
+    return rlp.encode([
+        bnToRlp(unsignedTx.nonce),
+        bnToRlp(unsignedTx.gasPrice),
+        bnToRlp(unsignedTx.gasLimit),
+        unsignedTx.to !== undefined ? unsignedTx.to.buf : Buffer.from([]),
+        bnToRlp(unsignedTx.value),
+        unsignedTx.data,
+        bnToRlp(new BN(chainId)),
+        Buffer.from([]),
+        Buffer.from([]),
+    ]);
+};
 
 const finalizePrompt = {header: "Finalize", body: "Transaction"};
 
@@ -73,20 +93,16 @@ async function testDeploy(self, chainId, withAmount) {
 
 const testCall = (chainId, data, method) => async function () {
     const address = 'df073477da421520cf03af261b782282c304ad66';
-    const txHex = [
-        'ea',
-        '0a',
-        '8534630b8a00',
-        '82b197',
-        '94' + address,
-        '80',
-        data,
-        '82a869',
-        '80',
-        '80'
-    ].join('');
+    const tx = rawUnsignedTransaction(chainId, {
+        nonce: '0x0a',
+        gasPrice: '0x34630b8a00',
+        gasLimit: '0xb197',
+        to: '0x' + address,
+        value: '0x0',
+        data: '0x' + data,
+    });
 
-    await testSigning(this, chainId, contractCallPrompts('0x' + address, method), txHex);
+    await testSigning(this, chainId, contractCallPrompts('0x' + address, method), tx);
 };
 
 describe("Eth app compatibility tests", async function () {
@@ -141,8 +157,8 @@ describe("Eth app compatibility tests", async function () {
                      );
   });
 
-  it('can sign a ERC20PresetMinterPauser pause contract call', testCall(43113, '848456cb59', 'pause'));
-  it('can sign a ERC20PresetMinterPauser unpause contract call', testCall(43113, '843f4ba83a', 'unpause'));
+  it('can sign a ERC20PresetMinterPauser pause contract call', testCall(43113, '8456cb59', 'pause'));
+  it('can sign a ERC20PresetMinterPauser unpause contract call', testCall(43113, '3f4ba83a', 'unpause'));
 
   it('can sign a transaction deploying erc20 contract without funding', async function() { await testDeploy(this, 43112, false); });
   it('can sign a transaction deploying erc20 contract with funding',    async function() { await testDeploy(this, 43112, true);  });
