@@ -106,6 +106,7 @@ const testCall = (chainId, data, method) => async function () {
 };
 
 describe("Eth app compatibility tests", async function () {
+  this.timeout(3000);
   it('can get a key from the app with the ethereum ledgerjs module', async function() {
     const flow = await flowAccept(this.speculos);
     const dat = await this.eth.getAddress("44'/60'/0'/0/0", false, true);
