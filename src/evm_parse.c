@@ -5,6 +5,7 @@
 #include "protocol.h"
 #include "to_string.h"
 #include "types.h"
+#include "evm_abi.h"
 
 #define ETHEREUM_ADDRESS_SIZE 20
 #define ETHEREUM_SELECTOR_SIZE 4
@@ -154,29 +155,6 @@ const static struct known_destination precompiled[] = {
 void init_abi_call_data(struct EVM_ABI_state *const state, uint64_t length);
 enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state, parser_input_meta_state_t *const input, evm_parser_meta_state_t *const meta);
 
-enum abi_type {
-    ABI_TYPE_UINT256
-};
-
-#define MAX_PARAMS 1
-
-struct contract_endpoint {
-  char *method_name;
-  uint8_t selector[4];
-  uint8_t parameter_count;
-  enum abi_type parameters[MAX_PARAMS];
-};
-
-static const struct contract_endpoint known_endpoints[] = {
-  { .method_name = "pause",
-    .selector = { 0x84, 0x56, 0xcb, 0x59 },
-    .parameter_count = 0,
-    .parameters = {}},
-  { .method_name = "unpause",
-    .selector = { 0x3f, 0x4b, 0xa8, 0x3a },
-    .parameter_count = 0,
-    .parameters = {}}
-};
 
 static const uint32_t known_endpoints_size=sizeof(known_endpoints)/sizeof(known_endpoints[0]);
 
@@ -543,7 +521,7 @@ enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state, parser_inpu
   }
 
   if(meta->known_endpoint) {
-    if(state->argument_index > meta->known_endpoint->parameter_count)
+    if(state->argument_index > meta->known_endpoint->parameters_count)
       return PARSE_RV_DONE;
     state->argument_index++;
 
