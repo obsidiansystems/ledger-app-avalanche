@@ -505,6 +505,7 @@ struct EVM_RLP_list_state {
     bool hasData;
     uint64_t startGas;
     uint64_t gasPrice;
+    uint256_t value;
     union {
         struct uint64_t_state uint64_state;
         struct EVM_RLP_item_state rlpItem_state;

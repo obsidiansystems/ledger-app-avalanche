@@ -166,7 +166,7 @@ const static struct known_destination precompiled[] = {
 };
 
 void init_abi_call_data(struct EVM_ABI_state *const state, uint64_t length);
-enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state, parser_input_meta_state_t *const input, evm_parser_meta_state_t *const meta);
+enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state, parser_input_meta_state_t *const input, evm_parser_meta_state_t *const meta, bool hasValue);
 
 uint64_t enforceParsedScalarFits64Bits(struct EVM_RLP_item_state *const state) {
   uint64_t value = 0;
@@ -293,8 +293,8 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
 
             PARSE_ITEM(EVM_TXN_VALUE, _to_buffer);
 
-            uint256_t value = enforceParsedScalarFits256Bits(&state->rlpItem_state);
-            SET_PROMPT_VALUE(entry->data.output_prompt.amount_big = value);
+            state->value = enforceParsedScalarFits256Bits(&state->rlpItem_state);
+            SET_PROMPT_VALUE(entry->data.output_prompt.amount_big = state->value);
 
             FINISH_ITEM_CHUNK();
 
@@ -302,14 +302,14 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
               // As of now, there is no known reason to send AVAX to any precompiled contract we support
               // Given that, we take the less risky action with the intent of protecting from unintended transfers
               if(meta->known_destination) {
-                if (!zero256(&value))
+                if (!zero256(&state->value))
                   REJECT("Transactions sent to precompiled contracts must have an amount of 0 WEI");
               }
               else {
                 if(ADD_ACCUM_PROMPT("Transfer", output_evm_prompt_to_string)) return PARSE_RV_PROMPT;
               }
             } else {
-              if(!zero256(&value))
+              if(!zero256(&state->value))
                 if(ADD_ACCUM_PROMPT("Funding Contract", output_evm_fund_to_string)) return PARSE_RV_PROMPT;
             }
 
@@ -333,7 +333,8 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
                                      state->rlpItem_state.length);
                 sub_rv = parse_abi_call_data(&(state->rlpItem_state.endpoint_state),
                                              &(state->rlpItem_state.chunk),
-                                             meta);
+                                             meta,
+                                             !zero256(&state->value));
               }
             }
 
@@ -514,7 +515,10 @@ void init_abi_call_data(struct EVM_ABI_state *const state, uint64_t length) {
   initFixed(&state->argument_state, sizeof(state->argument_state));
 }
 
-enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state, parser_input_meta_state_t *const input, evm_parser_meta_state_t *const meta) {
+enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
+                                  parser_input_meta_state_t *const input,
+                                  evm_parser_meta_state_t *const meta,
+                                  bool hasValue) {
   if(state->data_length == 0) return PARSE_RV_DONE;
   if(state->data_length < ETHEREUM_SELECTOR_SIZE) REJECT("When present, calldata must have at least %u bytes", ETHEREUM_SELECTOR_SIZE);
 
@@ -534,6 +538,7 @@ enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state, parser_inpu
     initFixed(&state->argument_state, sizeof(state->argument_state));
 
     if(meta->known_endpoint) {
+      if(hasValue) REJECT("No currently supported methods are marked as 'payable'");
       char *method_name = PIC(meta->known_endpoint->method_name);
       ADD_PROMPT("Contract Call", method_name, strlen(method_name), strcpy_prompt);
       return PARSE_RV_PROMPT;
