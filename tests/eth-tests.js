@@ -43,12 +43,19 @@ const assetCallDepositPrompts = (assetID, address, amount) => [
     [finalizePrompt]
 ];
 
-const contractCallPrompts = (address, method) => [
-    [{header: "Transfer",      body: "0 nAVAX to " + address}],
-    [{header: "Contract Call", body: method}],
-    [{header: "Maximum Fee",   body: "10229175 GWEI"}],
-    [finalizePrompt]
-];
+const contractCallPrompts = (address, method, args) => {
+    const transferPrompt = {header: "Transfer",      body: "0 nAVAX to " + address};
+    const methodPrompt   = {header: "Contract Call", body: method};
+    const maxFeePrompt   = {header: "Maximum Fee",   body: "10229175 GWEI"};
+    const argumentPrompts = args.map(([header,body]) => [{ header, body }]);
+
+    return [].concat(
+        [[transferPrompt],
+         [methodPrompt]],
+        argumentPrompts,
+        [[maxFeePrompt],
+         [finalizePrompt]]);
+};
 
 const contractDeployPrompts = (bytes, amount, fee, gas) => {
   const creationPrompt = {header: "Contract",          body: "Creation"};
@@ -91,7 +98,7 @@ async function testDeploy(self, chainId, withAmount) {
                      );
 }
 
-const testCall = (chainId, data, method) => async function () {
+const testCall = (chainId, data, method, args) => async function () {
     const address = 'df073477da421520cf03af261b782282c304ad66';
     const tx = rawUnsignedTransaction(chainId, {
         nonce: '0x0a',
@@ -102,7 +109,7 @@ const testCall = (chainId, data, method) => async function () {
         data: '0x' + data,
     });
 
-    await testSigning(this, chainId, contractCallPrompts('0x' + address, method), tx);
+    await testSigning(this, chainId, contractCallPrompts('0x' + address, method, args), tx);
 };
 
 describe("Eth app compatibility tests", async function () {
@@ -158,8 +165,11 @@ describe("Eth app compatibility tests", async function () {
                      );
   });
 
-  it('can sign a ERC20PresetMinterPauser pause contract call', testCall(43113, '8456cb59', 'pause'));
-  it('can sign a ERC20PresetMinterPauser unpause contract call', testCall(43113, '3f4ba83a', 'unpause'));
+  it('can sign a ERC20PresetMinterPauser pause contract call', testCall(43113, '8456cb59', 'pause', []));
+  it('can sign a ERC20PresetMinterPauser unpause contract call', testCall(43113, '3f4ba83a', 'unpause', []));
+  it('can sign a ERC20PresetMinterPauser burn contract call', testCall(43113, '42966c6800000000000000000000000000000000000000000000000000000000000000aa', 'burn', [
+      ["amount", "0.00000017 GWEI"]
+  ]));
 
   it('can sign a transaction deploying erc20 contract without funding', async function() { await testDeploy(this, 43112, false); });
   it('can sign a transaction deploying erc20 contract with funding',    async function() { await testDeploy(this, 43112, true);  });

@@ -403,6 +403,11 @@ typedef struct {
 
 // EVM stuff below this line
 
+union EVM_endpoint_argument_states {
+  struct uint256_t_state uint256_state;
+  struct Address_state address_state;
+};
+
 enum assetCall_state_t {
     ASSETCALL_ADDRESS,
     ASSETCALL_ASSETID,
@@ -426,10 +431,20 @@ struct EVM_assetCall_state {
     };
 };
 
+enum abi_state_t {
+  ABISTATE_SELECTOR,
+  ABISTATE_ARGUMENTS,
+  ABISTATE_DONE,
+};
+
 struct EVM_ABI_state {
+  enum abi_state_t state;
   size_t argument_index;
-  uint64_t data_length;
-  struct uint32_t_state selector_state;
+  size_t data_length;
+  union {
+    struct uint32_t_state selector_state;
+    union EVM_endpoint_argument_states argument_state;
+  };
 };
 
 union EVM_endpoint_states {

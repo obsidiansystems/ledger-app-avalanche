@@ -9,6 +9,7 @@
 
 #define ETHEREUM_ADDRESS_SIZE 20
 #define ETHEREUM_SELECTOR_SIZE 4
+#define ETHEREUM_WORD_SIZE 32
 
 void init_rlp_list(struct EVM_RLP_list_state *const state) {
     memset(state, 0, sizeof(*state));
@@ -22,6 +23,14 @@ void init_rlp_item(struct EVM_RLP_item_state *const state) {
     if(meta->prompt.count >= NUM_ELEMENTS(meta->prompt.entries)) THROW_(EXC_MEMORY_ERROR, "Tried to add a prompt value to full queue"); \
     prompt_entry_t *entry = &meta->prompt.entries[meta->prompt.count];\
     setter;\
+    })
+
+#define ADD_ACCUM_PROMPT_ABI(label_, to_string_) ({                         \
+      if (meta->prompt.count >= NUM_ELEMENTS(meta->prompt.entries)) THROW_(EXC_MEMORY_ERROR, "Tried to add a prompt to full queue"); \
+      meta->prompt.labels[meta->prompt.count] = label_;                 \
+      meta->prompt.entries[meta->prompt.count].to_string = to_string_;  \
+      meta->prompt.count++;                                             \
+      should_flush(meta->prompt);                                       \
     })
 
 #define ADD_ACCUM_PROMPT(label_, to_string_) ({ \
@@ -61,7 +70,11 @@ static void output_evm_gas_limit_to_string(char *const out, size_t const out_siz
   check_null(in);
   number_to_string(out, in->start_gas);
 }
-
+static void output_evm_amount_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
+  check_null(out);
+  check_null(in);
+  wei_to_gwei_string256(out, out_size, &in->amount_big);
+}
 static void output_evm_fee_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
   check_null(out);
   check_null(in);
@@ -154,9 +167,6 @@ const static struct known_destination precompiled[] = {
 
 void init_abi_call_data(struct EVM_ABI_state *const state, uint64_t length);
 enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state, parser_input_meta_state_t *const input, evm_parser_meta_state_t *const meta);
-
-
-static const uint32_t known_endpoints_size=sizeof(known_endpoints)/sizeof(known_endpoints[0]);
 
 uint64_t enforceParsedScalarFits64Bits(struct EVM_RLP_item_state *const state) {
   uint64_t value = 0;
@@ -319,7 +329,8 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
               }
               else {
                 if(state->rlpItem_state.do_init)
-                  init_abi_call_data(&(state->rlpItem_state.endpoint_state), state->rlpItem_state.length);
+                  init_abi_call_data(&(state->rlpItem_state.endpoint_state),
+                                     state->rlpItem_state.length);
                 sub_rv = parse_abi_call_data(&(state->rlpItem_state.endpoint_state),
                                              &(state->rlpItem_state.chunk),
                                              meta);
@@ -395,12 +406,7 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
 
 enum parse_rv impl_parse_rlp_item(struct EVM_RLP_item_state *const state, evm_parser_meta_state_t *const meta, size_t max_bytes_to_buffer) {
     enum parse_rv sub_rv;
-    if(!max_bytes_to_buffer) {
-      state->chunk.src=0;
-      state->chunk.length=0;
-      state->chunk.consumed=0;
-      state->do_init=false;
-    }
+    state->do_init=false;
     switch(state->state) {
       case 0: {
           if(meta->input.consumed >= meta->input.length) return PARSE_RV_NEED_MORE;
@@ -502,38 +508,58 @@ void init_assetCall_data(struct EVM_assetCall_state *const state, uint64_t lengt
 }
 
 void init_abi_call_data(struct EVM_ABI_state *const state, uint64_t length) {
+  state->state = ABISTATE_SELECTOR;
   state->argument_index = 0;
   state->data_length = length;
+  initFixed(&state->argument_state, sizeof(state->argument_state));
 }
 
 enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state, parser_input_meta_state_t *const input, evm_parser_meta_state_t *const meta) {
   if(state->data_length == 0) return PARSE_RV_DONE;
   if(state->data_length < ETHEREUM_SELECTOR_SIZE) REJECT("When present, calldata must have at least %u bytes", ETHEREUM_SELECTOR_SIZE);
 
-  enum parse_rv sub_rv = parseFixed(&state->selector_state, input, ETHEREUM_SELECTOR_SIZE);
-  if(sub_rv != PARSE_RV_DONE) return sub_rv;
+  enum parse_rv sub_rv;
+  switch(state->state) {
+  case ABISTATE_SELECTOR: {
+    sub_rv = parseFixed(&state->selector_state, input, ETHEREUM_SELECTOR_SIZE);
+    if(sub_rv != PARSE_RV_DONE) return sub_rv;
+    for(size_t i = 0; i < NUM_ELEMENTS(known_endpoints); i++) {
+      if(!memcmp(&known_endpoints[i].selector, state->selector_state.buf, ETHEREUM_SELECTOR_SIZE)) {
+        meta->known_endpoint = &known_endpoints[i];
+        break;
+      }
+    }
 
-  for(size_t i = 0; i < NUM_ELEMENTS(known_endpoints); i++) {
-    if(!memcmp(&known_endpoints[i].selector, state->selector_state.buf, ETHEREUM_SELECTOR_SIZE)) {
-      meta->known_endpoint = &known_endpoints[i];
-      break;
+    state->state++;
+    initFixed(&state->argument_state, sizeof(state->argument_state));
+
+    if(meta->known_endpoint) {
+      char *method_name = PIC(meta->known_endpoint->method_name);
+      ADD_PROMPT("Contract Call", method_name, strlen(method_name), strcpy_prompt);
+      return PARSE_RV_PROMPT;
+    } else {
+      // Probably we have to allow this, as the metamask constraint means _this_ endpoint will be getting stuff it doesn't understand a lot.
+      state->data_length = 0;
+      static char const isPresentLabel[]="Is Present (unsafe)";
+      if(ADD_PROMPT("Contract Data", isPresentLabel, sizeof(isPresentLabel), strcpy_prompt))
+        return PARSE_RV_PROMPT;
     }
   }
 
-  if(meta->known_endpoint) {
-    if(state->argument_index > meta->known_endpoint->parameters_count)
+  case ABISTATE_ARGUMENTS: {
+    if(state->argument_index >= meta->known_endpoint->parameters_count)
       return PARSE_RV_DONE;
-    state->argument_index++;
-
-    char *method_name = PIC(meta->known_endpoint->method_name);
-    ADD_PROMPT("Contract Call", method_name, strlen(method_name), strcpy_prompt);
+    sub_rv = parseFixed(&state->argument_state, input, ETHEREUM_WORD_SIZE); // TODO: non-word size values
+    if(sub_rv != PARSE_RV_DONE) return sub_rv;
+    char *argument_name = PIC(meta->known_endpoint->parameters[state->argument_index++].name);
+    SET_PROMPT_VALUE(readu256BE(state->argument_state.uint256_state.buf, &entry->data.output_prompt.amount_big));
+    initFixed(&state->argument_state, sizeof(state->argument_state));
+    ADD_ACCUM_PROMPT_ABI(argument_name, output_evm_amount_to_string);
     return PARSE_RV_PROMPT;
-  } else {
-    // Probably we have to allow this, as the metamask constraint means _this_ endpoint will be getting stuff it doesn't understand a lot.
-    state->data_length = 0;
-    static char const isPresentLabel[]="Is Present (unsafe)";
-    if(ADD_PROMPT("Contract Data", isPresentLabel, sizeof(isPresentLabel), strcpy_prompt))
-      return PARSE_RV_PROMPT;
+  }
+
+  case ABISTATE_DONE:
+    return PARSE_RV_DONE;
   }
 }
 

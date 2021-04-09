@@ -11,6 +11,7 @@
 
 size_t nano_avax_to_string(char *const dest, size_t const buff_size, uint64_t const nano_avax);
 size_t wei_to_gwei_string(char *const dest, size_t const buff_size, uint64_t const wei);
+size_t wei_to_gwei_string_256(char *const dest, size_t const buff_size, uint256_t const wei);
 size_t wei_to_navax_string(char *const dest, size_t const buff_size, uint64_t const wei);
 size_t wei_to_navax_string_256(char *const dest, size_t const buff_size, uint256_t const *const wei);
 

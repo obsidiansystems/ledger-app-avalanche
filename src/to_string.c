@@ -237,6 +237,14 @@ size_t wei_to_gwei_string(char *const dest, size_t const buff_size, uint64_t con
   ix += sizeof(unit) - 1;
   return ix;
 }
+size_t wei_to_gwei_string256(char *const dest, size_t const buff_size, uint64_t const wei) {
+  static char const unit[] = " GWEI";
+  size_t ix = subunit_to_unit_string_256(dest, buff_size, wei, 9);
+  if (ix + sizeof(unit) > buff_size) THROW_(EXC_MEMORY_ERROR, "Can't fit ' GWEI' into prompt value string");
+  memcpy(&dest[ix], unit, sizeof(unit));
+  ix += sizeof(unit) - 1;
+  return ix;
+}
 size_t wei_to_navax_string(char *const dest, size_t const buff_size, uint64_t const wei) {
   static char const unit[] = " nAVAX";
   size_t ix = subunit_to_unit_string(dest, buff_size, wei, WEI_GWEI_SCALE);
