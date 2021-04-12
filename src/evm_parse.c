@@ -48,6 +48,15 @@ void init_rlp_item(struct EVM_RLP_item_state *const state) {
 
 #define REJECT(msg, ...) { PRINTF("Rejecting: " msg "\n", ##__VA_ARGS__); THROW_(EXC_PARSE_ERROR, "Rejected"); }
 
+static void setup_prompt_evm_address(uint8_t *buffer, output_prompt_t const *const prompt) {
+  size_t padding = ETHEREUM_WORD_SIZE - ETHEREUM_ADDRESS_SIZE;
+  memcpy(prompt->address.val, &buffer[padding], ETHEREUM_ADDRESS_SIZE);
+}
+
+static void setup_prompt_evm_amount(uint8_t *buffer, output_prompt_t const *const prompt) {
+  readu256BE(buffer, &prompt->amount_big);
+}
+
 static void output_evm_calldata_preview_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
   size_t ix = 0;
   out[ix] = '0'; ix++;
@@ -74,6 +83,13 @@ static void output_evm_fee_to_string(char *const out, size_t const out_size, out
 }
 static void output_evm_fund_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
   wei_to_navax_string_256(out, out_size, &in->amount_big);
+}
+static void output_evm_address_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
+  size_t ix = 0;
+  out[ix] = '0'; ix++;
+  out[ix] = 'x'; ix++;
+  bin_to_hex_lc(&out[ix], out_size - ix, &in->address.val, ETHEREUM_ADDRESS_SIZE);
+  ix += 2 * ETHEREUM_ADDRESS_SIZE + 1;
 }
 
 static void output_evm_prompt_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
@@ -542,10 +558,13 @@ enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
       return PARSE_RV_DONE;
     sub_rv = parseFixed(&state->argument_state, input, ETHEREUM_WORD_SIZE); // TODO: non-word size values
     if(sub_rv != PARSE_RV_DONE) return sub_rv;
-    char *argument_name = PIC(meta->known_endpoint->parameters[state->argument_index++].name);
-    SET_PROMPT_VALUE(readu256BE(state->argument_state.uint256_state.buf, &entry->data.output_prompt.amount_big));
+    const struct contract_endpoint_param parameter = meta->known_endpoint->parameters[state->argument_index++];
+    char *argument_name = PIC(parameter.name);
+    void (*setup_prompt)(struct FixedState* buffer, output_prompt_t const *const prompt) = PIC(parameter.setup_prompt);
+    SET_PROMPT_VALUE(setup_prompt(((struct FixedState*)(&state->argument_state))->buffer,
+                                  &entry->data.output_prompt));
     initFixed(&state->argument_state, sizeof(state->argument_state));
-    ADD_ACCUM_PROMPT_ABI(argument_name, output_evm_amount_to_string);
+    ADD_ACCUM_PROMPT_ABI(argument_name, PIC(parameter.output_prompt));
     return PARSE_RV_PROMPT;
   }
 
