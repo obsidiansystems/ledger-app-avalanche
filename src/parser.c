@@ -113,8 +113,6 @@ void init_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const st
 }
 
 static void output_prompt_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
-    check_null(out);
-    check_null(in);
     network_info_t const *const network_info = network_info_from_network_id(in->network_id);
     if (network_info == NULL) REJECT("Can't determine network HRP for addresses");
     char const *const hrp = network_info->hrp;
@@ -130,16 +128,12 @@ static void output_prompt_to_string(char *const out, size_t const out_size, outp
 }
 
 static void output_address_to_string(char *const out, size_t const out_size, address_prompt_t const *const in) {
-    check_null(out);
-    check_null(in);
     char const *const hrp = network_info_from_network_id_not_null(in->network_id)->hrp;
     size_t ix = 0;
     ix += pkh_to_string(&out[ix], out_size - ix, hrp, strlen(hrp), &in->address.val);
 }
 
 static void validator_to_string(char *const out, size_t const out_size, address_prompt_t const *const in) {
-    check_null(out);
-    check_null(in);
     size_t ix = 0;
     ix += nodeid_to_string(&out[ix], out_size - ix, &in->address.val);
 }
@@ -329,9 +323,6 @@ enum parse_rv parse_SECP256K1OutputOwners(struct SECP256K1OutputOwners_state *co
 }
 
 static void lockedFundsPrompt(char *const out, size_t const out_size, locked_prompt_t const *const in) {
-    check_null(out);
-    check_null(in);
-
     size_t ix = nano_avax_to_string(out, out_size, in->amount);
 
     static char const to[] = " until ";

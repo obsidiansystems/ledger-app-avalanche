@@ -49,8 +49,6 @@ void init_rlp_item(struct EVM_RLP_item_state *const state) {
 #define REJECT(msg, ...) { PRINTF("Rejecting: " msg "\n", ##__VA_ARGS__); THROW_(EXC_PARSE_ERROR, "Rejected"); }
 
 static void output_evm_calldata_preview_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
-  check_null(out);
-  check_null(in);
   size_t ix = 0;
   out[ix] = '0'; ix++;
   out[ix] = 'x'; ix++;
@@ -66,29 +64,19 @@ static void output_evm_calldata_preview_to_string(char *const out, size_t const 
 }
 
 static void output_evm_gas_limit_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
-  check_null(out);
-  check_null(in);
   number_to_string(out, in->start_gas);
 }
 static void output_evm_amount_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
-  check_null(out);
-  check_null(in);
   wei_to_gwei_string256(out, out_size, &in->amount_big);
 }
 static void output_evm_fee_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
-  check_null(out);
-  check_null(in);
   wei_to_gwei_string(out, out_size, in->fee);
 }
 static void output_evm_fund_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
-  check_null(out);
-  check_null(in);
   wei_to_navax_string_256(out, out_size, &in->amount_big);
 }
 
 static void output_evm_prompt_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
-    check_null(out);
-    check_null(in);
     size_t ix = wei_to_navax_string_256(out, out_size, &in->amount_big);
 
     static char const to[] = " to ";
@@ -103,8 +91,6 @@ static void output_evm_prompt_to_string(char *const out, size_t const out_size, 
 }
 
 static void output_assetCall_prompt_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
-  check_null(out);
-  check_null(in);
   size_t ix = 0;
 
   out[ix] = '0'; ix++;
