@@ -328,6 +328,7 @@ typedef struct {
       size_t count;
       uint8_t buffer[MAX_CALLDATA_PREVIEW];
     } calldata_preview;
+    uint8_t bytes32[32]; // ABI
   };
   network_id_t network_id;
   Address address;

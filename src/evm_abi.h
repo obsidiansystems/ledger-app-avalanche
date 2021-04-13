@@ -1,15 +1,18 @@
 static void output_evm_amount_to_string(char *const out, size_t const out_size, output_prompt_t const *const in);
 static void output_evm_address_to_string(char *const out, size_t const out_size, output_prompt_t const *const in);
+static void output_evm_bytes32_to_string(char *const out, size_t const out_size, output_prompt_t const *const in);
 static void setup_prompt_evm_address(uint8_t *buffer, output_prompt_t const *const prompt);
 static void setup_prompt_evm_amount(uint8_t *buffer, output_prompt_t const *const prompt);
-
-// require('keccak256')('mint(address, uint256)').slice(0,4).toString('hex')
+static void setup_prompt_evm_bytes32(uint8_t *buffer, output_prompt_t const *const prompt);
 
 #define ABI_ADDRESS(name) \
-  ABI_PARAMETER(name, setup_prompt_evm_address, output_evm_address_to_string) \
+  ABI_PARAMETER(name, setup_prompt_evm_address, output_evm_address_to_string)
 
 #define ABI_AMOUNT(name) \
-  ABI_PARAMETER(name, setup_prompt_evm_amount, output_evm_amount_to_string) \
+  ABI_PARAMETER(name, setup_prompt_evm_amount, output_evm_amount_to_string)
+
+#define ABI_BYTES32(name)                                               \
+  ABI_PARAMETER(name, setup_prompt_evm_bytes32, output_evm_bytes32_to_string)
 
 #define ERC20_ABI                                                       \
   ABI_METHOD("\x84\x56\xcb\x59", 0,                                     \
@@ -46,6 +49,24 @@ static void setup_prompt_evm_amount(uint8_t *buffer, output_prompt_t const *cons
              "decreaseAllowance",                                       \
              ABI_ADDRESS("spender")                                     \
              ABI_AMOUNT("subtractedValue"))                             \
+  ABI_METHOD("\xb6\x42\xfe\x57", 3,                                     \
+             "transferFrom",                                            \
+             ABI_ADDRESS("sender")                                      \
+             ABI_ADDRESS("recipient")                                   \
+             ABI_AMOUNT("amount"))                                      \
+  ABI_METHOD("\x44\xf0\xa8\x42", 2,                                     \
+             "grantRole",                                               \
+             ABI_BYTES32("role")                                        \
+             ABI_ADDRESS("account"))                                    \
+  ABI_METHOD("\xe8\x36\x55\x76", 2,                                     \
+             "renounceRole",                                            \
+             ABI_BYTES32("role")                                        \
+             ABI_ADDRESS("account"))                                    \
+  ABI_METHOD("\xb3\x25\x27\x96", 2,                                     \
+             "revokeRole",                                              \
+             ABI_BYTES32("role")                                        \
+             ABI_ADDRESS("account"))                                    \
+
 
 struct contract_endpoint_param {
   char *name;
@@ -53,7 +74,7 @@ struct contract_endpoint_param {
   void (*output_prompt)(*const out, size_t const out_size, output_prompt_t const *const in);
 };
 
-#define ABI_MAX_PARAMETERS 2
+#define ABI_MAX_PARAMETERS 3
 
 struct contract_endpoint {
   char *method_name;
@@ -95,3 +116,4 @@ static const struct contract_endpoint known_endpoints[] = {
 #undef ERC20_ABI
 #undef ABI_ADDRESS
 #undef ABI_AMOUNT
+#undef ABI_BYTES32

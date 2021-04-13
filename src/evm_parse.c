@@ -52,9 +52,11 @@ static void setup_prompt_evm_address(uint8_t *buffer, output_prompt_t const *con
   size_t padding = ETHEREUM_WORD_SIZE - ETHEREUM_ADDRESS_SIZE;
   memcpy(prompt->address.val, &buffer[padding], ETHEREUM_ADDRESS_SIZE);
 }
-
 static void setup_prompt_evm_amount(uint8_t *buffer, output_prompt_t const *const prompt) {
   readu256BE(buffer, &prompt->amount_big);
+}
+static void setup_prompt_evm_bytes32(uint8_t *buffer, output_prompt_t const *const prompt) {
+  memcpy(prompt->bytes32, buffer, 32);
 }
 
 static void output_evm_calldata_preview_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
@@ -90,6 +92,13 @@ static void output_evm_address_to_string(char *const out, size_t const out_size,
   out[ix] = 'x'; ix++;
   bin_to_hex_lc(&out[ix], out_size - ix, &in->address.val, ETHEREUM_ADDRESS_SIZE);
   ix += 2 * ETHEREUM_ADDRESS_SIZE + 1;
+}
+static void output_evm_bytes32_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
+  size_t ix = 0;
+  out[ix] = '0'; ix++;
+  out[ix] = 'x'; ix++;
+  bin_to_hex_lc(&out[ix], out_size - ix, in->bytes32, 32);
+  ix += 2 * 32 + 1;
 }
 
 static void output_evm_prompt_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {

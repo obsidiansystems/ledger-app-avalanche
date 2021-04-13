@@ -174,6 +174,10 @@ describe("Eth app compatibility tests", async function () {
       ["to", "0x0101020203030404050506060707080809090a0a"],
       ["amount", "0.00000017 GWEI"]
   ]));
+  it('can sign a ERC20PresetMinterPauser grantRole contract call', testCall(43113, '44f0a8420123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0000000000000000000000000101020203030404050506060707080809090a0a', 'grantRole', [
+      ["role", '0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'],
+      ["account", '0x0101020203030404050506060707080809090a0a']
+  ]));
 
   it('can sign a transaction deploying erc20 contract without funding', async function() { await testDeploy(this, 43112, false); });
   it('can sign a transaction deploying erc20 contract with funding',    async function() { await testDeploy(this, 43112, true);  });
