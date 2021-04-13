@@ -54,12 +54,17 @@ static void setup_prompt_evm_bytes32(uint8_t *buffer, output_prompt_t const *con
   memcpy(prompt->bytes32, buffer, 32);
 }
 
-static void output_evm_calldata_preview_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
+static size_t output_hex_to_string(char *const out, size_t const out_size, output_prompt_t const *const in, size_t in_size) {
   size_t ix = 0;
   out[ix] = '0'; ix++;
   out[ix] = 'x'; ix++;
-  bin_to_hex_lc(&out[ix], out_size - ix, &in->calldata_preview.buffer, in->calldata_preview.count);
-  ix += 2 * in->calldata_preview.count;
+  bin_to_hex_lc(&out[ix], out_size - ix, in, in_size);
+  ix += 2 * in_size;
+  return ix;
+}
+
+static void output_evm_calldata_preview_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
+  size_t ix = output_hex_to_string(out, out_size, &in->calldata_preview.buffer, in->calldata_preview.count);
   if(in->calldata_preview.cropped) {
     if (ix + 3 > out_size) THROW_(EXC_MEMORY_ERROR, "Can't fit into prompt value string");
     out[ix] = '.'; ix++;
@@ -82,18 +87,10 @@ static void output_evm_fund_to_string(char *const out, size_t const out_size, ou
   wei_to_navax_string_256(out, out_size, &in->amount_big);
 }
 static void output_evm_address_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
-  size_t ix = 0;
-  out[ix] = '0'; ix++;
-  out[ix] = 'x'; ix++;
-  bin_to_hex_lc(&out[ix], out_size - ix, &in->address.val, ETHEREUM_ADDRESS_SIZE);
-  ix += 2 * ETHEREUM_ADDRESS_SIZE + 1;
+  output_hex_to_string(out, out_size, &in->address.val, ETHEREUM_ADDRESS_SIZE);
 }
 static void output_evm_bytes32_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
-  size_t ix = 0;
-  out[ix] = '0'; ix++;
-  out[ix] = 'x'; ix++;
-  bin_to_hex_lc(&out[ix], out_size - ix, in->bytes32, 32);
-  ix += 2 * 32 + 1;
+  output_hex_to_string(out, out_size, in->bytes32, 32);
 }
 
 static void output_evm_prompt_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
@@ -104,10 +101,7 @@ static void output_evm_prompt_to_string(char *const out, size_t const out_size, 
     memcpy(&out[ix], to, sizeof(to));
     ix += sizeof(to) - 1;
 
-    out[ix] = '0'; ix++;
-    out[ix] = 'x'; ix++;
-    bin_to_hex_lc(&out[ix], out_size - ix, &in->address.val, ETHEREUM_ADDRESS_SIZE);
-    ix += 2 * ETHEREUM_ADDRESS_SIZE + 1;
+    output_evm_address_to_string(&out[ix], out_size - ix, in);
 }
 
 static void output_assetCall_prompt_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
@@ -139,10 +133,7 @@ static void output_assetCall_prompt_to_string(char *const out, size_t const out_
   memcpy(&out[ix], to, sizeof(to));
   ix += sizeof(to) - 1;
 
-  out[ix] = '0'; ix++;
-  out[ix] = 'x'; ix++;
-  bin_to_hex_lc(&out[ix], out_size - ix, &in->address.val, ETHEREUM_ADDRESS_SIZE);
-  ix += 2 * ETHEREUM_ADDRESS_SIZE + 1;
+  output_evm_address_to_string(&out[ix], out_size - ix, in);
 }
 
 enum parse_rv parse_rlp_item(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta);
