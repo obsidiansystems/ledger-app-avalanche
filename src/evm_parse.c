@@ -325,11 +325,11 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
                 PRINTF("PARSER CALLED [sub_rv: %u]\n", sub_rv);
               }
               else {
-                if(state->rlpItem_state.do_init)
-                  init_abi_call_data(&(state->rlpItem_state.endpoint_state),
-                                     state->rlpItem_state.length);
-                sub_rv = parse_abi_call_data(&(state->rlpItem_state.endpoint_state),
-                                             &(state->rlpItem_state.chunk),
+                struct EVM_RLP_item_state *const itemState = &state->rlpItem_state;
+                if(itemState->do_init)
+                  init_abi_call_data(&itemState->endpoint_state.abi_state, itemState->length);
+                sub_rv = parse_abi_call_data(&itemState->endpoint_state.abi_state,
+                                             &itemState->chunk,
                                              meta,
                                              !zero256(&state->value));
               }
