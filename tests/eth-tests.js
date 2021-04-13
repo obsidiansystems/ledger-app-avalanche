@@ -112,6 +112,18 @@ const testCall = (chainId, data, method, args) => async function () {
     await testSigning(this, chainId, contractCallPrompts('0x' + address, method, args), tx);
 };
 
+const testData = {
+    address: {
+        hex: '0000000000000000000000000101020203030404050506060707080809090a0a',
+        prompt: '0101020203030404050506060707080809090a0a',
+    },
+    amount: {
+        hex: '00000000000000000000000000000000000000000000000000000000000000aa',
+        prompt: '0.00000017 GWEI',
+    },
+    bytes32: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+};
+
 describe("Eth app compatibility tests", async function () {
   this.timeout(3000);
   it('can get a key from the app with the ethereum ledgerjs module', async function() {
@@ -167,16 +179,16 @@ describe("Eth app compatibility tests", async function () {
 
   it('can sign a ERC20PresetMinterPauser pause contract call', testCall(43113, '8456cb59', 'pause', []));
   it('can sign a ERC20PresetMinterPauser unpause contract call', testCall(43113, '3f4ba83a', 'unpause', []));
-  it('can sign a ERC20PresetMinterPauser burn contract call', testCall(43113, '42966c6800000000000000000000000000000000000000000000000000000000000000aa', 'burn', [
-      ["amount", "0.00000017 GWEI"]
+  it('can sign a ERC20PresetMinterPauser burn contract call', testCall(43113, '42966c68' + testData.amount.hex, 'burn', [
+      ["amount", testData.amount.prompt]
   ]));
-  it('can sign a ERC20PresetMinterPauser mint contract call', testCall(43113, '36e59c310000000000000000000000000101020203030404050506060707080809090a0a00000000000000000000000000000000000000000000000000000000000000aa', 'mint', [
-      ["to", "0x0101020203030404050506060707080809090a0a"],
-      ["amount", "0.00000017 GWEI"]
+  it('can sign a ERC20PresetMinterPauser mint contract call', testCall(43113, '36e59c31' + testData.address.hex + testData.amount.hex, 'mint', [
+      ["to", '0x' + testData.address.prompt],
+      ["amount", testData.amount.prompt]
   ]));
-  it('can sign a ERC20PresetMinterPauser grantRole contract call', testCall(43113, '44f0a8420123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0000000000000000000000000101020203030404050506060707080809090a0a', 'grantRole', [
-      ["role", '0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'],
-      ["account", '0x0101020203030404050506060707080809090a0a']
+  it('can sign a ERC20PresetMinterPauser grantRole contract call', testCall(43113, '44f0a842' + testData.bytes32 + testData.address.hex, 'grantRole', [
+      ["role", '0x' + testData.bytes32],
+      ["account", '0x' + testData.address.prompt]
   ]));
 
   it('can sign a transaction deploying erc20 contract without funding', async function() { await testDeploy(this, 43112, false); });
