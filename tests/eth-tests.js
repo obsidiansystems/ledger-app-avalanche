@@ -182,9 +182,16 @@ describe("Eth app compatibility tests", async function () {
       ["amount", testData.amount.prompt]
   ]));
   it('can sign a ERC20PresetMinterPauser mint contract call', testCall(43113, '40c10f19' + testData.address.hex + testData.amount.hex, 'mint', [
-      ["to", '0x' + testData.address.prompt],
-      ["amount", testData.amount.prompt]
+    ["to", '0x' + testData.address.prompt],
+    ["amount", testData.amount.prompt]
   ]));
+
+  it('can sign a ERC20PresetMinterPauser transferFrom contract call', testCall(43113, '23b872dd' + testData.address.hex + testData.address.hex + testData.amount.hex, 'transferFrom', [
+    ["sender", '0x' + testData.address.prompt],
+    ["recipient", '0x' + testData.address.prompt],
+    ["amount", testData.amount.prompt]
+  ]));
+
   it('can sign a ERC20PresetMinterPauser grantRole contract call', testCall(43113, '2f2ff15d' + testData.bytes32 + testData.address.hex, 'grantRole', [
       ["role", '0x' + testData.bytes32],
       ["account", '0x' + testData.address.prompt]

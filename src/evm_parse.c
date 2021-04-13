@@ -469,9 +469,11 @@ enum parse_rv impl_parse_rlp_item(struct EVM_RLP_item_state *const state, evm_pa
           if(max_bytes_to_buffer)
             memcpy(state->buffer+state->current, meta->input.src + meta->input.consumed, MIN(consumable, unbuffered));
           else {
-            state->chunk.src=&meta->input.src[meta->input.consumed];
-            state->chunk.consumed = 0;
-            state->chunk.length = consumable;
+            if(state->chunk.consumed >= state->chunk.length) {
+              state->chunk.src=&meta->input.src[meta->input.consumed];
+              state->chunk.consumed = 0;
+              state->chunk.length = consumable;
+            }
           }
 
           meta->input.consumed += consumable;
