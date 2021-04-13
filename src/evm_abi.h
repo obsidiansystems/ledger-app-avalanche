@@ -24,45 +24,45 @@ static void setup_prompt_evm_bytes32(uint8_t *buffer, output_prompt_t const *con
   ABI_METHOD("\x42\x96\x6c\x68", 1,                                     \
              "burn",                                                    \
              ABI_AMOUNT("amount"))                                      \
-  ABI_METHOD("\x36\xe5\x9c\x31", 2,                                     \
+  ABI_METHOD("\x40\xc1\x0f\x19", 2,                                     \
              "mint",                                                    \
              ABI_ADDRESS("to")                                          \
              ABI_AMOUNT("amount")                                       \
              )                                                          \
-  ABI_METHOD("\x9d\x61\xd2\x34", 2,                                     \
+  ABI_METHOD("\xa9\x05\x9c\xbb", 2,                                     \
              "transfer",                                                \
              ABI_ADDRESS("recipient")                                   \
              ABI_AMOUNT("amount"))                                      \
-  ABI_METHOD("\x32\x90\x2f\xff", 2,                                     \
+  ABI_METHOD("\x79\xcc\x67\x90", 2,                                     \
              "burnFrom",                                                \
              ABI_ADDRESS("account")                                     \
              ABI_AMOUNT("amount"))                                      \
-  ABI_METHOD("\x8b\x06\x9f\x2a", 2,                                     \
+  ABI_METHOD("\x09\x5e\xa7\xb3", 2,                                     \
              "approve",                                                 \
              ABI_ADDRESS("spender")                                     \
              ABI_AMOUNT("amount"))                                      \
-  ABI_METHOD("\x05\x53\xe3\x95", 2,                                     \
+  ABI_METHOD("\x39\x50\x93\x51", 2,                                     \
              "increaseAllowance",                                       \
              ABI_ADDRESS("spender")                                     \
              ABI_AMOUNT("addedValue"))                                  \
-  ABI_METHOD("\x26\x44\x4a\xcc", 2,                                     \
+  ABI_METHOD("\xa4\x57\xc2\xd7", 2,                                     \
              "decreaseAllowance",                                       \
              ABI_ADDRESS("spender")                                     \
              ABI_AMOUNT("subtractedValue"))                             \
-  ABI_METHOD("\xb6\x42\xfe\x57", 3,                                     \
+  ABI_METHOD("\x23\xb8\x72\xdd", 3,                                     \
              "transferFrom",                                            \
              ABI_ADDRESS("sender")                                      \
              ABI_ADDRESS("recipient")                                   \
              ABI_AMOUNT("amount"))                                      \
-  ABI_METHOD("\x44\xf0\xa8\x42", 2,                                     \
+  ABI_METHOD("\x2f\x2f\xf1\x5d", 2,                                     \
              "grantRole",                                               \
              ABI_BYTES32("role")                                        \
              ABI_ADDRESS("account"))                                    \
-  ABI_METHOD("\xe8\x36\x55\x76", 2,                                     \
+  ABI_METHOD("\x36\x56\x8a\xbe", 2,                                     \
              "renounceRole",                                            \
              ABI_BYTES32("role")                                        \
              ABI_ADDRESS("account"))                                    \
-  ABI_METHOD("\xb3\x25\x27\x96", 2,                                     \
+  ABI_METHOD("\xd5\x47\x74\x1f", 2,                                     \
              "revokeRole",                                              \
              ABI_BYTES32("role")                                        \
              ABI_ADDRESS("account"))                                    \
