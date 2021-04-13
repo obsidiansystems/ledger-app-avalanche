@@ -302,9 +302,6 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
                 if (!zero256(&state->value))
                   REJECT("Transactions sent to precompiled contracts must have an amount of 0 WEI");
               }
-              else {
-                if(ADD_ACCUM_PROMPT("Transfer", output_evm_prompt_to_string)) return PARSE_RV_PROMPT;
-              }
             } else {
               if(!zero256(&state->value))
                 if(ADD_ACCUM_PROMPT("Funding Contract", output_evm_fund_to_string)) return PARSE_RV_PROMPT;
@@ -325,13 +322,24 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
                 PRINTF("PARSER CALLED [sub_rv: %u]\n", sub_rv);
               }
               else {
-                struct EVM_RLP_item_state *const itemState = &state->rlpItem_state;
-                if(itemState->do_init)
-                  init_abi_call_data(&itemState->endpoint_state.abi_state, itemState->length);
-                sub_rv = parse_abi_call_data(&itemState->endpoint_state.abi_state,
-                                             &itemState->chunk,
-                                             meta,
-                                             !zero256(&state->value));
+                struct EVM_RLP_item_state *const item_state = &state->rlpItem_state;
+                struct EVM_ABI_state *const abi_state = &item_state->endpoint_state.abi_state;
+                if(item_state->do_init)
+                  init_abi_call_data(abi_state, item_state->length);
+
+                if(abi_state->data_length == 0) {
+                  sub_rv = PARSE_RV_DONE;
+                  state->item_index++;
+                  init_rlp_item(&state->rlpItem_state);
+                  ADD_ACCUM_PROMPT("Transfer", output_evm_prompt_to_string);
+                  return PARSE_RV_PROMPT;
+                }
+                else {
+                  sub_rv = parse_abi_call_data(abi_state,
+                                               &item_state->chunk,
+                                               meta,
+                                               !zero256(&state->value));
+                }
               }
             }
 
@@ -516,7 +524,6 @@ enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
                                   parser_input_meta_state_t *const input,
                                   evm_parser_meta_state_t *const meta,
                                   bool hasValue) {
-  if(state->data_length == 0) return PARSE_RV_DONE;
   if(state->data_length < ETHEREUM_SELECTOR_SIZE) REJECT("When present, calldata must have at least %u bytes", ETHEREUM_SELECTOR_SIZE);
 
   enum parse_rv sub_rv;
@@ -540,11 +547,13 @@ enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
       ADD_PROMPT("Contract Call", method_name, strlen(method_name), strcpy_prompt);
       return PARSE_RV_PROMPT;
     } else {
+      state->state = ABISTATE_DONE;
       // Probably we have to allow this, as the metamask constraint means _this_ endpoint will be getting stuff it doesn't understand a lot.
-      state->data_length = 0;
       static char const isPresentLabel[]="Is Present (unsafe)";
-      if(ADD_PROMPT("Contract Data", isPresentLabel, sizeof(isPresentLabel), strcpy_prompt))
-        return PARSE_RV_PROMPT;
+      set_next_batch_size(&meta->prompt, 2);
+      ADD_ACCUM_PROMPT("Transfer", output_evm_prompt_to_string);
+      ADD_PROMPT("Contract Data", isPresentLabel, sizeof(isPresentLabel), strcpy_prompt);
+      return PARSE_RV_PROMPT;
     }
   }
 

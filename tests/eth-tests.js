@@ -44,14 +44,12 @@ const assetCallDepositPrompts = (assetID, address, amount) => [
 ];
 
 const contractCallPrompts = (address, method, args) => {
-    const transferPrompt = {header: "Transfer",      body: "0 nAVAX to " + address};
     const methodPrompt   = {header: "Contract Call", body: method};
     const maxFeePrompt   = {header: "Maximum Fee",   body: "10229175 GWEI"};
     const argumentPrompts = args.map(([header,body]) => [{ header, body }]);
 
     return [].concat(
-        [[transferPrompt],
-         [methodPrompt]],
+        [[methodPrompt]],
         argumentPrompts,
         [[maxFeePrompt],
          [finalizePrompt]]);
@@ -166,10 +164,10 @@ describe("Eth app compatibility tests", async function () {
     }
   });
 
-  it('can sign a transaction with calldata via the ethereum ledgerjs module', async function() {
+  it('can sign a transaction with unrecognized calldata via the ethereum ledgerjs module', async function() {
     await testSigning(this, 43112,
-                      [[{header:"Transfer",      body: "0.000000001 nAVAX to 0x0102030400000000000000000000000000000002"}],
-                       [{header:"Contract Data", body: "Is Present (unsafe)"}],
+                      [[{header:"Transfer",      body: "0.000000001 nAVAX to 0x0102030400000000000000000000000000000002"},
+                        {header:"Contract Data", body: "Is Present (unsafe)"}],
                        [{header:"Maximum Fee",   body: "1410000000 GWEI"}],
                        [{header:"Finalize",      body: "Transaction"}]
                       ],
