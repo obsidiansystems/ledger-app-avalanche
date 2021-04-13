@@ -85,16 +85,17 @@ async function testSigning(self, chainId, prompts, hexTx) {
   await flow.promptsPromise;
 }
 
-async function testDeploy(self, chainId, withAmount) {
+const testDeploy = (chainId, withAmount) => async function () {
+    this.timeout(8000);
     const [amountPrompt, amountHex] = withAmount ? ['0.000000001 nAVAX', '01'] : [null, '80'];
-    await testSigning(self, chainId,
+    await testSigning(this, chainId,
                       contractDeployPrompts(erc20presetMinterPauser.bytecodeHex, amountPrompt, '1428785900 GWEI', '3039970'),
                       ('f93873' + '03' + '856d6e2edc00' + '832e62e2' + '80' + amountHex
                        + ('b9385e' + erc20presetMinterPauser.bytecodeHex)
                        + '82a868' + '80' + '80'
                       )
                      );
-}
+};
 
 const testCall = (chainId, data, method, args) => async function () {
     const address = 'df073477da421520cf03af261b782282c304ad66';
@@ -189,8 +190,8 @@ describe("Eth app compatibility tests", async function () {
       ["account", '0x' + testData.address.prompt]
   ]));
 
-  it('can sign a transaction deploying erc20 contract without funding', async function() { await testDeploy(this, 43112, false); });
-  it('can sign a transaction deploying erc20 contract with funding',    async function() { await testDeploy(this, 43112, true);  });
+  it('can sign a transaction deploying erc20 contract without funding', testDeploy(43112, false));
+  it('can sign a transaction deploying erc20 contract with funding',    testDeploy(43112, true));
 
   it('can sign a transaction with assetCall via the ethereum ledgerjs module', async function() {
       await testSigning(this, 43112,
