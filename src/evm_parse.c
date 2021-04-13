@@ -25,7 +25,7 @@ void init_rlp_item(struct EVM_RLP_item_state *const state) {
     setter;\
     })
 
-#define ADD_ACCUM_PROMPT_ABI(label_, to_string_) ({                         \
+#define ADD_ACCUM_PROMPT_ABI(label_, to_string_) ({                     \
       if (meta->prompt.count >= NUM_ELEMENTS(meta->prompt.entries)) THROW_(EXC_MEMORY_ERROR, "Tried to add a prompt to full queue"); \
       meta->prompt.labels[meta->prompt.count] = label_;                 \
       meta->prompt.entries[meta->prompt.count].to_string = to_string_;  \
@@ -33,13 +33,8 @@ void init_rlp_item(struct EVM_RLP_item_state *const state) {
       should_flush(meta->prompt);                                       \
     })
 
-#define ADD_ACCUM_PROMPT(label_, to_string_) ({ \
-        if (meta->prompt.count >= NUM_ELEMENTS(meta->prompt.entries)) THROW_(EXC_MEMORY_ERROR, "Tried to add a prompt to full queue"); \
-        meta->prompt.labels[meta->prompt.count] = PROMPT(label_); \
-        meta->prompt.entries[meta->prompt.count].to_string = to_string_; \
-        meta->prompt.count++; \
-        should_flush(meta->prompt); \
-    })
+#define ADD_ACCUM_PROMPT(label_, to_string_) \
+  ADD_ACCUM_PROMPT_ABI(PROMPT(label_), to_string_)
 
 #define ADD_PROMPT(label_, data_, size_, to_string_) ({\
     SET_PROMPT_VALUE(memcpy(&entry->data, data_, size_));\
