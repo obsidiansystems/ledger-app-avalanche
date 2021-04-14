@@ -17,19 +17,30 @@ struct FixedState {
     uint8_t buffer[1]; // Actually bigger.
 };
 #define DEFINE_FIXED(name) \
-    struct name ## _state { \
+  struct name ## _state { \
+    union { \
+      struct FixedState fixedState; \
+      struct { \
         int state; \
         union { \
             name val; \
             uint8_t buf[sizeof(name)]; \
         }; \
-    }
+      }; \
+    }; \
+  };
 #define DEFINE_FIXED_BE(name) \
-    struct name ## _state { \
+  struct name ## _state { \
+    union { \
+      struct FixedState fixedState; \
+      struct { \
         int state; \
         uint8_t buf[sizeof(name)]; \
         name val; \
-    }
+      }; \
+    }; \
+  };
+
 #define IMPL_FIXED(name) \
     inline enum parse_rv parse_ ## name (struct name ## _state *const state, parser_meta_state_t *const meta) { \
         return parseFixed((struct FixedState *const)state, &meta->input, sizeof(name));\
@@ -405,6 +416,7 @@ typedef struct {
 // EVM stuff below this line
 
 union EVM_endpoint_argument_states {
+  struct FixedState fixedState;
   struct uint256_t_state uint256_state;
   struct Address_state address_state;
 };
