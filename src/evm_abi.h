@@ -1,9 +1,9 @@
 static void output_evm_amount_to_string(char *const out, size_t const out_size, output_prompt_t const *const in);
 static void output_evm_address_to_string(char *const out, size_t const out_size, output_prompt_t const *const in);
 static void output_evm_bytes32_to_string(char *const out, size_t const out_size, output_prompt_t const *const in);
-static void setup_prompt_evm_address(uint8_t *buffer, output_prompt_t const *const prompt);
-static void setup_prompt_evm_amount(uint8_t *buffer, output_prompt_t const *const prompt);
-static void setup_prompt_evm_bytes32(uint8_t *buffer, output_prompt_t const *const prompt);
+static void setup_prompt_evm_address(uint8_t *buffer, output_prompt_t *const prompt);
+static void setup_prompt_evm_amount(uint8_t *buffer, output_prompt_t *const prompt);
+static void setup_prompt_evm_bytes32(uint8_t *buffer, output_prompt_t *const prompt);
 
 #define ABI_ADDRESS(name) \
   ABI_PARAMETER(name, setup_prompt_evm_address, output_evm_address_to_string)
@@ -70,7 +70,7 @@ static void setup_prompt_evm_bytes32(uint8_t *buffer, output_prompt_t const *con
 
 struct contract_endpoint_param {
   char *name;
-  void (*setup_prompt)(uint8_t *buffer, output_prompt_t const *const prompt);
+  void (*setup_prompt)(uint8_t *buffer, output_prompt_t *const prompt);
   void (*output_prompt)(char *const out, size_t const out_size, output_prompt_t const *const in);
 };
 

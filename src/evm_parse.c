@@ -43,14 +43,14 @@ void init_rlp_item(struct EVM_RLP_item_state *const state) {
 
 #define REJECT(msg, ...) { PRINTF("Rejecting: " msg "\n", ##__VA_ARGS__); THROW_(EXC_PARSE_ERROR, "Rejected"); }
 
-static void setup_prompt_evm_address(uint8_t *buffer, output_prompt_t const *const prompt) {
+static void setup_prompt_evm_address(uint8_t *buffer, output_prompt_t *const prompt) {
   size_t padding = ETHEREUM_WORD_SIZE - ETHEREUM_ADDRESS_SIZE;
   memcpy(prompt->address.val, &buffer[padding], ETHEREUM_ADDRESS_SIZE);
 }
-static void setup_prompt_evm_amount(uint8_t *buffer, output_prompt_t const *const prompt) {
+static void setup_prompt_evm_amount(uint8_t *buffer, output_prompt_t *const prompt) {
   readu256BE(buffer, &prompt->amount_big);
 }
-static void setup_prompt_evm_bytes32(uint8_t *buffer, output_prompt_t const *const prompt) {
+static void setup_prompt_evm_bytes32(uint8_t *buffer, output_prompt_t *const prompt) {
   memcpy(prompt->bytes32, buffer, 32);
 }
 
