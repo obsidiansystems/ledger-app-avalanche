@@ -566,7 +566,7 @@ enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
     if(sub_rv != PARSE_RV_DONE) return sub_rv;
     const struct contract_endpoint_param parameter = meta->known_endpoint->parameters[state->argument_index++];
     char *argument_name = PIC(parameter.name);
-    void (*setup_prompt)(struct FixedState* buffer, output_prompt_t const *const prompt) = PIC(parameter.setup_prompt);
+    void (*setup_prompt)(uint8_t *buffer, output_prompt_t const *const prompt) = PIC(parameter.setup_prompt);
     SET_PROMPT_VALUE(setup_prompt(((struct FixedState*)(&state->argument_state))->buffer,
                                   &entry->data.output_prompt));
     initFixed(&state->argument_state, sizeof(state->argument_state));

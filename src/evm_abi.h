@@ -11,7 +11,7 @@ static void setup_prompt_evm_bytes32(uint8_t *buffer, output_prompt_t const *con
 #define ABI_AMOUNT(name) \
   ABI_PARAMETER(name, setup_prompt_evm_amount, output_evm_amount_to_string)
 
-#define ABI_BYTES32(name)                                               \
+#define ABI_BYTES32(name) \
   ABI_PARAMETER(name, setup_prompt_evm_bytes32, output_evm_bytes32_to_string)
 
 #define ERC20_ABI                                                       \
@@ -70,8 +70,8 @@ static void setup_prompt_evm_bytes32(uint8_t *buffer, output_prompt_t const *con
 
 struct contract_endpoint_param {
   char *name;
-  void (*setup_prompt)(struct FixedState* buffer, output_prompt_t const *const prompt);
-  void (*output_prompt)(*const out, size_t const out_size, output_prompt_t const *const in);
+  void (*setup_prompt)(uint8_t *buffer, output_prompt_t const *const prompt);
+  void (*output_prompt)(char *const out, size_t const out_size, output_prompt_t const *const in);
 };
 
 #define ABI_MAX_PARAMETERS 3
