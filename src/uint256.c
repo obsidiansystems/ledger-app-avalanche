@@ -32,12 +32,12 @@ static uint64_t readUint64BE(const uint8_t *buffer) {
            (((uint64_t) buffer[6]) << 8) | (((uint64_t) buffer[7]));
 }
 
-void readu128BE(const uint8_t *buffer, uint128_t *target) {
+void readu128BE(const uint8_t *buffer, uint128_t *const target) {
     UPPER_P(target) = readUint64BE(buffer);
     LOWER_P(target) = readUint64BE(buffer + 8);
 }
 
-void readu256BE(const uint8_t *buffer, uint256_t *target) {
+void readu256BE(const uint8_t *buffer, uint256_t *const target) {
     readu128BE(buffer, &UPPER_P(target));
     readu128BE(buffer + 16, &LOWER_P(target));
 }
@@ -518,4 +518,3 @@ size_t tostring256_fixed_point(const uint256_t *number, size_t baseParam, size_t
     reverseString(out, offset);
     return offset;
 }
-

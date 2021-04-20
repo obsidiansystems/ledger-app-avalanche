@@ -17,19 +17,30 @@ struct FixedState {
     uint8_t buffer[1]; // Actually bigger.
 };
 #define DEFINE_FIXED(name) \
-    struct name ## _state { \
+  struct name ## _state { \
+    union { \
+      struct FixedState fixedState; \
+      struct { \
         int state; \
         union { \
             name val; \
             uint8_t buf[sizeof(name)]; \
         }; \
-    }
+      }; \
+    }; \
+  };
 #define DEFINE_FIXED_BE(name) \
-    struct name ## _state { \
+  struct name ## _state { \
+    union { \
+      struct FixedState fixedState; \
+      struct { \
         int state; \
         uint8_t buf[sizeof(name)]; \
         name val; \
-    }
+      }; \
+    }; \
+  };
+
 #define IMPL_FIXED(name) \
     inline enum parse_rv parse_ ## name (struct name ## _state *const state, parser_meta_state_t *const meta) { \
         return parseFixed((struct FixedState *const)state, &meta->input, sizeof(name));\
@@ -311,15 +322,24 @@ typedef struct {
     size_t length;
 } parser_input_meta_state_t;
 
+#define MAX_CALLDATA_PREVIEW 20
+
 typedef struct {
   union {
     uint64_t fee;
     uint64_t amount;
     uint256_t amount_big;
+    uint64_t start_gas;
     struct {
       uint256_t amount;
       uint256_t assetID;
     } assetCall;
+    struct {
+      bool cropped;
+      size_t count;
+      uint8_t buffer[MAX_CALLDATA_PREVIEW];
+    } calldata_preview;
+    uint8_t bytes32[32]; // ABI
   };
   network_id_t network_id;
   Address address;
@@ -347,7 +367,7 @@ typedef struct {
     } data;
 } prompt_entry_t;
 
-#define TRANSACTION_PROMPT_BATCH_SIZE 1
+#define TRANSACTION_PROMPT_MAX_BATCH_SIZE 2
 
 enum transaction_type_id_t {
     TRANSACTION_TYPE_ID_BASE = 0,
@@ -366,13 +386,16 @@ enum SwapCounterpartChain {
   SWAPCOUNTERPARTCHAIN_P = 2,
 };
 
+typedef struct  {
+  size_t count;
+  size_t flushIndex;
+  char const *labels[TRANSACTION_PROMPT_MAX_BATCH_SIZE + 1]; // For NULL at end
+  prompt_entry_t entries[TRANSACTION_PROMPT_MAX_BATCH_SIZE];
+} prompt_batch_t;
+
 typedef struct {
     parser_input_meta_state_t input;
-    struct {
-        size_t count;
-        char const *labels[TRANSACTION_PROMPT_BATCH_SIZE + 1]; // For NULL at end
-        prompt_entry_t entries[TRANSACTION_PROMPT_BATCH_SIZE];
-    } prompt;
+    prompt_batch_t prompt;
     uint32_t raw_type_id;
     enum transaction_type_id_t type_id;
     bool is_p_chain;
@@ -392,6 +415,12 @@ typedef struct {
 
 // EVM stuff below this line
 
+union EVM_endpoint_argument_states {
+  struct FixedState fixedState;
+  struct uint256_t_state uint256_state;
+  struct Address_state address_state;
+};
+
 enum assetCall_state_t {
     ASSETCALL_ADDRESS,
     ASSETCALL_ASSETID,
@@ -399,8 +428,6 @@ enum assetCall_state_t {
     ASSETCALL_DATA,
     ASSETCALL_DONE,
 };
-
-struct EVM_ABI_state { };
 
 struct EVM_assetCall_state {
   enum assetCall_state_t state;
@@ -415,6 +442,22 @@ struct EVM_assetCall_state {
             // union EVM_endpoint_states endpoint_state;
         };
     };
+};
+
+enum abi_state_t {
+  ABISTATE_SELECTOR,
+  ABISTATE_ARGUMENTS,
+  ABISTATE_DONE,
+};
+
+struct EVM_ABI_state {
+  enum abi_state_t state;
+  size_t argument_index;
+  size_t data_length;
+  union {
+    struct uint32_t_state selector_state;
+    union EVM_endpoint_argument_states argument_state;
+  };
 };
 
 union EVM_endpoint_states {
@@ -440,11 +483,8 @@ struct struct_evm_parser_meta_state_t {
     parser_input_meta_state_t input;
     uint8_t chainIdLowByte;
     struct known_destination const *known_destination;
-    struct {
-        size_t count;
-        char const *labels[TRANSACTION_PROMPT_BATCH_SIZE + 1]; // For NULL at end
-        prompt_entry_t entries[TRANSACTION_PROMPT_BATCH_SIZE];
-    } prompt;
+    struct contract_endpoint const *known_endpoint;
+    prompt_batch_t prompt;
 };
 
 void initTransaction(struct TransactionState *const state);
@@ -474,9 +514,11 @@ struct EVM_RLP_list_state {
     uint64_t remaining;
     uint8_t len_len;
     uint8_t item_index;
+    bool hasTo;
     bool hasData;
     uint64_t startGas;
     uint64_t gasPrice;
+    uint256_t value;
     union {
         struct uint64_t_state uint64_state;
         struct EVM_RLP_item_state rlpItem_state;
@@ -492,3 +534,7 @@ void init_rlp_list(struct EVM_RLP_list_state *const state);
 enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta);
 
 void strcpy_prompt(char *const out, size_t const out_size, char const *const in);
+
+bool should_flush(prompt_batch_t prompt);
+
+void set_next_batch_size(prompt_batch_t *const prompt, size_t size);

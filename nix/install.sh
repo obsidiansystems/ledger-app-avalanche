@@ -12,12 +12,12 @@ target=
 usage() {
   echo "usage: ./install.sh [build-type arg] [options]"
   echo "build-type:"
-  echo "  -t : Target to build from source. Takes either 's' or 't' as an arg"
+  echo "  -t : Target to build from source. Takes either 's' or 'x' as an arg"
   echo "  -x : Hex file. Takes either a tar.gz or directory containing the app.hex and app.manifest files"
   echo "options:"
   echo "  -n : Skip tests. Has no effect when run with -x build arg"
   exit 0
-   
+
 }
 
 build() {
@@ -29,7 +29,7 @@ build() {
 install() {
   if [[ $target == "" ]]
   then usage
-  else 
+  else
     local release_file
     release_file=$(build -A "nano.${target}.release.app" "$@")
     bash "$root/nix/app-installer-impl.sh" "$release_file"
@@ -38,7 +38,7 @@ install() {
 
 while getopts ":h:t:x:n" opt; do
   case ${opt} in
-    t ) 
+    t )
     ## Required target arg: Specify x or s
         if [[ "$OPTARG" == "s" || "$OPTARG" == "x" ]]
         then
@@ -60,7 +60,7 @@ while getopts ":h:t:x:n" opt; do
     h ) usage
       ;;
     \? ) usage
-        
+
       ;;
   esac
 done
@@ -83,4 +83,3 @@ else
   ## INSTALL FROM SOURCE
     install "$@"
 fi
-
