@@ -44,8 +44,8 @@ _Static_assert(_Alignof(uint256_t) == 8, "256 bit unsigned is wrong alignment");
 #define UPPER(x)   x.elements[0]
 #define LOWER(x)   x.elements[1]
 
-void readu128BE(const uint8_t *buffer, uint128_t *target);
-void readu256BE(const uint8_t *buffer, uint256_t *target);
+void readu128BE(const uint8_t *buffer, uint128_t *const target);
+void readu256BE(const uint8_t *buffer, uint256_t *const target);
 bool zero128(const uint128_t *number);
 bool zero256(const uint256_t *number);
 void copy128(uint128_t *target, const uint128_t *number);

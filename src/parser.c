@@ -6,6 +6,14 @@
 #include "types.h"
 #include "network_info.h"
 
+bool should_flush(prompt_batch_t prompt) {
+  return prompt.count > prompt.flushIndex;
+}
+void set_next_batch_size(prompt_batch_t *const prompt, size_t size) {
+  if(!size) size = NUM_ELEMENTS(prompt->entries);
+  prompt->flushIndex = size-1;
+}
+
 #define REJECT(msg, ...) { PRINTF("Rejecting: " msg "\n", ##__VA_ARGS__); THROW_(EXC_PARSE_ERROR, "Rejected"); }
 
 #define ADD_PROMPT(label_, data_, size_, to_string_) ({ \
@@ -15,7 +23,7 @@
         meta->prompt.entries[meta->prompt.count].to_string = to_string_; \
         memcpy(&meta->prompt.entries[meta->prompt.count].data, data_, size_); \
         meta->prompt.count++; \
-        meta->prompt.count >= NUM_ELEMENTS(meta->prompt.entries); \
+        should_flush(meta->prompt); \
     })
 
 #define CALL_SUBPARSER(subFieldName, subParser) { \
@@ -105,8 +113,6 @@ void init_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const st
 }
 
 static void output_prompt_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
-    check_null(out);
-    check_null(in);
     network_info_t const *const network_info = network_info_from_network_id(in->network_id);
     if (network_info == NULL) REJECT("Can't determine network HRP for addresses");
     char const *const hrp = network_info->hrp;
@@ -122,16 +128,12 @@ static void output_prompt_to_string(char *const out, size_t const out_size, outp
 }
 
 static void output_address_to_string(char *const out, size_t const out_size, address_prompt_t const *const in) {
-    check_null(out);
-    check_null(in);
     char const *const hrp = network_info_from_network_id_not_null(in->network_id)->hrp;
     size_t ix = 0;
     ix += pkh_to_string(&out[ix], out_size - ix, hrp, strlen(hrp), &in->address.val);
 }
 
 static void validator_to_string(char *const out, size_t const out_size, address_prompt_t const *const in) {
-    check_null(out);
-    check_null(in);
     size_t ix = 0;
     ix += nodeid_to_string(&out[ix], out_size - ix, &in->address.val);
 }
@@ -321,9 +323,6 @@ enum parse_rv parse_SECP256K1OutputOwners(struct SECP256K1OutputOwners_state *co
 }
 
 static void lockedFundsPrompt(char *const out, size_t const out_size, locked_prompt_t const *const in) {
-    check_null(out);
-    check_null(in);
-
     size_t ix = nano_avax_to_string(out, out_size, in->amount);
 
     static char const to[] = " until ";
@@ -644,7 +643,7 @@ static bool prompt_fee(parser_meta_state_t *const meta) {
     meta->prompt.entries[meta->prompt.count].to_string = nano_avax_to_string_indirect64;
     memcpy(&meta->prompt.entries[meta->prompt.count].data, &fee, sizeof(fee));
     meta->prompt.count++;
-    bool should_break = meta->prompt.count >= NUM_ELEMENTS(meta->prompt.entries);
+    bool should_break = should_flush(meta->prompt);
     return should_break;
 }
 

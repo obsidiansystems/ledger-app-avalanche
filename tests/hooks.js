@@ -6,7 +6,7 @@ const spawn = require('child_process').spawn;
 const fc = require('fast-check');
 const chai = require('chai');
 const { expect } = chai.use(require('chai-bytes'));
-const { recover } = require('bcrypto/lib/secp256k1')
+const { recover } = require('bcrypto/lib/secp256k1');
 const BIPPath = require("bip32-path");
 
 const APDU_PORT = 9999;
@@ -60,26 +60,46 @@ exports.mochaHooks = {
     this.speculos.waitingQueue=[];
     this.ava = new Avalanche(this.speculos, "Avalanche", _ => { return; });
     this.eth = new Eth(this.speculos);
-    this.flushStderr = function() {
-      if (this.speculosProcess && this.speculosProcess.stdio[2]) this.speculosProcess.stdio[2].read();
+
+    this.flushStdio = (n) => () => {
+        if (this.speculosProcess && this.speculosProcess.stdio[n])
+            return this.speculosProcess.stdio[n].read();
+        else
+            return "";
+    };
+    this.flushStdout = this.flushStdio(1);
+    this.flushStderr = this.flushStdio(2);
+    this.readBuffers = () => {
+        stdoutVal += (this.flushStdout() || "");
+        stderrVal += (this.flushStderr() || "");
     };
   },
+
   afterAll: async function () {
     if (this.speculosProcess) {
       this.speculosProcess.kill();
     }
   },
+
+  beforeEach: async function () {
+    stdoutVal = "";
+    stderrVal = "";
+    this.flusher = setInterval(this.readBuffers, 100);
+  },
+
   afterEach: async function () {
-    if (this.speculosProcess) {
-      stdoutVal = this.speculosProcess.stdio[1] && this.speculosProcess.stdio[1].read();
-      stderrVal = this.speculosProcess.stdio[2] && this.speculosProcess.stdio[2].read();
-      if (this.currentTest.state === 'failed') {
-        console.log("SPECULOS STDOUT:\n" + stdoutVal);
-        console.log("SPECULOS STDERR:\n" + stderrVal);
-      }
+    clearInterval(this.flusher);
+    this.readBuffers();
+    const maxOutput = 5000;
+    if (this.currentTest.state === 'failed') {
+      console.log("SPECULOS STDOUT" + ":\n" + stdoutVal);
+      console.log("SPECULOS STDERR" +
+                  (stderrVal.length <= maxOutput
+                   ? ":\n" + stderrVal
+                   : (" (showing last " + maxOutput + " characters)" + ":\n" + stderrVal.slice(-maxOutput))));
     }
   }
-}
+};
 
 async function flowAccept(speculos, expectedPrompts, acceptPrompt="Accept") {
   return await automationStart(speculos, acceptPrompts(expectedPrompts, acceptPrompt));
@@ -96,7 +116,7 @@ const headerOnlyScreens = {
 
 /* State machine to read screen events and turn them into screens of prompts. */
 async function automationStart(speculos, interactionFunc) {
-  // If this doens't exist, we're running against a hardware ledger; just call
+  // If this doesn't exist, we're running against a hardware ledger; just call
   // interactionFunc with no events iterator.
   if(!speculos.automationEvents) {
     return new Promise(r=>r({ promptsPromise: interactionFunc(speculos) }));
@@ -107,7 +127,7 @@ async function automationStart(speculos, interactionFunc) {
   // end up with two flowAccept calls active at once, causing issues.
   let subNum = speculos.handlerNum++;
   let promptLockResolve;
-  let promptsLock=new Promise(r=>{promptLockResolve=r});
+  let promptsLock=new Promise(r=>{promptLockResolve=r;});
   if(speculos.promptsEndPromise) {
     await speculos.promptsEndPromise;
   }
@@ -133,7 +153,7 @@ async function automationStart(speculos, interactionFunc) {
   let readyPromise = syncWithLedger(speculos, asyncEventIter, interactionFunc);
 
   // Resolve our lock when we're done
-  readyPromise.then(r=>r.promptsPromise.then(()=>{promptLockResolve(true)}));
+  readyPromise.then(r=>r.promptsPromise.then(()=>{promptLockResolve(true);}));
 
   let header;
   let body;
@@ -179,7 +199,7 @@ async function syncWithLedger(speculos, source, interactionFunc) {
     screen = await source.next();
   }
   // Sink some extra homescreens to make us a bit more durable to failing tests.
-  while(await source.peek().header == "Avalanche" || await source.peek().header == "Configuration" || await source.peek().body == "Quit") {
+  while(await source.peek().header == "Avalanche" || await source.peek().body == "Configuration" || await source.peek().body == "Quit") {
     await source.next();
   }
   // And continue on to interactionFunc
@@ -222,7 +242,7 @@ function acceptPrompts(expectedPrompts, selectPrompt) {
         }
       }
       console.log("Please %s this prompt", selectPrompt);
-      return { expectedPrompts, promptsMatch: true }
+      return { expectedPrompts, promptsMatch: true };
     } else {
       let promptList = [];
       let done = false;
@@ -245,18 +265,21 @@ function acceptPrompts(expectedPrompts, selectPrompt) {
         return { promptList };
       }
     }
-  }
+  };
 }
 
 async function flowMultiPrompt(speculos, prompts, nextPrompt="Next", finalPrompt="Accept") {
+  // We bounce off the home screen sometimes during this process
+  const isHomeScreen = p => p.header == "Avalanche" || p.body == "Configuration" || p.body == "Quit";
+  const appScreens = ps => ps.filter(p => !isHomeScreen(p));
+
   return await automationStart(speculos, async (speculos, screens) => {
     for (p of prompts.slice(0,-1)) {
       const rp = (await acceptPrompts(undefined, nextPrompt)(speculos, screens)).promptList;
-      // Only looking at the last prompt, because we bounce off the home screen sometimes during this process:
-      expect([ rp[rp.length-1] ]).to.deep.equal(p);
+      expect(appScreens(rp)).to.deep.equal(p);
     }
     const rp = (await acceptPrompts(undefined, finalPrompt)(speculos, screens)).promptList;
-    expect([ rp[rp.length-1] ]).to.deep.equal(prompts[prompts.length-1]);
+    expect(appScreens(rp)).to.deep.equal(prompts[prompts.length-1]);
     return true;
   });
 }
