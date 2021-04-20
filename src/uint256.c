@@ -482,7 +482,7 @@ size_t tostring256(const uint256_t *number, size_t baseParam, char *out, size_t 
     return offset;
 }
 
-size_t tostring256_fixed_point(const uint256_t *number, size_t baseParam, size_t digits_of_resolution, char *out, size_t outLength) {
+size_t tostring256_fixed_point(const uint256_t *const number, size_t baseParam, size_t digits_of_resolution, char *out, size_t outLength) {
     uint256_t rDiv;
     uint256_t rMod;
     uint256_t base;

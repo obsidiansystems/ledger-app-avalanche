@@ -213,7 +213,7 @@ size_t subunit_to_unit_string(char *const dest, size_t const buff_size, uint64_t
 }
 
 // Display avax in human readable form
-size_t subunit_to_unit_string_256(char *const dest, size_t const buff_size, uint256_t *subunits, uint8_t digits) {
+size_t subunit_to_unit_string_256(char *const dest, size_t const buff_size, const uint256_t *const subunits, uint8_t digits) {
     check_null(dest);
     size_t off = tostring256_fixed_point(subunits, 10, digits, dest, buff_size);
 
