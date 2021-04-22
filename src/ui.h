@@ -1,7 +1,5 @@
 #pragma once
 
-#include "os_io_seproxyhal.h"
-
 #include "types.h"
 
 #define BAGL_STATIC_ELEMENT    0
@@ -18,7 +16,7 @@ __attribute__((noreturn)) bool exit_app(void); // Might want to send it argument
 // Assumes we've registered appropriate callbacks to generate the data.
 // All pointers may be unrelocated.
 __attribute__((noreturn)) void ui_prompt(const char *const *labels, ui_callback_t ok_c, ui_callback_t cxl_c);
-__attribute__((noreturn)) void ui_prompt_with_cb(void (*switch_foo)(size_t), size_t prompt_count, ui_callback_t ok_c, ui_callback_t cxl_c);
+__attribute__((noreturn)) void ui_prompt_with_cb(void (*switch_foo)(uint32_t), size_t prompt_count, ui_callback_t ok_c, ui_callback_t cxl_c);
 void ui_prompt_with(uint16_t const exception, char const *const accept_str, char const *const *labels, ui_callback_t ok_c, ui_callback_t cxl_c);
 
 

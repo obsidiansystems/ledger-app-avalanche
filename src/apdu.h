@@ -5,8 +5,6 @@
 #include "ui.h"
 #include "apdu_sign.h"
 
-#include "os.h"
-
 #include <stdbool.h>
 #include <stdint.h>
 

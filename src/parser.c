@@ -96,7 +96,7 @@ enum parse_rv skipBytes(struct FixedState *const state, parser_input_meta_state_
 }
 
 #define IMPL_FIXED_BE(name) \
-    inline enum parse_rv parse_ ## name (struct name ## _state *const state, parser_meta_state_t *const meta) { \
+    static inline enum parse_rv parse_ ## name (struct name ## _state *const state, parser_meta_state_t *const meta) { \
         enum parse_rv sub_rv = PARSE_RV_INVALID; \
         sub_rv = parseFixed((struct FixedState *const)state, &meta->input, sizeof(name)); \
         if (sub_rv == PARSE_RV_DONE) { \
@@ -104,7 +104,7 @@ enum parse_rv skipBytes(struct FixedState *const state, parser_input_meta_state_
         } \
         return sub_rv; \
     } \
-    inline void init_ ## name (struct name ## _state *const state) { \
+    static inline void init_ ## name (struct name ## _state *const state) { \
         return initFixed((struct FixedState *const)state, sizeof(state)); \
     }
 
@@ -655,7 +655,6 @@ static bool prompt_fee(parser_meta_state_t *const meta) {
     bool should_break = should_flush(meta->prompt);
     return should_break;
 }
-
 
 static bool is_pchain_transaction(enum transaction_type_id_t type) {
   switch(type) {
