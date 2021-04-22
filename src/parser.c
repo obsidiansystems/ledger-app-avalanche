@@ -105,7 +105,7 @@ enum parse_rv skipBytes(struct FixedState *const state, parser_input_meta_state_
         return sub_rv; \
     } \
     static inline void init_ ## name (struct name ## _state *const state) { \
-        return initFixed((struct FixedState *const)state, sizeof(state)); \
+        return initFixed((struct FixedState *const)state, sizeof(*state)); \
     }
 
 IMPL_FIXED_BE(uint16_t);

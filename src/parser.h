@@ -46,7 +46,7 @@ struct FixedState {
         return parseFixed((struct FixedState *const)state, &meta->input, sizeof(name));\
     } \
     static inline void init_ ## name (struct name ## _state *const state) { \
-        return initFixed((struct FixedState *const)state, sizeof(state)); \
+        return initFixed((struct FixedState *const)state, sizeof(*state)); \
     }
 #define DEFINE_ARRAY(name) \
     struct name ## s_state { \
