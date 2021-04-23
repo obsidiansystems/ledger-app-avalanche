@@ -225,6 +225,8 @@ void switch_screen(uint32_t which) {
     strncpy(global.ui.prompt.active_prompt, label, sizeof(global.ui.prompt.active_prompt));
     if (global.ui.prompt.callbacks[which] == NULL)
         THROW(EXC_MEMORY_ERROR);
+    check_null(global.ui.prompt.active_value);
+    check_null(global.ui.prompt.callback_data[which]);
     global.ui.prompt.callbacks[which](global.ui.prompt.active_value, sizeof(global.ui.prompt.active_value),
                                       global.ui.prompt.callback_data[which]);
 }
