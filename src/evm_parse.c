@@ -412,7 +412,7 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
 
 enum parse_rv impl_parse_rlp_item(struct EVM_RLP_item_state *const state, evm_parser_meta_state_t *const meta, size_t max_bytes_to_buffer) {
     enum parse_rv sub_rv;
-    state->do_init=false;
+    state->do_init = false;
     switch(state->state) {
       case 0: {
           if(meta->input.consumed >= meta->input.length) return PARSE_RV_NEED_MORE;
@@ -431,12 +431,14 @@ enum parse_rv impl_parse_rlp_item(struct EVM_RLP_item_state *const state, evm_pa
               return PARSE_RV_DONE;
           } else if (first < 0xb8) {
               state->length = first - 0x80;
+              state->do_init = !max_bytes_to_buffer;
               state->state = 2;
           } else if (first < 0xc0) {
               state->len_len = first - 0xb7;
               state->state = 1;
           } else if(first < 0xf8) {
               state->length = first - 0xc0;
+              state->do_init = !max_bytes_to_buffer;
               state->state = 2;
           } else {
               state->len_len = first - 0xf7;
@@ -454,9 +456,8 @@ enum parse_rv impl_parse_rlp_item(struct EVM_RLP_item_state *const state, evm_pa
         if(max_bytes_to_buffer) {
           if(MIN(state->length, max_bytes_to_buffer) > NUM_ELEMENTS(state->buffer)) REJECT("RLP field too large for buffer");
         }
-        else {
-          state->do_init=true;
-        }
+
+        state->do_init = !max_bytes_to_buffer;
         state->state = 2;
       case 2: {
           uint64_t
