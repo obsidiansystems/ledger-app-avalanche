@@ -54,5 +54,17 @@ describe("APDU protocol integrity generative tests", function () {
         this.flushStderr();
       }));
     });
+
+    it('rejects transaction with incomplete length on data field', async function () {
+        const hexBeforeData = 'e00400003d058000002c8000003c800600000000000000000000ed01856d6e2edc0782520894010000000000000000000000000000000000000200';
+        const dataLenLenHex = 'ff';
+        const dataLenHex = 'ffffdadadada';
+        return await fc.assert(fc.asyncProperty(fc.integer(0, dataLenHex.length / 2), async cutoff => {
+          const body = Buffer.from(hexBeforeData + dataLenLenHex + dataLenHex.slice(0, 1), 'hex');
+          const rv = await this.speculos.exchange(body);
+          expect(rv).not.to.equalBytes("9000");
+          this.flushStderr();
+        }));
+    });
   });
 });

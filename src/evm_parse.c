@@ -309,6 +309,14 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
 
             PARSE_ITEM(EVM_TXN_DATA, _data);
 
+            // If data field can't possibly fit in the transaction, the rlp is malformed
+            if(state->rlpItem_state.len_len > state->remaining)
+              REJECT("Malformed data length. Expected length of length %u", state->rlpItem_state.len_len);
+
+            // If we exhaust the apdu while parsing the length, there's nothing yet to hand to the subparser
+            if(state->rlpItem_state.state < 2)
+              return sub_rv;
+
             if(state->hasTo) {
               if(meta->known_destination) {
                 if(state->rlpItem_state.do_init && meta->known_destination->init_data)
