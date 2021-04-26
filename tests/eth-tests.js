@@ -121,6 +121,10 @@ const testData = {
         prompt: '0.00000017 GWEI',
     },
     bytes32: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+
+    signatures: {
+        transferFrom: 'f6153e09b51baa0e7564fd43034a9a540576d2aa869521c41a8247bc1ead5c9b570ae94343fcb0b5f1bce8d7b00f502544d3b723d799971d4a2b1b1a534d1e9c699000'
+    }
 };
 
 describe("Eth app compatibility tests", async function () {
@@ -229,6 +233,36 @@ describe("Eth app compatibility tests", async function () {
                       'ed018504e3b292008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080'
                      );
   });
+
+  it('accepts apdu ending in the middle of parsing length of calldata', async function () {
+    const prompts = contractCallPrompts('0x' + 'df073477da421520cf03af261b782282c304ad66',
+                                        'transferFrom',
+                                        [
+                                            ["sender", '0x' + testData.address.prompt],
+                                            ["recipient", '0x' + testData.address.prompt],
+                                            ["amount", testData.amount.prompt]
+                                        ]);
+    const flow = await flowMultiPrompt(this.speculos, prompts);
+    const apdu1 = 'e004000038' + '058000002c8000003c800000000000000000000000' + 'f88b0a8534630b8a0082b19794df073477da421520cf03af261b782282c304ad6680b8';
+    const apdu2 = 'e00480006a' + '6423b872dd0000000000000000000000000101020203030404050506060707080809090a0a0000000000000000000000000101020203030404050506060707080809090a0a00000000000000000000000000000000000000000000000000000000000000aa82a8698080';
+    const send = async (apduHex) => {
+      const body = Buffer.from(apduHex, 'hex');
+      return await this.speculos.exchange(body);
+    };
+
+    let rv = await send(apdu1);
+    expect(rv).to.equalBytes("9000");
+    rv = await send(apdu2);
+    expect(rv).to.equalBytes(testData.signatures.transferFrom);
+  });
+
+  it('rejects transaction with incoherent tx/data length', async function () {
+    const hex = 'e00400003d058000002c8000003c800600000000000000000000ed01856d6e2edc0782520894010000000000000000000000000000000000000200ffffffdadadada';
+    const body = Buffer.from(hex, 'hex');
+    const rv = await this.speculos.exchange(body);
+    expect(rv).to.not.equalBytes("9000");
+  });
+
 
   // TODO: something about these should-fail tests having no prompts causes the ones ran after it to fail
 
