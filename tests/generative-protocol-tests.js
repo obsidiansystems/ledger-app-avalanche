@@ -54,5 +54,18 @@ describe("APDU protocol integrity generative tests", function () {
         this.flushStderr();
       }));
     });
+
+    it('accepts apdu ending in the middle of parsing length of calldata', async function () {
+      const txBeforeCalldata = 'f701856d6e2edc0782520894010000000000000000000000000000000000000200';
+      const calldataLenLenHex = 'ff';
+      const calldataLenHex = 'ffffdadadada';
+      return await fc.assert(fc.asyncProperty(fc.integer(0, calldataLenHex.length / 2), async cutoff => {
+        const apduHeader = 'e0040000' + (0x37 + cutoff).toString(16) + '058000002c8000003c800600000000000000000000';
+        const body = Buffer.from(apduHeader + txBeforeCalldata + calldataLenLenHex + calldataLenHex.slice(0, cutoff * 2), 'hex');
+        const rv = await this.speculos.exchange(body);
+        expect(rv).to.equalBytes("9000");
+        this.flushStderr();
+      }));
+    });
   });
 });
