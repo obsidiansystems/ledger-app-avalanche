@@ -555,29 +555,27 @@ enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
       if(hasValue) REJECT("No currently supported methods are marked as 'payable'");
       char *method_name = PIC(meta->known_endpoint->method_name);
       ADD_PROMPT("Contract Call", method_name, strlen(method_name), strcpy_prompt);
-      return PARSE_RV_PROMPT;
     } else {
       state->state = ABISTATE_UNRECOGNIZED;
       ADD_ACCUM_PROMPT("Transfer", output_evm_prompt_to_string);
-      return PARSE_RV_PROMPT;
     }
+
+    return PARSE_RV_PROMPT;
   }
 
   case ABISTATE_ARGUMENTS: {
-    if(state->state == ABISTATE_ARGUMENTS) {
-      if(state->argument_index >= meta->known_endpoint->parameters_count)
-        return PARSE_RV_DONE;
-      sub_rv = parseFixed(&state->argument_state.fixedState, input, ETHEREUM_WORD_SIZE); // TODO: non-word size values
-      if(sub_rv != PARSE_RV_DONE) return sub_rv;
-      const struct contract_endpoint_param parameter = meta->known_endpoint->parameters[state->argument_index++];
-      char *argument_name = PIC(parameter.name);
-      void (*setup_prompt)(uint8_t *buffer, output_prompt_t const *const prompt) = PIC(parameter.setup_prompt);
-      SET_PROMPT_VALUE(setup_prompt(((struct FixedState*)(&state->argument_state))->buffer,
-                                    &entry->data.output_prompt));
-      initFixed(&state->argument_state.fixedState, sizeof(state->argument_state));
-      ADD_ACCUM_PROMPT_ABI(argument_name, PIC(parameter.output_prompt));
-      return PARSE_RV_PROMPT;
-    }
+    if(state->argument_index >= meta->known_endpoint->parameters_count)
+      return PARSE_RV_DONE;
+    sub_rv = parseFixed(&state->argument_state.fixedState, input, ETHEREUM_WORD_SIZE); // TODO: non-word size values
+    if(sub_rv != PARSE_RV_DONE) return sub_rv;
+    const struct contract_endpoint_param parameter = meta->known_endpoint->parameters[state->argument_index++];
+    char *argument_name = PIC(parameter.name);
+    void (*setup_prompt)(uint8_t *buffer, output_prompt_t const *const prompt) = PIC(parameter.setup_prompt);
+    SET_PROMPT_VALUE(setup_prompt(((struct FixedState*)(&state->argument_state))->buffer,
+                                  &entry->data.output_prompt));
+    initFixed(&state->argument_state.fixedState, sizeof(state->argument_state));
+    ADD_ACCUM_PROMPT_ABI(argument_name, PIC(parameter.output_prompt));
+    return PARSE_RV_PROMPT;
   }
 
   // Probably we have to allow this, as the metamask constraint means _this_ endpoint will be getting stuff it doesn't understand a lot.
