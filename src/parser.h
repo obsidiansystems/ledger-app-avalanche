@@ -447,6 +447,7 @@ struct EVM_assetCall_state {
 enum abi_state_t {
   ABISTATE_SELECTOR,
   ABISTATE_ARGUMENTS,
+  ABISTATE_UNRECOGNIZED,
   ABISTATE_DONE,
 };
 
