@@ -580,7 +580,7 @@ enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
 
   // Probably we have to allow this, as the metamask constraint means _this_ endpoint will be getting stuff it doesn't understand a lot.
   case ABISTATE_UNRECOGNIZED: {
-    sub_rv = parseFixed(&state->argument_state.fixedState, input, state->data_length - ETHEREUM_SELECTOR_SIZE); // TODO: non-word size values
+    sub_rv = skipBytes(&state->argument_state.fixedState, input, state->data_length);
     if(sub_rv != PARSE_RV_DONE) return sub_rv;
     state->state = ABISTATE_DONE;
     static char const isPresentLabel[]="Is Present (unsafe)";
