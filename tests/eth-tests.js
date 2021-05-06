@@ -97,6 +97,26 @@ const testDeploy = (chainId, withAmount) => async function () {
                      );
 };
 
+const testUnrecognizedCall = (chainId, gasPrice, gasLimit, amountPrompt, amountHex, address, fee, calldata) => async function () {
+    const tx = rawUnsignedTransaction(chainId, {
+        nonce: '0x0a',
+        gasPrice: '0x' + gasPrice,
+        gasLimit: '0x' + gasLimit,
+        to: '0x' + address,
+        value: '0x' + amountHex,
+        data: '0x' + calldata,
+    });
+
+    const prompts =
+          [[{header: "Transfer",     body: amountPrompt + " to " + '0x' + address}],
+           [{header: "Contract Data", body: "Is Present (unsafe)"}],
+           [{header: "Maximum Fee",   body: fee}],
+           [finalizePrompt]
+          ];
+
+    await testSigning(this, chainId, prompts, tx);
+};
+
 const testCall = (chainId, data, method, args) => async function () {
     const address = 'df073477da421520cf03af261b782282c304ad66';
     const tx = rawUnsignedTransaction(chainId, {
@@ -169,16 +189,29 @@ describe("Eth app compatibility tests", async function () {
     }
   });
 
-  it('can sign a transaction with unrecognized calldata via the ethereum ledgerjs module', async function() {
-    await testSigning(this, 43112,
-                      [[{header:"Transfer",      body: "0.000000001 nAVAX to 0x0102030400000000000000000000000000000002"},
-                        {header:"Contract Data", body: "Is Present (unsafe)"}],
-                       [{header:"Maximum Fee",   body: "1410000000 GWEI"}],
-                       [{header:"Finalize",      body: "Transaction"}]
-                      ],
-                      'f83880856d6e2edc00832dc6c0940102030400000000000000000000000000000002019190000102030405060708090a0b0c0d0e0f82a8688080'
-                     );
-  });
+  it('can sign a transaction with unrecognized calldata via the ethereum ledgerjs module',
+          testUnrecognizedCall(43112,
+                               '6d6e2edc00',
+                               '2dc6c0',
+                               "0.000000001 nAVAX", '01',
+                               "0102030400000000000000000000000000000002",
+                               '1410000000 GWEI',
+                               '90000102030405060708090a0b0c0d0e0f'
+                              )
+         );
+
+  it('can sign a multiple-apdu transaction with unrecognized calldata via the ethereum ledgerjs module',
+          testUnrecognizedCall(43112,
+                               '6d6e2edc00',
+                               '2dc6c0',
+                               "0.000000001 nAVAX", '01',
+                               "0102030400000000000000000000000000000002",
+                               '1410000000 GWEI',
+                               'a415bcad000000000000000000000000d3896bdd73e61a4275e27f660ddf095522f0a1d30000000000000000000000000000000000000000000000000de0b6b3a7640000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000006f0f6da1852857d7789f68a28bba866671f3880d'
+                              )
+         );
+
+
 
   it('can sign a ERC20PresetMinterPauser pause contract call', testCall(43113, '8456cb59', 'pause', []));
   it('can sign a ERC20PresetMinterPauser unpause contract call', testCall(43113, '3f4ba83a', 'unpause', []));
@@ -262,7 +295,6 @@ describe("Eth app compatibility tests", async function () {
     const rv = await this.speculos.exchange(body);
     expect(rv).to.not.equalBytes("9000");
   });
-
 
   // TODO: something about these should-fail tests having no prompts causes the ones ran after it to fail
 
