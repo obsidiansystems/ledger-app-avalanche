@@ -86,6 +86,15 @@ enum parse_rv parseFixed(struct FixedState *const state, parser_input_meta_state
     return state->filledTo == len ? PARSE_RV_DONE : PARSE_RV_NEED_MORE;
 }
 
+enum parse_rv skipBytes(struct FixedState *const state, parser_input_meta_state_t *const input, size_t const len) {
+  size_t const available = input->length - input->consumed;
+  size_t const needed = len - state->filledTo;
+  size_t const to_copy = available > needed ? needed : available;
+  state->filledTo += to_copy;
+  input->consumed += to_copy;
+  return state->filledTo == len ? PARSE_RV_DONE : PARSE_RV_NEED_MORE;
+}
+
 #define IMPL_FIXED_BE(name) \
     inline enum parse_rv parse_ ## name (struct name ## _state *const state, parser_meta_state_t *const meta) { \
         enum parse_rv sub_rv = PARSE_RV_INVALID; \
