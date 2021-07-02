@@ -84,7 +84,7 @@ static void output_evm_fee_to_string(char *const out, size_t const out_size, out
   wei_to_gwei_string(out, out_size, in->fee);
 }
 static void output_evm_fund_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
-  wei_to_navax_string_256(out, out_size, &in->amount_big);
+  wei_to_avax_or_navax_string_256(out, out_size, &in->amount_big);
 }
 static void output_evm_address_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
   output_hex_to_string(out, out_size, &in->address.val, ETHEREUM_ADDRESS_SIZE);
@@ -94,7 +94,7 @@ static void output_evm_bytes32_to_string(char *const out, size_t const out_size,
 }
 
 static void output_evm_prompt_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
-    size_t ix = wei_to_navax_string_256(out, out_size, &in->amount_big);
+    size_t ix = wei_to_avax_or_navax_string_256(out, out_size, &in->amount_big);
 
     static char const to[] = " to ";
     if (ix + sizeof(to) > out_size) THROW_(EXC_MEMORY_ERROR, "Can't fit ' to ' into prompt value string");
