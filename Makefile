@@ -170,3 +170,6 @@ test-no-nix: tests/node_packages tests/*.js tests/package.json bin/app.elf
 
 tests/node_packages: tests/package.json
 	(cd tests; yarn install --frozen-lockfile)
+
+listvariants:
+	@echo VARIANTS COIN AVAX

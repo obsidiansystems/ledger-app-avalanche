@@ -8,7 +8,6 @@
 * Support signing of a hash with Ethereum BIP32 paths.
 * Other miscellaneous bug fixes.
 
-
 ## 0.3.1
 
 * Support P chain import and export.

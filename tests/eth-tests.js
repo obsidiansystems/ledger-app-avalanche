@@ -172,7 +172,7 @@ describe("Eth app compatibility tests", async function () {
   it('can sign a transaction via the ethereum ledgerjs module', async function() {
       await testSigning(this, 43114,
                         transferPrompts('0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
-                                        '12340000 nAVAX',
+                                        '0.01234 AVAX',
                                         '9870000 GWEI'
                                        ),
                         'ed01856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080'
@@ -182,7 +182,7 @@ describe("Eth app compatibility tests", async function () {
   it('can sign a larger transaction via the ethereum ledgerjs module', async function() {
       await testSigning(this, 43114,
                         transferPrompts('0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
-                                        '238547462614852887054687704548455.429902335 nAVAX',
+                                        '238547462614852887054687.704548455429902335 AVAX',
                                         '9870000 GWEI'),
                         'f83801856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c79529202bd072a24087400000f0fff0f0fff0f0fff8082a86a8080'
                        );
@@ -274,7 +274,7 @@ describe("Eth app compatibility tests", async function () {
 
     await testSigning(this, 43114,
                       transferPrompts('0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
-                                      '12340000 nAVAX',
+                                      '0.01234 AVAX',
                                       '441000 GWEI'),
                       'ed018504e3b292008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080'
                      );

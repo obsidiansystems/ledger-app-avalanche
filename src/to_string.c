@@ -174,6 +174,8 @@ size_t number_to_string(char *const dest, uint64_t number) {
 #define DECIMAL_DIGITS 9
 #define NANO_AVAX_SCALE 1000000000
 #define WEI_GWEI_SCALE 1000000000
+#define WEI_NAVAX_DIGITS 9
+#define WEI_AVAX_DIGITS 18
 
 // Display avax in human readable form
 size_t subunit_to_unit_string(char *const dest, size_t const buff_size, uint64_t subunits, uint64_t scale) {
@@ -253,13 +255,31 @@ size_t wei_to_navax_string(char *const dest, size_t const buff_size, uint64_t co
   ix += sizeof(unit) - 1;
   return ix;
 }
-size_t wei_to_navax_string_256(char *const dest, size_t const buff_size, uint256_t const *const wei) {
-  static char const unit[] = " nAVAX";
-  size_t ix = subunit_to_unit_string_256(dest, buff_size, wei, 9);
-  if (ix + sizeof(unit) > buff_size) THROW_(EXC_MEMORY_ERROR, "Can't fit ' nAVAX' into prompt value string");
-  memcpy(&dest[ix], unit, sizeof(unit));
-  ix += sizeof(unit) - 1;
-  return ix;
+
+size_t wei_to_avax_or_navax_string_256(char *const dest, size_t const buff_size, uint256_t const *const wei) {
+  const uint8_t AVAX_NAVAX_DISPLAY_THRESHOLD_BE[] = {
+      0x0, 0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,
+      0x0, 0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,      
+      0x0, 0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,
+      0x0, 0x03, 0x8D, 0x7E, 0xA4, 0xC6, 0x80, 0x00}; // 38D7EA4C68000 = 1000000000000000dec
+  uint256_t AVAX_NAVAX_DISPLAY_THRESHOLD_256;
+  readu256BE(AVAX_NAVAX_DISPLAY_THRESHOLD_BE, &AVAX_NAVAX_DISPLAY_THRESHOLD_256);
+
+  if (gte256(wei, &AVAX_NAVAX_DISPLAY_THRESHOLD_256)) {
+    static char const unit[] = " AVAX";
+    size_t ix = subunit_to_unit_string_256(dest, buff_size, wei, WEI_AVAX_DIGITS);
+    if (ix + sizeof(unit) > buff_size) THROW_(EXC_MEMORY_ERROR, "Can't fit ' AVAX' into prompt value string");
+    memcpy(&dest[ix], unit, sizeof(unit));
+    ix += sizeof(unit) - 1;
+    return ix;
+  } else {
+    static char const unit[] = " nAVAX";
+    size_t ix = subunit_to_unit_string_256(dest, buff_size, wei, WEI_NAVAX_DIGITS);
+    if (ix + sizeof(unit) > buff_size) THROW_(EXC_MEMORY_ERROR, "Can't fit ' nAVAX' into prompt value string");
+    memcpy(&dest[ix], unit, sizeof(unit));
+    ix += sizeof(unit) - 1;
+    return ix;
+  }
 }
 
 void nano_avax_to_string_indirect64(char *const dest, size_t const buff_size, uint64_t const *const number) {

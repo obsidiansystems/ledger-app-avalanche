@@ -13,7 +13,7 @@ size_t nano_avax_to_string(char *const dest, size_t const buff_size, uint64_t co
 size_t wei_to_gwei_string(char *const dest, size_t const buff_size, uint64_t const wei);
 size_t wei_to_gwei_string_256(char *const dest, size_t const buff_size, uint256_t const wei);
 size_t wei_to_navax_string(char *const dest, size_t const buff_size, uint64_t const wei);
-size_t wei_to_navax_string_256(char *const dest, size_t const buff_size, uint256_t const *const wei);
+size_t wei_to_avax_or_navax_string_256(char *const dest, size_t const buff_size, uint256_t const *const wei);
 
 void bip32_path_to_string(char *const out, size_t const out_size, bip32_path_t const *const path);
 size_t pkh_to_string(char *const out, size_t const out_size, char const *const hrp, size_t const hrp_size,
