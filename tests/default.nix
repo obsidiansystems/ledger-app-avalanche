@@ -1,4 +1,4 @@
-{ pkgs ? import ../nix/dep/nixpkgs {} }:
+{ pkgs ? import (import ../nix/dep/ledger-platform/thunk.nix + "/dep/nixpkgs") {} }:
 let
   yarn2nix = import deps/yarn2nix { inherit pkgs; };
   getThunkSrc = (import ./deps/reflex-platform { }).hackGet;
@@ -29,7 +29,7 @@ let
           buildPhase = ''
             ${pkgs.nodePackages.node-gyp}/bin/node-gyp rebuild --nodedir=${pkgs.lib.getDev pkgs.nodejs} # /include/node
           '';
-         nativeBuildInputs = [ pkgs.python ];
+         nativeBuildInputs = [ pkgs.python3 ];
           nodeBuildInputs = [
             (s."bufio@~1.0.7")
             (s."loady@~0.0.5")
@@ -39,7 +39,7 @@ let
         "usb@1.6.3" = {
           key = super."usb@1.6.3".key;
           drv = super."usb@1.6.3".drv.overrideAttrs (attrs: {
-            nativeBuildInputs = [ pkgs.python pkgs.systemd pkgs.v8_5_x pkgs.nodejs pkgs.libusb1 ];
+            nativeBuildInputs = [ pkgs.python3 pkgs.systemd pkgs.v8_5_x pkgs.nodejs pkgs.libusb1 ];
             dontBuild = false;
             buildPhase = ''
               ln -s ${nixLib.linkNodeDeps { name=attrs.name; dependencies=attrs.passthru.nodeBuildInputs; }} node_modules
@@ -51,7 +51,7 @@ let
         "node-hid@1.3.0" = {
           key = super."node-hid@1.3.0".key;
           drv = super."node-hid@1.3.0".drv.overrideAttrs (attrs: {
-            nativeBuildInputs = [ pkgs.python pkgs.systemd pkgs.v8_5_x pkgs.nodejs pkgs.libusb1 pkgs.pkg-config ];
+            nativeBuildInputs = [ pkgs.python3 pkgs.systemd pkgs.v8_5_x pkgs.nodejs pkgs.libusb1 pkgs.pkg-config ];
             dontBuild = false;
             buildPhase = ''
               ln -s ${nixLib.linkNodeDeps { name=attrs.name; dependencies=attrs.passthru.nodeBuildInputs; }} node_modules
