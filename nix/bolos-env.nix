@@ -16,7 +16,7 @@ let
     sha256 = "08x2sv2mhx3l3adw8kgcvmrs10qav99al410wpl18w19yfq50y11";
   };
 
-  clang =
+  clang_old =
     let
       tarFile =
         if clangVersion == 7 then clangTar.version7
@@ -32,7 +32,7 @@ let
       autoPatchelf $out
     '';
 
-  gcc = pkgs.pkgsi686Linux.runCommandCC "bolos-env-gcc" {
+  gcc_old = pkgs.pkgsi686Linux.runCommandCC "bolos-env-gcc" {
     buildInputs = [
       pkgs.autoPatchelfHook
       pkgs.pkgsi686Linux.ncurses5
@@ -45,6 +45,11 @@ let
     addAutoPatchelfSearchPath $out/lib
     autoPatchelf $out
   '';
+
+  ledgerPlatform = import ./dep/ledger-platform { };
+
+  clang = ledgerPlatform.ledgerPkgs.clangStdenv.cc;
+  gcc = ledgerPlatform.ledgerPkgs.stdenv.cc;
 
 in pkgs.runCommand "bolos-env" {} ''
   mkdir -p "$out"

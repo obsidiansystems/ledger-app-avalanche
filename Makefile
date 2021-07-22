@@ -117,13 +117,13 @@ ifeq ($(GCCPATH),)
 $(info GCCPATH is not set: arm-none-eabi-* will be used from PATH)
 endif
 
-CC       := $(CLANGPATH)clang
+CC       := $(CLANGPATH)armv6l-unknown-none-eabi-clang
 
 CFLAGS   += -O3 -Os -Wall -Wextra
 
-AS     := $(GCCPATH)arm-none-eabi-gcc
+AS     := $(GCCPATH)armv6l-unknown-none-eabi-gcc
 
-LD       := $(GCCPATH)arm-none-eabi-gcc
+LD       := $(GCCPATH)armv6l-unknown-none-eabi-gcc
 LDFLAGS  += -O3 -Os
 LDLIBS   += -lm -lgcc -lc
 
