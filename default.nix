@@ -93,6 +93,7 @@ let
           # hack to get around no tests for cross logic
           doCheck=${toString (if runTest then bolos.test else false)};
         '';
+        hardeningDisable = [ "all" ];
         prehook = ledger-platform.gccLibsPreHook;
         nativeBuildInputs = [
           (pkgs.python3.withPackages (ps: [ps.pillow ps.ledgerblue]))
