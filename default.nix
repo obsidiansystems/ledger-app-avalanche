@@ -90,6 +90,8 @@ let
         postConfigure = ''
           PATH="$BOLOS_ENV/clang-arm-fropi/bin:$PATH"
           patchShebangs test.sh
+          # hack to get around no tests for cross logic
+          doCheck=${toString (if runTest then bolos.test else false)};
         '';
         prehook = ledger-platform.gccLibsPreHook;
         nativeBuildInputs = [
@@ -125,7 +127,6 @@ let
           $SIZE $out/bin/app.elf
         '';
 
-        doCheck = if runTest then bolos.test else false;
         checkTarget = "test";
         enableParallelBuilding = true;
       };
