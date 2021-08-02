@@ -7,6 +7,7 @@ in rec {
   release-nanox = ledger-app.nano.x.release.all;
   debug-build = (import ./. { debug = true; inherit runTest gitDescribe; }).nano.s.release.all;
   inherit (ledger-app) usbtool;
+  ledger-blue = (import ./nix/ledgerblue.nix {}).withLedgerblue;
   release-notes = ledger-app.pkgs.writeScript "release-notes" ''
      PATH=${ledger-app.pkgs.coreutils}:$PATH
      MD5=$(md5sum -b ${release-nanos} | awk '{print $1;}')
