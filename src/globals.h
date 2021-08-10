@@ -38,7 +38,7 @@ typedef struct {
     buffer_t final_hash_as_buffer;
     cx_sha3_t tx_hash_state;
     struct {
-        struct EVM_RLP_txn_state state;
+        struct EVM_txn_state state;
         evm_parser_meta_state_t meta_state;
     };
 } apdu_evm_sign_state_t;

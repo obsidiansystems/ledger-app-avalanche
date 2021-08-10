@@ -12,7 +12,7 @@
 #define ETHEREUM_WORD_SIZE 32
 
 void init_rlp_list(struct EVM_RLP_txn_state *const state) {
-    memset(state, 0, sizeof(*state));
+    memset(state, 0, sizeof(*state)); // sizeof == 224UL
 }
 
 void init_rlp_item(struct EVM_RLP_item_state *const state) {
@@ -196,13 +196,20 @@ enum parse_rv parse_evm_txn(struct EVM_txn_state *const state, evm_parser_meta_s
     switch (state->state) {
       case 0: {
         sub_rv = parse_uint8_t(&state->transaction_envelope_type, meta);
-        if (sub_rv != PARSE_RV_DONE) return sub_rv;
+        if (sub_rv != PARSE_RV_DONE){
+          return sub_rv;
+        }
         if (state->transaction_envelope_type.val == 0x02) { // TODO 0x02 should be a constant somewhere?
           state->type = EIP1559;
           init_rlp_list(&state->txn_state); // could technically be a different init in each case, so we repeat ourselves
         } else {
           state->type = LEGACY;
           init_rlp_list(&state->txn_state); // could technically be a different init in each case, so we repeat ourselves
+          // we consumed a byte that the Legacy parser was expecting, so decrement before legacy parser begins
+          if (meta->input.consumed < 1) {
+            REJECT("a byte was consumed but this was not reflected in the \"input consumed bytes\" counter") // should be impossible
+          }
+          meta->input.consumed--; 
         } 
         state->state++;
       }
@@ -214,11 +221,6 @@ enum parse_rv parse_evm_txn(struct EVM_txn_state *const state, evm_parser_meta_s
             break;
           }
           case LEGACY: {
-            // we consumed a byte that the Legacy parser was expecting, so decrement before legacy parser begins
-            if (meta->input.consumed < 1) {
-              REJECT("a byte was consumed but this was not reflected in the \"input consumed bytes\" counter") // should be impossible
-            }
-            meta->input.consumed--; 
             sub_rv = parse_legacy_rlp_txn(&state->txn_state, meta);
             if (sub_rv != PARSE_RV_DONE) return sub_rv;
             break;
