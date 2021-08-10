@@ -218,7 +218,7 @@ const testData = {
         );
       });
       
-    it.only('can sign an EIP1559 transaction via the ethereum ledgerjs module', async function() {
+    it('can sign an EIP1559 transaction via the ethereum ledgerjs module', async function() {
       
       
   //{ chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data,
