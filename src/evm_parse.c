@@ -11,7 +11,7 @@
 #define ETHEREUM_SELECTOR_SIZE 4
 #define ETHEREUM_WORD_SIZE 32
 
-void init_rlp_list(struct EVM_RLP_list_state *const state) {
+void init_rlp_list(struct EVM_RLP_txn_state *const state) {
     memset(state, 0, sizeof(*state));
 }
 
@@ -136,9 +136,9 @@ static void output_assetCall_prompt_to_string(char *const out, size_t const out_
   output_evm_address_to_string(&out[ix], out_size - ix, in);
 }
 
-enum parse_rv parse_rlp_item(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta);
-enum parse_rv parse_rlp_item_to_buffer(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta);
-enum parse_rv parse_rlp_item_data(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta);
+enum parse_rv parse_rlp_item(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta);
+enum parse_rv parse_rlp_item_to_buffer(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta);
+enum parse_rv parse_rlp_item_data(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta);
 
 enum eth_txn_items {
   EVM_TXN_NONCE,
@@ -189,7 +189,50 @@ uint256_t enforceParsedScalarFits256Bits(struct EVM_RLP_item_state *const state)
   return value;
 }
 
-enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta) {
+enum parse_rv parse_evm_txn(struct EVM_txn_state *const state, evm_parser_meta_state_t *const meta) {
+    enum parse_rv sub_rv;
+    switch (state->state) {
+      case 0: {
+        sub_rv = parse_uint8_t(&state->transaction_envelope_type, meta);
+        if (sub_rv != PARSE_RV_DONE) return sub_rv;
+        if (state->transaction_envelope_type.val == 0x02) { // TODO 0x02 should be a constant somewhere?
+          state->type = EIP1559;
+          init_rlp_list(&state->txn_state); // could technically be a different init in each case, so we repeat ourselves
+        } else {
+          state->type = LEGACY;
+          init_rlp_list(&state->txn_state); // could technically be a different init in each case, so we repeat ourselves
+        } 
+        state->state++;
+      }
+      case 1: {
+        switch (state->type) {
+          case EIP1559: {
+            sub_rv = parse_eip1559_rlp_txn(&state->txn_state, meta);
+            if (sub_rv != PARSE_RV_DONE) return sub_rv;
+            break;
+          }
+          case LEGACY: {
+            // we consumed a byte that the Legacy parser was expecting, so decrement before legacy parser begins
+            if (input.consumed < 1) {
+              REJECT("a byte was consumed but this was not reflected in the \"input consumed bytes\" counter") // should be impossible
+            }
+            meta->input.consumed--; 
+            sub_rv = parse_legacy_rlp_txn(&state->txn_state, meta);
+            if (sub_rv != PARSE_RV_DONE) return sub_rv;
+            break;
+          }
+        } // end switch state->type
+      } 
+    } // end switch state->state
+    return sub_rv;
+}
+
+void init_evm_txn(struct EVM_txn_state *const state) {
+    state->state = 0; 
+    init_uint8_t(&state->transaction_envelope_type);
+}
+
+enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta) {
     enum parse_rv sub_rv;
     switch(state->state) {
       case 0: {
@@ -233,18 +276,16 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
 
             PARSE_ITEM(EVM_TXN_NONCE, );
             FINISH_ITEM_CHUNK();
-            // Don't need to do anything in particular with the nonce.
-            // In particular, all values are at least plausible here. We could show it perhaps.
 
             PARSE_ITEM(EVM_TXN_GASPRICE, _to_buffer);
             uint64_t gasPrice = enforceParsedScalarFits64Bits(&state->rlpItem_state);
-            size_t gasPriceLength = state->rlpItem_state.length;
+            size_t gasPriceLength = state->rlpItem_state.length; // TODO is this length handling dead code? now that enforceParsed handles length
             state->gasPrice = gasPrice;
             FINISH_ITEM_CHUNK();
 
             PARSE_ITEM(EVM_TXN_STARTGAS, _to_buffer);
             uint64_t startGas = enforceParsedScalarFits64Bits(&state->rlpItem_state);
-            size_t startGasLength = state->rlpItem_state.length;
+            size_t startGasLength = state->rlpItem_state.length; // TODO is this length handling dead code? now that enforceParsed handles length
             state->startGas = startGas;
             // TODO: We don't currently support the C-chain gas limit of 100 million,
             // which would have a fee larger than what fits in a word
@@ -418,6 +459,10 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
     return sub_rv;
 }
 
+enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta) {
+
+}
+
 enum parse_rv impl_parse_rlp_item(struct EVM_RLP_item_state *const state, evm_parser_meta_state_t *const meta, size_t max_bytes_to_buffer) {
     enum parse_rv sub_rv;
     state->do_init = false;
@@ -499,14 +544,14 @@ enum parse_rv impl_parse_rlp_item(struct EVM_RLP_item_state *const state, evm_pa
     return sub_rv;
 }
 
-enum parse_rv parse_rlp_item(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta) {
+enum parse_rv parse_rlp_item(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta) {
   return impl_parse_rlp_item(&state->rlpItem_state, meta, 0);
 }
 
-enum parse_rv parse_rlp_item_to_buffer(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta) {
+enum parse_rv parse_rlp_item_to_buffer(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta) {
   return impl_parse_rlp_item(&state->rlpItem_state, meta, NUM_ELEMENTS(state->rlpItem_state.buffer));
 }
-enum parse_rv parse_rlp_item_data(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta) {
+enum parse_rv parse_rlp_item_data(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta) {
   return impl_parse_rlp_item(&state->rlpItem_state, meta, state->hasTo ? 0 : MAX_CALLDATA_PREVIEW);
 }
 
