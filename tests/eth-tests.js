@@ -1,4 +1,5 @@
 const Transaction = require("@ethereumjs/tx").Transaction;
+const EIP1559Transaction = require("@ethereumjs/tx").FeeMarketEIP1559Transaction;
 const Common = require("@ethereumjs/common").default;
 const BN = require("bn.js");
 const {bnToRlp, rlp} = require("ethereumjs-util");
@@ -20,25 +21,18 @@ const rawUnsignedLegacyTransaction = (chainId, unsignedTxParams) => {
         bnToRlp(new BN(chainId)),
         Buffer.from([]),
         Buffer.from([]),
-    ]);
+    ]);   //  return unsignedTx.getMessageToSign(false);
+
 };
 
 const rawUnsignedEIP1559Transaction = (chainId, unsignedTxParams) => {
-  const common = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId });
-  const unsignedTx = Transaction.fromTxData({...unsignedTxParams}, { common });
+  const common = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId }, 'london');
+
+  const unsignedTx = EIP1559Transaction.fromTxData({...unsignedTxParams}, { common });
+ 
 
   // https://github.com/ethereumjs/ethereumjs-monorepo/issues/1188
-  return rlp.encode([
-      bnToRlp(unsignedTx.nonce),
-      bnToRlp(unsignedTx.gasPrice),
-      bnToRlp(unsignedTx.gasLimit),
-      unsignedTx.to !== undefined ? unsignedTx.to.buf : Buffer.from([]),
-      bnToRlp(unsignedTx.value),
-      unsignedTx.data,
-      bnToRlp(new BN(chainId)),
-      Buffer.from([]),
-      Buffer.from([]),
-  ]);
+  return unsignedTx.getMessageToSign(false);
 };
 
 
@@ -104,6 +98,21 @@ async function testSigning(self, chainId, prompts, hexTx) {
   await flow.promptsPromise;
 }
 
+async function testEIP1559Signing(self, chainId, prompts, hexTx) {
+  const ethTx = Buffer.from(hexTx, 'hex');
+  const flow = await flowMultiPrompt(self.speculos, prompts);
+  const chainParams = { common: Common.forCustomChain('mainnet', { networkId: 1, chainId }, 'istanbul')};
+  
+  const dat = await self.eth.signTransaction("44'/60'/0'/0/0", ethTx);
+  chain = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId }, 'london')
+  // remove the first byte from the start of the ethtx, the transactionType that's indicating it's an eip1559 transaction
+  txnBufs = decode(ethTx.slice(1)).slice(0,9).concat([dat.v, dat.r, dat.s].map(a=>Buffer.from(((a.length%2==1)?'0'+a:a),'hex')));
+  ethTxObj = EIP1559Transaction.fromValuesArray(txnBufs, {common: chain});
+  expect(ethTxObj.verifySignature()).to.equal(true);
+  expect(ethTxObj.getSenderPublicKey()).to.equalBytes("ef5b152e3f15eb0c50c9916161c2309e54bd87b9adce722d69716bcdef85f547678e15ab40a78919c7284e67a17ee9a96e8b9886b60f767d93023bac8dbc16e4");
+  await flow.promptsPromise;
+}
+
 const testDeploy = (chainId, withAmount) => async function () {
     this.timeout(8000);
     const [amountPrompt, amountHex] = withAmount ? ['0.000000001 nAVAX', '01'] : [null, '80'];
@@ -161,24 +170,26 @@ const testCall = (chainId, data, method, args) => async function () {
     await testSigning(this, chainId, contractCallPrompts('0x' + address, method, args), tx);
 };
 
+
+
 const testData = {
-    address: {
-        hex: '0000000000000000000000000101020203030404050506060707080809090a0a',
+  address: {
+    hex: '0000000000000000000000000101020203030404050506060707080809090a0a',
         prompt: '0101020203030404050506060707080809090a0a',
-    },
-    amount: {
+      },
+      amount: {
         hex: '00000000000000000000000000000000000000000000000000000000000000aa',
         prompt: '0.00000017 GWEI',
-    },
-    bytes32: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-
-    signatures: {
+      },
+      bytes32: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+      
+      signatures: {
         transferFrom: 'f6153e09b51baa0e7564fd43034a9a540576d2aa869521c41a8247bc1ead5c9b570ae94343fcb0b5f1bce8d7b00f502544d3b723d799971d4a2b1b1a534d1e9c699000'
-    }
-};
-
-describe.only("Eth app compatibility tests", async function () {
-  this.timeout(3000);
+      }
+    };
+    
+    describe.only("Eth app compatibility tests", async function () {
+      this.timeout(3000);
   it('can get a key from the app with the ethereum ledgerjs module', async function() {
     const flow = await flowAccept(this.speculos);
     const dat = await this.eth.getAddress("44'/60'/0'/0/0", false, true);
@@ -187,25 +198,58 @@ describe.only("Eth app compatibility tests", async function () {
     expect(dat.chainCode).to.equal("428489ee70680fa137392bc8399c4da9e39e92f058eb9e790f736142bba7e9d6");
     await flow.promptsPromise;
   });
-
+  
   it('can sign a transaction via the ethereum ledgerjs module', async function() {
+    await testSigning(this, 43114,
+      transferPrompts('0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
+      '0.01234 AVAX',
+      '9870000 GWEI'
+      ),
+      'ed01856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080'
+      );
+    });
+    
+    it('can sign a larger transaction via the ethereum ledgerjs module', async function() {
       await testSigning(this, 43114,
-                        transferPrompts('0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
-                                        '0.01234 AVAX',
-                                        '9870000 GWEI'
-                                       ),
-                        'ed01856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080'
-                       );
-  });
+        transferPrompts('0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
+        '238547462614852887054687.704548455429902335 AVAX',
+        '9870000 GWEI'),
+        'f83801856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c79529202bd072a24087400000f0fff0f0fff0f0fff8082a86a8080'
+        );
+      });
+      
+    it.only('can sign an EIP1559 transaction via the ethereum ledgerjs module', async function() {
+      
+      
+  //{ chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data,
+  // * accessList, v, r, s }
 
-  it('can sign a larger transaction via the ethereum ledgerjs module', async function() {
-      await testSigning(this, 43114,
-                        transferPrompts('0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
-                                        '238547462614852887054687.704548455429902335 AVAX',
-                                        '9870000 GWEI'),
-                        'f83801856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c79529202bd072a24087400000f0fff0f0fff0f0fff8082a86a8080'
-                       );
-  });
+
+      const chainId = 43112;
+      const tx = rawUnsignedEIP1559Transaction(chainId, {
+          // chainId: chainId,
+          nonce: '0x0a',
+          maxFeePerGas: '0x3400',
+          maxPriorityFeePerGas: '0x' + '64',
+          gasLimit: '0x' + 'ab',
+          to: '0x' + '0102030400000000000000000000000000000002',
+          value: '0x' + '1000',
+          data: '0x' + '90000102030405060708090a0b0c0d0e0f',
+          // accessList: use the default
+          // v: use the default
+          // r: use the default
+          // s: use the default
+      });
+    
+      const prompts =
+            [[{header: "Transfer",     body: '0.000004096 nAVAX' + " to " + '0x' + '0102030400000000000000000000000000000002'}],
+              [{header: "Contract Data", body: "Is Present (unsafe)"}],
+              [{header: "Maximum Fee",   body: "0.002293452 GWEI"}],
+              [finalizePrompt]
+            ];
+    
+      await testEIP1559Signing(this, chainId, prompts, tx);
+    });
 
   it('A call to assetCall with incorrect call data rejects', async function() {
     try {

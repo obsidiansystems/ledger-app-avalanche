@@ -540,7 +540,7 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
             // TODO: We don't currently support the C-chain gas limit of 100 million,
             // which would have a fee larger than what fits in a word
             // possible future improvement: using nanosdk to actually do the overflow-checked gas arithmetic
-            if((maxFeePerGasLength > baseFeePerGasLength ? maxFeePerGasLength : baseFeePerGasLength) + gasLimit + 1 > 8)
+            if((maxFeePerGasLength > baseFeePerGasLength ? maxFeePerGasLength : baseFeePerGasLength) + gasLimitLength + 1 > 8)
               REJECT("Fee too large");
 
 

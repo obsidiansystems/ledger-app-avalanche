@@ -22,8 +22,15 @@ bool evm_sign_ok() {
     }));
 
     memcpy(out+1, buf, 64);
-    // Ethereum doesn't handle the 4-address case and the protocol only allows one byte; signature will need repair after hw-app-eth has it.
-    out[0] = (buf[64]&0x01) + (G.meta_state.chainIdLowByte<<1) + 35;
+
+    if (G.meta_state.chainIdLowByte == 0) {
+        // we are signing a non-Legacy transaction
+        out[0] = (buf[64]&0x01);
+    } else {
+        // Ethereum doesn't handle the 4-address case and the protocol only allows one byte; signature will need repair after hw-app-eth has it.
+        out[0] = (buf[64]&0x01) + (G.meta_state.chainIdLowByte<<1) + 35;
+    }
+
 
     memset(&G, 0, sizeof(G));
     delayed_send(finalize_successful_send(tx));
