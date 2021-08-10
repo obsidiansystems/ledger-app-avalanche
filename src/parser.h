@@ -523,8 +523,9 @@ struct EVM_RLP_txn_state {
     uint8_t item_index;
     bool hasTo;
     bool hasData;
-    uint64_t startGas;
-    uint64_t gasPrice;
+    uint64_t gasLimit;
+    uint64_t priorityFeePerGas;
+    uint64_t baseFeePerGas;
     uint256_t value;
     union {
         struct uint64_t_state uint64_state;
