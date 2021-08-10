@@ -162,7 +162,7 @@ enum eth_eip1559_txn_items {
   EVM_EIP1559_TXN_VALUE,
   EVM_EIP1559_TXN_DATA,
   EVM_EIP1559_TXN_ACCESS_LIST
-}
+};
 
 void init_assetCall_data(struct EVM_assetCall_state *const state, uint64_t length);
 enum parse_rv parse_assetCall_data(struct EVM_assetCall_state *const state, parser_input_meta_state_t *const input, evm_parser_meta_state_t *const meta);
@@ -540,7 +540,7 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
             // TODO: We don't currently support the C-chain gas limit of 100 million,
             // which would have a fee larger than what fits in a word
             // possible future improvement: using nanosdk to actually do the overflow-checked gas arithmetic
-            if(max(maxFeePerGasLength, baseFeePerGasLength) + gasLimit > 8)
+            if((maxFeePerGasLength > baseFeePerGasLength ? maxFeePerGasLength : baseFeePerGasLength) + gasLimit + 1 > 8)
               REJECT("Fee too large");
 
 
