@@ -547,6 +547,12 @@ enum parse_rv parseFixed(struct FixedState *const state, parser_input_meta_state
 
 void init_rlp_list(struct EVM_RLP_txn_state *const state);
 
+void init_evm_txn(struct EVM_txn_state *const state);
+
+enum parse_rv parse_evm_txn(struct EVM_txn_state *const state, evm_parser_meta_state_t *const meta);
+
+enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta);
+
 enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta);
 
 void strcpy_prompt(char *const out, size_t const out_size, char const *const in);

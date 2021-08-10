@@ -189,6 +189,8 @@ uint256_t enforceParsedScalarFits256Bits(struct EVM_RLP_item_state *const state)
   return value;
 }
 
+IMPL_FIXED(uint8_t)
+
 enum parse_rv parse_evm_txn(struct EVM_txn_state *const state, evm_parser_meta_state_t *const meta) {
     enum parse_rv sub_rv;
     switch (state->state) {
@@ -213,7 +215,7 @@ enum parse_rv parse_evm_txn(struct EVM_txn_state *const state, evm_parser_meta_s
           }
           case LEGACY: {
             // we consumed a byte that the Legacy parser was expecting, so decrement before legacy parser begins
-            if (input.consumed < 1) {
+            if (meta->input.consumed < 1) {
               REJECT("a byte was consumed but this was not reflected in the \"input consumed bytes\" counter") // should be impossible
             }
             meta->input.consumed--; 
