@@ -5,7 +5,7 @@ const {bnToRlp, rlp} = require("ethereumjs-util");
 const decode = require("rlp").decode;
 const byContractAddress=require("@ledgerhq/hw-app-eth/erc20").byContractAddress;
 
-const rawUnsignedTransaction = (chainId, unsignedTxParams) => {
+const rawUnsignedLegacyTransaction = (chainId, unsignedTxParams) => {
     const common = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId });
     const unsignedTx = Transaction.fromTxData({...unsignedTxParams}, { common });
 
@@ -22,6 +22,25 @@ const rawUnsignedTransaction = (chainId, unsignedTxParams) => {
         Buffer.from([]),
     ]);
 };
+
+const rawUnsignedEIP1559Transaction = (chainId, unsignedTxParams) => {
+  const common = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId });
+  const unsignedTx = Transaction.fromTxData({...unsignedTxParams}, { common });
+
+  // https://github.com/ethereumjs/ethereumjs-monorepo/issues/1188
+  return rlp.encode([
+      bnToRlp(unsignedTx.nonce),
+      bnToRlp(unsignedTx.gasPrice),
+      bnToRlp(unsignedTx.gasLimit),
+      unsignedTx.to !== undefined ? unsignedTx.to.buf : Buffer.from([]),
+      bnToRlp(unsignedTx.value),
+      unsignedTx.data,
+      bnToRlp(new BN(chainId)),
+      Buffer.from([]),
+      Buffer.from([]),
+  ]);
+};
+
 
 const finalizePrompt = {header: "Finalize", body: "Transaction"};
 
@@ -98,7 +117,7 @@ const testDeploy = (chainId, withAmount) => async function () {
 };
 
 const testUnrecognizedCalldataTx = (chainId, gasPrice, gasLimit, amountPrompt, amountHex, address, fee, calldata) => async function () {
-    const tx = rawUnsignedTransaction(chainId, {
+    const tx = rawUnsignedLegacyTransaction(chainId, {
         nonce: '0x0a',
         gasPrice: '0x' + gasPrice,
         gasLimit: '0x' + gasLimit,
@@ -130,7 +149,7 @@ const testUnrecognizedCalldata = (calldata) => testUnrecognizedCalldataTx
 
 const testCall = (chainId, data, method, args) => async function () {
     const address = 'df073477da421520cf03af261b782282c304ad66';
-    const tx = rawUnsignedTransaction(chainId, {
+    const tx = rawUnsignedLegacyTransaction(chainId, {
         nonce: '0x0a',
         gasPrice: '0x34630b8a00',
         gasLimit: '0xb197',
@@ -158,7 +177,7 @@ const testData = {
     }
 };
 
-describe("Eth app compatibility tests", async function () {
+describe.only("Eth app compatibility tests", async function () {
   this.timeout(3000);
   it('can get a key from the app with the ethereum ledgerjs module', async function() {
     const flow = await flowAccept(this.speculos);
