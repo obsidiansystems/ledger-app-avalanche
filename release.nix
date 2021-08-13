@@ -1,4 +1,4 @@
-{ runTest ? true, gitDescribe ? "TEST-dirty" }:
+{ runTest ? false, gitDescribe ? "TEST-dirty" }:
 let
   ledger-app = import ./. { inherit runTest gitDescribe; };
 in rec {
