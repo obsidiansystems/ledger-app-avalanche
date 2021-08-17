@@ -1,4 +1,10 @@
 { runTest ? false, gitDescribe ? "TEST-dirty" }:
+/*
+The above should be `runTest ? true`, but ledger recently introduced a change that causes
+eth.signTransaction to connect to cdn.ledger.com when contract data is attached.
+This breaks tests on release. So, to allow release to run, skip tests for now.
+Reenable ASAP.
+*/
 let
   ledger-app = import ./. { inherit runTest gitDescribe; };
 in rec {
