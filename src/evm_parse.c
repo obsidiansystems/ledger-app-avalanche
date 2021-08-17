@@ -273,6 +273,20 @@ void parse_value_from_txn(struct EVM_RLP_txn_state *const state, evm_parser_meta
   SET_PROMPT_VALUE(entry->data.output_prompt.amount_big = state->value);
 }
 
+void parse_calldata_preview(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta) {
+  state->item_index++;
+  uint64_t len = state->rlpItem_state.length;
+  if(!state->hasTo) {
+    SET_PROMPT_VALUE(entry->data.output_prompt.calldata_preview.cropped = len > MAX_CALLDATA_PREVIEW);
+    SET_PROMPT_VALUE(entry->data.output_prompt.calldata_preview.count = MIN(len, (uint64_t)MAX_CALLDATA_PREVIEW));
+    SET_PROMPT_VALUE(memcpy(entry->data.output_prompt.calldata_preview.buffer,
+                            &state->rlpItem_state.buffer,
+                            entry->data.output_prompt.calldata_preview.count));
+  }
+  state->hasData = len > 0;
+  init_rlp_item(&state->rlpItem_state);
+}
+
 enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta) {
     enum parse_rv sub_rv;
     switch(state->state) {
@@ -425,17 +439,7 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
 
             // Can't use the macro here because we need to do a prompt in the middle of it.
             if(sub_rv != PARSE_RV_DONE) return sub_rv;
-            state->item_index++;
-            uint64_t len = state->rlpItem_state.length;
-            if(!state->hasTo) {
-              SET_PROMPT_VALUE(entry->data.output_prompt.calldata_preview.cropped = len > MAX_CALLDATA_PREVIEW);
-              SET_PROMPT_VALUE(entry->data.output_prompt.calldata_preview.count = MIN(len, (uint64_t)MAX_CALLDATA_PREVIEW));
-              SET_PROMPT_VALUE(memcpy(entry->data.output_prompt.calldata_preview.buffer,
-                                      &state->rlpItem_state.buffer,
-                                      entry->data.output_prompt.calldata_preview.count));
-            }
-            state->hasData = len > 0;
-            init_rlp_item(&state->rlpItem_state);
+            parse_calldata_preview(state, meta);
 
             if(!state->hasTo) {
               if(ADD_ACCUM_PROMPT("Data", output_evm_calldata_preview_to_string))
@@ -664,17 +668,7 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
 
             // Can't use the FINISH_ITEM_ macro here because we need to do a prompt in the middle of it.
             if(sub_rv != PARSE_RV_DONE) return sub_rv;
-            state->item_index++;
-            uint64_t len = state->rlpItem_state.length;
-            if(!state->hasTo) {
-              SET_PROMPT_VALUE(entry->data.output_prompt.calldata_preview.cropped = len > MAX_CALLDATA_PREVIEW);
-              SET_PROMPT_VALUE(entry->data.output_prompt.calldata_preview.count = MIN(len, (uint64_t)MAX_CALLDATA_PREVIEW));
-              SET_PROMPT_VALUE(memcpy(entry->data.output_prompt.calldata_preview.buffer,
-                                      &state->rlpItem_state.buffer,
-                                      entry->data.output_prompt.calldata_preview.count));
-            }
-            state->hasData = len > 0;
-            init_rlp_item(&state->rlpItem_state);
+            parse_calldata_preview(state, meta);
 
             if(!state->hasTo) {
               if(ADD_ACCUM_PROMPT("Data", output_evm_calldata_preview_to_string))
