@@ -205,6 +205,12 @@ IMPL_FIXED(uint8_t)
 
 const uint8_t EIP1559_TYPE_VALUE = 0x02;
 
+void checkDataFieldLengthFitsTransaction(struct EVM_txn_state *const state) {
+  // If data field can't possibly fit in the transaction, the rlp is malformed
+  if(state->rlpItem_state.len_len > state->remaining)
+    REJECT("Malformed data length. Expected length of length %u", state->rlpItem_state.len_len);
+}
+
 enum parse_rv parse_evm_txn(struct EVM_txn_state *const state, evm_parser_meta_state_t *const meta) {
     enum parse_rv sub_rv;
     switch (state->state) {
@@ -375,9 +381,7 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
 
             PARSE_ITEM(EVM_LEGACY_TXN_DATA, _data);
 
-            // If data field can't possibly fit in the transaction, the rlp is malformed
-            if(state->rlpItem_state.len_len > state->remaining)
-              REJECT("Malformed data length. Expected length of length %u", state->rlpItem_state.len_len);
+            checkDataFieldLengthFitsTransaction(state);
 
             // If we exhaust the apdu while parsing the length, there's nothing yet to hand to the subparser
             if(state->rlpItem_state.state < 2)
@@ -617,9 +621,7 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
 
             PARSE_ITEM(EVM_EIP1559_TXN_DATA, _data);
 
-            // If data field can't possibly fit in the transaction, the rlp is malformed
-            if(state->rlpItem_state.len_len > state->remaining)
-              REJECT("Malformed data length. Expected length of length %u", state->rlpItem_state.len_len);
+            checkDataFieldLengthFitsTransaction(state);
 
             // If we exhaust the apdu while parsing the length, there's nothing yet to hand to the subparser
             if(state->rlpItem_state.state < 2)
