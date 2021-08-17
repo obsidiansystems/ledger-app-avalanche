@@ -21,7 +21,7 @@ const rawUnsignedLegacyTransaction = (chainId, unsignedTxParams) => {
         bnToRlp(new BN(chainId)),
         Buffer.from([]),
         Buffer.from([]),
-    ]);   //  return unsignedTx.getMessageToSign(false);
+    ]); 
 
 };
 

@@ -205,7 +205,7 @@ IMPL_FIXED(uint8_t)
 
 const uint8_t EIP1559_TYPE_VALUE = 0x02;
 
-void checkDataFieldLengthFitsTransaction(struct EVM_txn_state *const state) {
+void checkDataFieldLengthFitsTransaction(struct EVM_RLP_txn_state *const state) {
   // If data field can't possibly fit in the transaction, the rlp is malformed
   if(state->rlpItem_state.len_len > state->remaining)
     REJECT("Malformed data length. Expected length of length %u", state->rlpItem_state.len_len);
