@@ -315,12 +315,12 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
             FINISH_ITEM_CHUNK();
 
             PARSE_ITEM(EVM_LEGACY_TXN_STARTGAS, _to_buffer);
-            uint64_t startGas = enforceParsedScalarFits64Bits(&state->rlpItem_state);
-            size_t startGasLength = state->rlpItem_state.length; 
-            state->gasLimit = startGas;
+            uint64_t gasLimit = enforceParsedScalarFits64Bits(&state->rlpItem_state);
+            size_t gasLimitLength = state->rlpItem_state.length; 
+            state->gasLimit = gasLimit;
             // TODO: We don't currently support the C-chain gas limit of 100 million,
             // which would have a fee larger than what fits in a word
-            if(gasPriceLength + startGasLength > 8)
+            if(gasPriceLength + gasLimitLength > 8)
               REJECT("Fee too large");
             FINISH_ITEM_CHUNK();
 
