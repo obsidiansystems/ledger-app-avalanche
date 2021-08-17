@@ -268,6 +268,11 @@ void init_evm_txn(struct EVM_txn_state *const state) {
             state->item_index++;                                        \
             init_rlp_item(&state->rlpItem_state);
 
+void parse_value_from_txn(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta) {
+  state->value = enforceParsedScalarFits256Bits(&state->rlpItem_state);
+  SET_PROMPT_VALUE(entry->data.output_prompt.amount_big = state->value);
+}
+
 enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta) {
     enum parse_rv sub_rv;
     switch(state->state) {
@@ -361,10 +366,7 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
             }
 
             PARSE_ITEM(EVM_LEGACY_TXN_VALUE, _to_buffer);
-
-            state->value = enforceParsedScalarFits256Bits(&state->rlpItem_state);
-            SET_PROMPT_VALUE(entry->data.output_prompt.amount_big = state->value);
-
+            parse_value_from_txn(state, meta);
             FINISH_ITEM_CHUNK();
 
             if(state->hasTo) {
@@ -602,8 +604,7 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
 
             PARSE_ITEM(EVM_EIP1559_TXN_VALUE, _to_buffer);
 
-            state->value = enforceParsedScalarFits256Bits(&state->rlpItem_state);
-            SET_PROMPT_VALUE(entry->data.output_prompt.amount_big = state->value);
+            parse_value_from_txn(state, meta);
 
             FINISH_ITEM_CHUNK();
 
