@@ -203,6 +203,8 @@ uint256_t enforceParsedScalarFits256Bits(struct EVM_RLP_item_state *const state)
 
 IMPL_FIXED(uint8_t)
 
+const uint8_t EIP1559_TYPE_VALUE = 0x02;
+
 enum parse_rv parse_evm_txn(struct EVM_txn_state *const state, evm_parser_meta_state_t *const meta) {
     enum parse_rv sub_rv;
     switch (state->state) {
@@ -211,7 +213,7 @@ enum parse_rv parse_evm_txn(struct EVM_txn_state *const state, evm_parser_meta_s
         if (sub_rv != PARSE_RV_DONE){
           return sub_rv;
         }
-        if (state->transaction_envelope_type.val == 0x02) { // TODO 0x02 should be a constant somewhere?
+        if (state->transaction_envelope_type.val == EIP1559_TYPE_VALUE) {
           state->type = EIP1559;
           init_rlp_list(&state->txn_state); // could technically be a different init in each case, so we repeat ourselves
         } else {
