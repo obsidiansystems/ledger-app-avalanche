@@ -295,15 +295,22 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
             PARSE_ITEM(EVM_LEGACY_TXN_NONCE, );
             FINISH_ITEM_CHUNK();
 
+            //TODO: now that there's 256 bit support,
+            // rather than enforcing the length requirement,
+            // the below code block could instead load the values into
+            // 256 bit values before multiplication.
+            // Getting rid of the intermediate lengths would also allow
+            // sharing the code between PARSE_ITEM and FINISH_ITEM_CHUNK
+            // between legacy and non-legacy transaction parsers.
             PARSE_ITEM(EVM_LEGACY_TXN_GASPRICE, _to_buffer);
             uint64_t gasPrice = enforceParsedScalarFits64Bits(&state->rlpItem_state);
-            size_t gasPriceLength = state->rlpItem_state.length; // TODO is this length handling dead code? now that enforceParsed handles length
+            size_t gasPriceLength = state->rlpItem_state.length;
             state->priorityFeePerGas = gasPrice;
             FINISH_ITEM_CHUNK();
 
             PARSE_ITEM(EVM_LEGACY_TXN_STARTGAS, _to_buffer);
             uint64_t startGas = enforceParsedScalarFits64Bits(&state->rlpItem_state);
-            size_t startGasLength = state->rlpItem_state.length; // TODO is this length handling dead code? now that enforceParsed handles length
+            size_t startGasLength = state->rlpItem_state.length; 
             state->gasLimit = startGas;
             // TODO: We don't currently support the C-chain gas limit of 100 million,
             // which would have a fee larger than what fits in a word
@@ -520,7 +527,14 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
 
             PARSE_ITEM(EVM_EIP1559_TXN_NONCE, );
             FINISH_ITEM_CHUNK();
-
+            
+            //TODO: now that there's 256 bit support,
+            // rather than enforcing the length requirement,
+            // the below code block could instead load the values into
+            // 256 bit values before multiplication.
+            // Getting rid of the intermediate lengths would also allow
+            // sharing the code between PARSE_ITEM and FINISH_ITEM_CHUNK
+            // between legacy and non-legacy transaction parsers.
             PARSE_ITEM(EVM_EIP1559_TXN_MAX_PRIORITY_FEE_PER_GAS, _to_buffer);
             uint64_t maxFeePerGas = enforceParsedScalarFits64Bits(&state->rlpItem_state);
             size_t maxFeePerGasLength = state->rlpItem_state.length;
