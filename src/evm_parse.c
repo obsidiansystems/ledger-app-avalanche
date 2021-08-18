@@ -201,7 +201,6 @@ uint256_t enforceParsedScalarFits256Bits(struct EVM_RLP_item_state *const state)
   return value;
 }
 
-IMPL_FIXED(uint8_t)
 
 const uint8_t EIP1559_TYPE_VALUE = 0x02;
 

@@ -108,7 +108,6 @@ enum parse_rv skipBytes(struct FixedState *const state, parser_input_meta_state_
         return initFixed((struct FixedState *const)state, sizeof(state)); \
     }
 
-IMPL_FIXED(uint8_t);
 IMPL_FIXED_BE(uint16_t);
 IMPL_FIXED_BE(uint32_t);
 IMPL_FIXED_BE(uint64_t);

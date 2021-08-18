@@ -64,6 +64,7 @@ DEFINE_FIXED_BE(uint16_t);
 DEFINE_FIXED_BE(uint32_t);
 DEFINE_FIXED_BE(uint64_t);
 DEFINE_FIXED_BE(uint256_t);
+IMPL_FIXED(uint8_t);
 
 typedef struct {
     uint8_t val[32];
