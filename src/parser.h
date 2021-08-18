@@ -64,7 +64,6 @@ DEFINE_FIXED_BE(uint16_t);
 DEFINE_FIXED_BE(uint32_t);
 DEFINE_FIXED_BE(uint64_t);
 DEFINE_FIXED_BE(uint256_t);
-IMPL_FIXED(uint8_t);
 
 typedef struct {
     uint8_t val[32];
@@ -543,6 +542,7 @@ struct EVM_txn_state {
     };
 };
 
+
 void initFixed(struct FixedState *const state, size_t const len);
 
 enum parse_rv parseFixed(struct FixedState *const state, parser_input_meta_state_t *const input, size_t const len);
@@ -562,3 +562,5 @@ void strcpy_prompt(char *const out, size_t const out_size, char const *const in)
 bool should_flush(prompt_batch_t prompt);
 
 void set_next_batch_size(prompt_batch_t *const prompt, size_t size);
+
+IMPL_FIXED(uint8_t);
