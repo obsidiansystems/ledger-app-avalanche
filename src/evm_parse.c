@@ -11,8 +11,8 @@
 #define ETHEREUM_SELECTOR_SIZE 4
 #define ETHEREUM_WORD_SIZE 32
 
-void init_rlp_list(struct EVM_RLP_list_state *const state) {
-    memset(state, 0, sizeof(*state));
+void init_rlp_list(struct EVM_RLP_txn_state *const state) {
+    memset(state, 0, sizeof(*state)); // sizeof == 224UL
 }
 
 void init_rlp_item(struct EVM_RLP_item_state *const state) {
@@ -136,20 +136,32 @@ static void output_assetCall_prompt_to_string(char *const out, size_t const out_
   output_evm_address_to_string(&out[ix], out_size - ix, in);
 }
 
-enum parse_rv parse_rlp_item(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta);
-enum parse_rv parse_rlp_item_to_buffer(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta);
-enum parse_rv parse_rlp_item_data(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta);
+enum parse_rv parse_rlp_item(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta);
+enum parse_rv parse_rlp_item_to_buffer(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta);
+enum parse_rv parse_rlp_item_data(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta);
 
-enum eth_txn_items {
-  EVM_TXN_NONCE,
-  EVM_TXN_GASPRICE,
-  EVM_TXN_STARTGAS,
-  EVM_TXN_TO,
-  EVM_TXN_VALUE,
-  EVM_TXN_DATA,
-  EVM_TXN_CHAINID,
-  EVM_TXN_SIG_R,
-  EVM_TXN_SIG_S
+enum eth_legacy_txn_items {
+  EVM_LEGACY_TXN_NONCE,
+  EVM_LEGACY_TXN_GASPRICE,
+  EVM_LEGACY_TXN_STARTGAS,
+  EVM_LEGACY_TXN_TO,
+  EVM_LEGACY_TXN_VALUE,
+  EVM_LEGACY_TXN_DATA,
+  EVM_LEGACY_TXN_CHAINID,
+  EVM_LEGACY_TXN_SIG_R,
+  EVM_LEGACY_TXN_SIG_S
+};
+
+enum eth_eip1559_txn_items {
+  EVM_EIP1559_TXN_CHAINID,
+  EVM_EIP1559_TXN_NONCE,
+  EVM_EIP1559_TXN_MAX_PRIORITY_FEE_PER_GAS,
+  EVM_EIP1559_TXN_MAX_FEE_PER_GAS,
+  EVM_EIP1559_TXN_GAS_LIMIT,
+  EVM_EIP1559_TXN_TO,
+  EVM_EIP1559_TXN_VALUE,
+  EVM_EIP1559_TXN_DATA,
+  EVM_EIP1559_TXN_ACCESS_LIST
 };
 
 void init_assetCall_data(struct EVM_assetCall_state *const state, uint64_t length);
@@ -189,7 +201,92 @@ uint256_t enforceParsedScalarFits256Bits(struct EVM_RLP_item_state *const state)
   return value;
 }
 
-enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta) {
+
+const uint8_t EIP1559_TYPE_VALUE = 0x02;
+
+void checkDataFieldLengthFitsTransaction(struct EVM_RLP_txn_state *const state) {
+  // If data field can't possibly fit in the transaction, the rlp is malformed
+  if(state->rlpItem_state.len_len > state->remaining)
+    REJECT("Malformed data length. Expected length of length %u", state->rlpItem_state.len_len);
+}
+
+enum parse_rv parse_evm_txn(struct EVM_txn_state *const state, evm_parser_meta_state_t *const meta) {
+    enum parse_rv sub_rv;
+    switch (state->state) {
+      case 0: {
+        sub_rv = parse_uint8_t(&state->transaction_envelope_type, meta);
+        if (sub_rv != PARSE_RV_DONE){
+          return sub_rv;
+        }
+        if (state->transaction_envelope_type.val == EIP1559_TYPE_VALUE) {
+          state->type = EIP1559;
+          init_rlp_list(&state->txn_state); // could technically be a different init in each case, so we repeat ourselves
+        } else {
+          state->type = LEGACY;
+          init_rlp_list(&state->txn_state); // could technically be a different init in each case, so we repeat ourselves
+          // we consumed a byte that the Legacy parser was expecting, so decrement before legacy parser begins
+          if (meta->input.consumed < 1) {
+            REJECT("a byte was consumed but this was not reflected in the \"input consumed bytes\" counter") // should be impossible
+          }
+          meta->input.consumed--; 
+        } 
+        state->state++;
+      }
+      case 1: {
+        switch (state->type) {
+          case EIP1559: {
+            sub_rv = parse_eip1559_rlp_txn(&state->txn_state, meta);
+            if (sub_rv != PARSE_RV_DONE) return sub_rv;
+            break;
+          }
+          case LEGACY: {
+            sub_rv = parse_legacy_rlp_txn(&state->txn_state, meta);
+            if (sub_rv != PARSE_RV_DONE) return sub_rv;
+            break;
+          }
+        } // end switch state->type
+      } 
+    } // end switch state->state
+    return sub_rv;
+}
+
+void init_evm_txn(struct EVM_txn_state *const state) {
+    state->state = 0; 
+    init_uint8_t(&state->transaction_envelope_type);
+}
+#define PARSE_ITEM(ITEM, save) \
+            case ITEM: {\
+                itemStartIdx = meta->input.consumed; \
+                PRINTF("Entering " #ITEM "\n");                          \
+                sub_rv = parse_rlp_item ## save(state, meta); \
+                PRINTF("Exiting " #ITEM "\n");                          \
+                state->remaining -= meta->input.consumed - itemStartIdx; \
+            } (void)0
+#define FINISH_ITEM_CHUNK() \
+            if(sub_rv != PARSE_RV_DONE) return sub_rv;                  \
+            state->item_index++;                                        \
+            init_rlp_item(&state->rlpItem_state);
+
+void parse_value_from_txn(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta) {
+  state->value = enforceParsedScalarFits256Bits(&state->rlpItem_state);
+  SET_PROMPT_VALUE(entry->data.output_prompt.amount_big = state->value);
+}
+
+void parse_calldata_preview(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta) {
+  state->item_index++;
+  uint64_t len = state->rlpItem_state.length;
+  if(!state->hasTo) {
+    SET_PROMPT_VALUE(entry->data.output_prompt.calldata_preview.cropped = len > MAX_CALLDATA_PREVIEW);
+    SET_PROMPT_VALUE(entry->data.output_prompt.calldata_preview.count = MIN(len, (uint64_t)MAX_CALLDATA_PREVIEW));
+    SET_PROMPT_VALUE(memcpy(entry->data.output_prompt.calldata_preview.buffer,
+                            &state->rlpItem_state.buffer,
+                            entry->data.output_prompt.calldata_preview.count));
+  }
+  state->hasData = len > 0;
+  init_rlp_item(&state->rlpItem_state);
+}
+
+enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta) {
     enum parse_rv sub_rv;
     switch(state->state) {
       case 0: {
@@ -218,41 +315,34 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
       case 2: { // Now parse items.
           uint8_t itemStartIdx;
           switch(state->item_index) {
-#define PARSE_ITEM(ITEM, save) \
-            case ITEM: {\
-                itemStartIdx = meta->input.consumed; \
-                PRINTF("Entering " #ITEM "\n");                          \
-                sub_rv = parse_rlp_item ## save(state, meta); \
-                PRINTF("Exiting " #ITEM "\n");                          \
-                state->remaining -= meta->input.consumed - itemStartIdx; \
-            } (void)0
-#define FINISH_ITEM_CHUNK() \
-            if(sub_rv != PARSE_RV_DONE) return sub_rv;                  \
-            state->item_index++;                                        \
-            init_rlp_item(&state->rlpItem_state);
 
-            PARSE_ITEM(EVM_TXN_NONCE, );
+            PARSE_ITEM(EVM_LEGACY_TXN_NONCE, );
             FINISH_ITEM_CHUNK();
-            // Don't need to do anything in particular with the nonce.
-            // In particular, all values are at least plausible here. We could show it perhaps.
 
-            PARSE_ITEM(EVM_TXN_GASPRICE, _to_buffer);
+            //TODO: now that there's 256 bit support,
+            // rather than enforcing the length requirement,
+            // the below code block could instead load the values into
+            // 256 bit values before multiplication.
+            // Getting rid of the intermediate lengths would also allow
+            // sharing the code between PARSE_ITEM and FINISH_ITEM_CHUNK
+            // between legacy and non-legacy transaction parsers.
+            PARSE_ITEM(EVM_LEGACY_TXN_GASPRICE, _to_buffer);
             uint64_t gasPrice = enforceParsedScalarFits64Bits(&state->rlpItem_state);
             size_t gasPriceLength = state->rlpItem_state.length;
-            state->gasPrice = gasPrice;
+            state->priorityFeePerGas = gasPrice;
             FINISH_ITEM_CHUNK();
 
-            PARSE_ITEM(EVM_TXN_STARTGAS, _to_buffer);
-            uint64_t startGas = enforceParsedScalarFits64Bits(&state->rlpItem_state);
-            size_t startGasLength = state->rlpItem_state.length;
-            state->startGas = startGas;
+            PARSE_ITEM(EVM_LEGACY_TXN_STARTGAS, _to_buffer);
+            uint64_t gasLimit = enforceParsedScalarFits64Bits(&state->rlpItem_state);
+            size_t gasLimitLength = state->rlpItem_state.length; 
+            state->gasLimit = gasLimit;
             // TODO: We don't currently support the C-chain gas limit of 100 million,
             // which would have a fee larger than what fits in a word
-            if(gasPriceLength + startGasLength > 8)
+            if(gasPriceLength + gasLimitLength > 8)
               REJECT("Fee too large");
             FINISH_ITEM_CHUNK();
 
-            PARSE_ITEM(EVM_TXN_TO, _to_buffer);
+            PARSE_ITEM(EVM_LEGACY_TXN_TO, _to_buffer);
 
             switch (state->rlpItem_state.length) {
             case 0:
@@ -282,17 +372,14 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
               set_next_batch_size(&meta->prompt, 2);
               if(({
                   ADD_PROMPT("Contract", label, sizeof(label), strcpy_prompt);
-                  SET_PROMPT_VALUE(entry->data.output_prompt.start_gas = state->startGas);
+                  SET_PROMPT_VALUE(entry->data.output_prompt.start_gas = state->gasLimit);
                   ADD_ACCUM_PROMPT("Gas Limit", output_evm_gas_limit_to_string);
                 }))
                 return PARSE_RV_PROMPT;
             }
 
-            PARSE_ITEM(EVM_TXN_VALUE, _to_buffer);
-
-            state->value = enforceParsedScalarFits256Bits(&state->rlpItem_state);
-            SET_PROMPT_VALUE(entry->data.output_prompt.amount_big = state->value);
-
+            PARSE_ITEM(EVM_LEGACY_TXN_VALUE, _to_buffer);
+            parse_value_from_txn(state, meta);
             FINISH_ITEM_CHUNK();
 
             if(state->hasTo) {
@@ -307,11 +394,9 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
                 if(ADD_ACCUM_PROMPT("Funding Contract", output_evm_fund_to_string)) return PARSE_RV_PROMPT;
             }
 
-            PARSE_ITEM(EVM_TXN_DATA, _data);
+            PARSE_ITEM(EVM_LEGACY_TXN_DATA, _data);
 
-            // If data field can't possibly fit in the transaction, the rlp is malformed
-            if(state->rlpItem_state.len_len > state->remaining)
-              REJECT("Malformed data length. Expected length of length %u", state->rlpItem_state.len_len);
+            checkDataFieldLengthFitsTransaction(state);
 
             // If we exhaust the apdu while parsing the length, there's nothing yet to hand to the subparser
             if(state->rlpItem_state.state < 2)
@@ -353,23 +438,13 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
 
             // Can't use the macro here because we need to do a prompt in the middle of it.
             if(sub_rv != PARSE_RV_DONE) return sub_rv;
-            state->item_index++;
-            uint64_t len = state->rlpItem_state.length;
-            if(!state->hasTo) {
-              SET_PROMPT_VALUE(entry->data.output_prompt.calldata_preview.cropped = len > MAX_CALLDATA_PREVIEW);
-              SET_PROMPT_VALUE(entry->data.output_prompt.calldata_preview.count = MIN(len, (uint64_t)MAX_CALLDATA_PREVIEW));
-              SET_PROMPT_VALUE(memcpy(entry->data.output_prompt.calldata_preview.buffer,
-                                      &state->rlpItem_state.buffer,
-                                      entry->data.output_prompt.calldata_preview.count));
-            }
-            state->hasData = len > 0;
-            init_rlp_item(&state->rlpItem_state);
+            parse_calldata_preview(state, meta);
 
             if(!state->hasTo) {
               if(ADD_ACCUM_PROMPT("Data", output_evm_calldata_preview_to_string))
                 return PARSE_RV_PROMPT;
             }
-            PARSE_ITEM(EVM_TXN_CHAINID, _to_buffer);
+            PARSE_ITEM(EVM_LEGACY_TXN_CHAINID, _to_buffer);
 
             if(state->rlpItem_state.length != 2
                || state->rlpItem_state.buffer[0] != 0xa8
@@ -382,7 +457,7 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
 
             FINISH_ITEM_CHUNK();
 
-            SET_PROMPT_VALUE(entry->data.output_prompt.fee = state->gasPrice * state->startGas);
+            SET_PROMPT_VALUE(entry->data.output_prompt.fee = state->priorityFeePerGas * state->gasLimit);
             if(state->hasData) {
               if(ADD_ACCUM_PROMPT("Maximum Fee", output_evm_fee_to_string))
                 return PARSE_RV_PROMPT;
@@ -392,14 +467,225 @@ enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_m
                 return PARSE_RV_PROMPT;
             }
 
-            PARSE_ITEM(EVM_TXN_SIG_R, _to_buffer);
+            PARSE_ITEM(EVM_LEGACY_TXN_SIG_R, _to_buffer);
 
             if(state->rlpItem_state.length != 0) REJECT("R value must be 0 for signing with EIP-155.");
 
             FINISH_ITEM_CHUNK();
-            PARSE_ITEM(EVM_TXN_SIG_S, _to_buffer);
+            PARSE_ITEM(EVM_LEGACY_TXN_SIG_S, _to_buffer);
 
             if(state->rlpItem_state.length != 0) REJECT("S value must be 0 for signing with EIP-155.");
+            FINISH_ITEM_CHUNK();
+          }
+
+          if(state->remaining == 0) {
+              state->state = 3;
+              return PARSE_RV_DONE;
+          } else
+              REJECT("Reported total size of transaction did not match sum of pieces");
+      }
+      case 3:
+        sub_rv = PARSE_RV_DONE;
+        return sub_rv;
+      default:
+        REJECT("Transaction parser in supposedly unreachable state");
+    }
+    return sub_rv;
+}
+
+enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta) {
+    enum parse_rv sub_rv;
+    switch(state->state) {
+      case 0: {
+          if(meta->input.consumed >= meta->input.length) return PARSE_RV_NEED_MORE;
+          uint8_t first = meta->input.src[meta->input.consumed++];
+          if(first < 0xc0) REJECT("Transaction not an RLP list");
+          if(first < 0xf8) {
+              state->remaining = first - 0xc0;
+              state->state=2;
+          } else {
+              state->len_len = first - 0xf7;
+              state->state=1;
+          }
+      }
+      case 1:
+        if(state->state==1) {
+            // Max length we could get for this value is 8 bytes so uint64_state is appropriate.
+            sub_rv = parseFixed(((struct FixedState*)&state->uint64_state), &meta->input, state->len_len);
+            if(sub_rv != PARSE_RV_DONE) return sub_rv;
+            for(size_t i = 0; i < state->len_len; i++) {
+                ((uint8_t*)(&state->remaining))[i] = state->uint64_state.buf[state->len_len-i-1];
+            }
+        }
+        init_rlp_item(&state->rlpItem_state);
+        state->state = 2;
+      case 2: { // Now parse items.
+          uint8_t itemStartIdx;
+          switch(state->item_index) {
+            PARSE_ITEM(EVM_EIP1559_TXN_CHAINID, _to_buffer);
+
+            if(state->rlpItem_state.length != 2
+               || state->rlpItem_state.buffer[0] != 0xa8
+               || (state->rlpItem_state.buffer[1] != 0x68
+                   && state->rlpItem_state.buffer[1] != 0x69
+                   && state->rlpItem_state.buffer[1] != 0x6a))
+                REJECT("Chain ID incorrect for the Avalanche C chain");
+            meta->chainIdLowByte = 0; // explicitly clear chain ID low byte for EIP1559 transactions - only legacy transactions needed to include it
+
+            FINISH_ITEM_CHUNK();
+
+            PARSE_ITEM(EVM_EIP1559_TXN_NONCE, );
+            FINISH_ITEM_CHUNK();
+
+            //TODO: now that there's 256 bit support,
+            // rather than enforcing the length requirement,
+            // the below code block could instead load the values into
+            // 256 bit values before multiplication.
+            // Getting rid of the intermediate lengths would also allow
+            // sharing the code between PARSE_ITEM and FINISH_ITEM_CHUNK
+            // between legacy and non-legacy transaction parsers.
+            PARSE_ITEM(EVM_EIP1559_TXN_MAX_PRIORITY_FEE_PER_GAS, _to_buffer);
+            uint64_t maxFeePerGas = enforceParsedScalarFits64Bits(&state->rlpItem_state);
+            size_t maxFeePerGasLength = state->rlpItem_state.length;
+            state->priorityFeePerGas = maxFeePerGas;
+            FINISH_ITEM_CHUNK();
+
+            PARSE_ITEM(EVM_EIP1559_TXN_MAX_FEE_PER_GAS, _to_buffer);
+            uint64_t baseFeePerGas = enforceParsedScalarFits64Bits(&state->rlpItem_state);
+            size_t baseFeePerGasLength = state->rlpItem_state.length;
+            state->baseFeePerGas = baseFeePerGas;
+            FINISH_ITEM_CHUNK();
+
+            PARSE_ITEM(EVM_EIP1559_TXN_GAS_LIMIT, _to_buffer);
+            uint64_t gasLimit = enforceParsedScalarFits64Bits(&state->rlpItem_state);
+            size_t gasLimitLength = state->rlpItem_state.length;
+            state->gasLimit = gasLimit;
+            FINISH_ITEM_CHUNK();
+
+            // TODO: We don't currently support the C-chain gas limit of 100 million,
+            // which would have a fee larger than what fits in a word
+            // possible future improvement: using nanosdk to actually do the overflow-checked gas arithmetic
+            if(MAX(maxFeePerGasLength, baseFeePerGasLength) + gasLimitLength + 1 > 8)
+              REJECT("Fee too large");
+
+
+            PARSE_ITEM(EVM_EIP1559_TXN_TO, _to_buffer);
+
+            switch (state->rlpItem_state.length) {
+            case 0:
+              state->hasTo = false;
+              break;
+            case ETHEREUM_ADDRESS_SIZE:
+              state->hasTo = true;
+              break;
+            default:
+              REJECT("When present, destination address must have exactly %u bytes", ETHEREUM_ADDRESS_SIZE);
+            }
+
+            if(state->hasTo) {
+              for(size_t i = 0; i < NUM_ELEMENTS(precompiled); i++) {
+                if(!memcmp(precompiled[i].to, state->rlpItem_state.buffer, ETHEREUM_ADDRESS_SIZE)) {
+                  meta->known_destination = &precompiled[i];
+                  break;
+                }
+              }
+              if(!meta->known_destination)
+                SET_PROMPT_VALUE(memcpy(entry->data.output_prompt.address.val, state->rlpItem_state.buffer, ETHEREUM_ADDRESS_SIZE));
+              FINISH_ITEM_CHUNK();
+            }
+            else {
+              FINISH_ITEM_CHUNK();
+              static char const label []="Creation";
+              set_next_batch_size(&meta->prompt, 2);
+              if(({
+                  ADD_PROMPT("Contract", label, sizeof(label), strcpy_prompt);
+                  SET_PROMPT_VALUE(entry->data.output_prompt.start_gas = state->gasLimit);
+                  ADD_ACCUM_PROMPT("Gas Limit", output_evm_gas_limit_to_string);
+                }))
+                return PARSE_RV_PROMPT;
+            }
+
+            PARSE_ITEM(EVM_EIP1559_TXN_VALUE, _to_buffer);
+
+            parse_value_from_txn(state, meta);
+
+            FINISH_ITEM_CHUNK();
+
+            if(state->hasTo) {
+              // As of now, there is no known reason to send AVAX to any precompiled contract we support
+              // Given that, we take the less risky action with the intent of protecting from unintended transfers
+              if(meta->known_destination) {
+                if (!zero256(&state->value))
+                  REJECT("Transactions sent to precompiled contracts must have an amount of 0 WEI");
+              }
+            } else {
+              if(!zero256(&state->value))
+                if(ADD_ACCUM_PROMPT("Funding Contract", output_evm_fund_to_string)) return PARSE_RV_PROMPT;
+            }
+
+            PARSE_ITEM(EVM_EIP1559_TXN_DATA, _data);
+
+            checkDataFieldLengthFitsTransaction(state);
+
+            // If we exhaust the apdu while parsing the length, there's nothing yet to hand to the subparser
+            if(state->rlpItem_state.state < 2)
+              return sub_rv;
+
+            if(state->hasTo) {
+              if(meta->known_destination) {
+                if(state->rlpItem_state.do_init && meta->known_destination->init_data)
+                  ((known_destination_init)PIC(meta->known_destination->init_data))(&(state->rlpItem_state.endpoint_state), state->rlpItem_state.length);
+                PRINTF("INIT: %u\n", state->rlpItem_state.do_init);
+                PRINTF("Chunk: [%u] %.*h\n", state->rlpItem_state.chunk.length, state->rlpItem_state.chunk.length, state->rlpItem_state.chunk.src);
+                if(meta->known_destination->handle_data) {
+                  PRINTF("HANDLING DATA\n");
+                  sub_rv = ((known_destination_parser)PIC(meta->known_destination->handle_data))(&(state->rlpItem_state.endpoint_state), &(state->rlpItem_state.chunk), meta);
+                }
+                PRINTF("PARSER CALLED [sub_rv: %u]\n", sub_rv);
+              }
+              else {
+                struct EVM_RLP_item_state *const item_state = &state->rlpItem_state;
+                struct EVM_ABI_state *const abi_state = &item_state->endpoint_state.abi_state;
+                if(item_state->do_init)
+                  init_abi_call_data(abi_state, item_state->length);
+
+                if(abi_state->data_length == 0) {
+                  sub_rv = PARSE_RV_DONE;
+                  state->item_index++;
+                  init_rlp_item(&state->rlpItem_state);
+                  ADD_ACCUM_PROMPT("Transfer", output_evm_prompt_to_string);
+                  return PARSE_RV_PROMPT;
+                }
+                else {
+                  sub_rv = parse_abi_call_data(abi_state,
+                                               &item_state->chunk,
+                                               meta,
+                                               !zero256(&state->value));
+                }
+              }
+            }
+
+            // Can't use the FINISH_ITEM_ macro here because we need to do a prompt in the middle of it.
+            if(sub_rv != PARSE_RV_DONE) return sub_rv;
+            parse_calldata_preview(state, meta);
+
+            if(!state->hasTo) {
+              if(ADD_ACCUM_PROMPT("Data", output_evm_calldata_preview_to_string))
+                return PARSE_RV_PROMPT;
+            }
+
+            SET_PROMPT_VALUE(entry->data.output_prompt.fee = ((state->priorityFeePerGas + state->baseFeePerGas) * state->gasLimit));
+            if(state->hasData) {
+              if(ADD_ACCUM_PROMPT("Maximum Fee", output_evm_fee_to_string))
+                return PARSE_RV_PROMPT;
+            }
+            else {
+              if(ADD_ACCUM_PROMPT("Fee", output_evm_fee_to_string))
+                return PARSE_RV_PROMPT;
+            }
+
+            PARSE_ITEM(EVM_EIP1559_TXN_ACCESS_LIST, );
+            // just ignore this access list
             FINISH_ITEM_CHUNK();
           }
 
@@ -499,14 +785,14 @@ enum parse_rv impl_parse_rlp_item(struct EVM_RLP_item_state *const state, evm_pa
     return sub_rv;
 }
 
-enum parse_rv parse_rlp_item(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta) {
+enum parse_rv parse_rlp_item(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta) {
   return impl_parse_rlp_item(&state->rlpItem_state, meta, 0);
 }
 
-enum parse_rv parse_rlp_item_to_buffer(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta) {
+enum parse_rv parse_rlp_item_to_buffer(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta) {
   return impl_parse_rlp_item(&state->rlpItem_state, meta, NUM_ELEMENTS(state->rlpItem_state.buffer));
 }
-enum parse_rv parse_rlp_item_data(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta) {
+enum parse_rv parse_rlp_item_data(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta) {
   return impl_parse_rlp_item(&state->rlpItem_state, meta, state->hasTo ? 0 : MAX_CALLDATA_PREVIEW);
 }
 

@@ -31,9 +31,9 @@
 		"uglify-js": "^3.6.1"
 	},
 	"dependencies": {
-		"@ethereumjs/common": "2.0.0",
-		"@ethereumjs/tx": "3.0.0",
-		"@ledgerhq/hw-app-eth": "5.39.1",
+		"@ethereumjs/common": "^2.4.0",
+		"@ethereumjs/tx": "^3.2.0",
+		"@ledgerhq/hw-app-eth": "^6.4.1",
 		"@ledgerhq/hw-transport-node-hid": "5.22.0",
 		"@ledgerhq/hw-transport-node-speculos": "5.19.1",
 		"bip32-path": "^0.4.2",
@@ -41,6 +41,7 @@
 		"create-hash": "1.2.0",
 		"ethereumjs-util": "^7.0.10",
 		"hw-app-avalanche": "https://github.com/obsidiansystems/hw-app-avalanche.git#eac@verbose-signing-multi",
-		"rlp": "2.2.6"
+		"rlp": "2.2.6",
+		"yargs": "^17.1.0"
 	}
 }
