@@ -102,7 +102,7 @@ let
           pkgs.gdb
           pkgs.jq
           pkgs.libusb
-          pkgs.nodejs
+          pkgs.nodejs-12_x
           pkgs.openssl
           pkgs.pkg-config
           pkgs.xxd

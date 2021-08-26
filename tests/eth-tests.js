@@ -1,11 +1,12 @@
 const Transaction = require("@ethereumjs/tx").Transaction;
+const EIP1559Transaction = require("@ethereumjs/tx").FeeMarketEIP1559Transaction;
 const Common = require("@ethereumjs/common").default;
 const BN = require("bn.js");
 const {bnToRlp, rlp} = require("ethereumjs-util");
 const decode = require("rlp").decode;
 const byContractAddress=require("@ledgerhq/hw-app-eth/erc20").byContractAddress;
 
-const rawUnsignedTransaction = (chainId, unsignedTxParams) => {
+const rawUnsignedLegacyTransaction = (chainId, unsignedTxParams) => {
     const common = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId });
     const unsignedTx = Transaction.fromTxData({...unsignedTxParams}, { common });
 
@@ -20,8 +21,20 @@ const rawUnsignedTransaction = (chainId, unsignedTxParams) => {
         bnToRlp(new BN(chainId)),
         Buffer.from([]),
         Buffer.from([]),
-    ]);
+    ]); 
+
 };
+
+const rawUnsignedEIP1559Transaction = (chainId, unsignedTxParams) => {
+  const common = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId }, 'london');
+
+  const unsignedTx = EIP1559Transaction.fromTxData({...unsignedTxParams}, { common });
+ 
+
+  // https://github.com/ethereumjs/ethereumjs-monorepo/issues/1188
+  return unsignedTx.getMessageToSign(false);
+};
+
 
 const finalizePrompt = {header: "Finalize", body: "Transaction"};
 
@@ -71,7 +84,7 @@ const contractDeployPrompts = (bytes, amount, fee, gas) => {
   );
 };
 
-async function testSigning(self, chainId, prompts, hexTx) {
+async function testLegacySigning(self, chainId, prompts, hexTx) {
   const ethTx = Buffer.from(hexTx, 'hex');
   const flow = await flowMultiPrompt(self.speculos, prompts);
   const chainParams = { common: Common.forCustomChain('mainnet', { networkId: 1, chainId }, 'istanbul')};
@@ -85,10 +98,28 @@ async function testSigning(self, chainId, prompts, hexTx) {
   await flow.promptsPromise;
 }
 
+async function testEIP1559Signing(self, chainId, prompts, hexTx) {
+  const ethTx = Buffer.from(hexTx, 'hex');
+  const flow = await flowMultiPrompt(self.speculos, prompts);
+  const chainParams = { common: Common.forCustomChain('mainnet', { networkId: 1, chainId }, 'istanbul')};
+  
+  const dat = await self.eth.signTransaction("44'/60'/0'/0/0", ethTx);
+  chain = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId }, 'london')
+  // remove the first byte from the start of the ethtx, the transactionType that's indicating it's an eip1559 transaction
+  txnBufs = decode(ethTx.slice(1)).
+      slice(0,9).
+      concat([dat.v, dat.r, dat.s].
+        map(a=>Buffer.from(((a.length%2==1)?'0'+a:a),'hex')));
+  ethTxObj = EIP1559Transaction.fromValuesArray(txnBufs, {common: chain});
+  expect(ethTxObj.verifySignature()).to.equal(true);
+  expect(ethTxObj.getSenderPublicKey()).to.equalBytes("ef5b152e3f15eb0c50c9916161c2309e54bd87b9adce722d69716bcdef85f547678e15ab40a78919c7284e67a17ee9a96e8b9886b60f767d93023bac8dbc16e4");
+  await flow.promptsPromise;
+}
+
 const testDeploy = (chainId, withAmount) => async function () {
     this.timeout(8000);
     const [amountPrompt, amountHex] = withAmount ? ['0.000000001 nAVAX', '01'] : [null, '80'];
-    await testSigning(this, chainId,
+    await testLegacySigning(this, chainId,
                       contractDeployPrompts(erc20presetMinterPauser.bytecodeHex, amountPrompt, '1428785900 GWEI', '3039970'),
                       ('f93873' + '03' + '856d6e2edc00' + '832e62e2' + '80' + amountHex
                        + ('b9385e' + erc20presetMinterPauser.bytecodeHex)
@@ -98,7 +129,7 @@ const testDeploy = (chainId, withAmount) => async function () {
 };
 
 const testUnrecognizedCalldataTx = (chainId, gasPrice, gasLimit, amountPrompt, amountHex, address, fee, calldata) => async function () {
-    const tx = rawUnsignedTransaction(chainId, {
+    const tx = rawUnsignedLegacyTransaction(chainId, {
         nonce: '0x0a',
         gasPrice: '0x' + gasPrice,
         gasLimit: '0x' + gasLimit,
@@ -114,7 +145,7 @@ const testUnrecognizedCalldataTx = (chainId, gasPrice, gasLimit, amountPrompt, a
            [finalizePrompt]
           ];
 
-    await testSigning(this, chainId, prompts, tx);
+    await testLegacySigning(this, chainId, prompts, tx);
 };
 
 const testUnrecognizedCalldata = (calldata) => testUnrecognizedCalldataTx
@@ -130,7 +161,7 @@ const testUnrecognizedCalldata = (calldata) => testUnrecognizedCalldataTx
 
 const testCall = (chainId, data, method, args) => async function () {
     const address = 'df073477da421520cf03af261b782282c304ad66';
-    const tx = rawUnsignedTransaction(chainId, {
+    const tx = rawUnsignedLegacyTransaction(chainId, {
         nonce: '0x0a',
         gasPrice: '0x34630b8a00',
         gasLimit: '0xb197',
@@ -139,27 +170,29 @@ const testCall = (chainId, data, method, args) => async function () {
         data: '0x' + data,
     });
 
-    await testSigning(this, chainId, contractCallPrompts('0x' + address, method, args), tx);
+    await testLegacySigning(this, chainId, contractCallPrompts('0x' + address, method, args), tx);
 };
+
+
 
 const testData = {
-    address: {
-        hex: '0000000000000000000000000101020203030404050506060707080809090a0a',
+  address: {
+    hex: '0000000000000000000000000101020203030404050506060707080809090a0a',
         prompt: '0101020203030404050506060707080809090a0a',
-    },
-    amount: {
+      },
+      amount: {
         hex: '00000000000000000000000000000000000000000000000000000000000000aa',
         prompt: '0.00000017 GWEI',
-    },
-    bytes32: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-
-    signatures: {
+      },
+      bytes32: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+      
+      signatures: {
         transferFrom: 'f6153e09b51baa0e7564fd43034a9a540576d2aa869521c41a8247bc1ead5c9b570ae94343fcb0b5f1bce8d7b00f502544d3b723d799971d4a2b1b1a534d1e9c699000'
-    }
-};
-
-describe("Eth app compatibility tests", async function () {
-  this.timeout(3000);
+      }
+    };
+    
+    describe("Eth app compatibility tests", async function () {
+      this.timeout(3000);
   it('can get a key from the app with the ethereum ledgerjs module', async function() {
     const flow = await flowAccept(this.speculos);
     const dat = await this.eth.getAddress("44'/60'/0'/0/0", false, true);
@@ -168,25 +201,77 @@ describe("Eth app compatibility tests", async function () {
     expect(dat.chainCode).to.equal("428489ee70680fa137392bc8399c4da9e39e92f058eb9e790f736142bba7e9d6");
     await flow.promptsPromise;
   });
-
+  
   it('can sign a transaction via the ethereum ledgerjs module', async function() {
-      await testSigning(this, 43114,
-                        transferPrompts('0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
-                                        '0.01234 AVAX',
-                                        '9870000 GWEI'
-                                       ),
-                        'ed01856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080'
-                       );
-  });
+    await testLegacySigning(this, 43114,
+      transferPrompts('0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
+      '0.01234 AVAX',
+      '9870000 GWEI'
+      ),
+      'ed01856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080'
+      );
+    });
+    
+    it('can sign a larger transaction via the ethereum ledgerjs module', async function() {
+      await testLegacySigning(this, 43114,
+        transferPrompts('0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
+        '238547462614852887054687.704548455429902335 AVAX',
+        '9870000 GWEI'),
+        'f83801856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c79529202bd072a24087400000f0fff0f0fff0f0fff8082a86a8080'
+        );
+      });
+      
+    it('can sign an EIP1559 transaction via the ethereum ledgerjs module with call data', async function() {
+      const chainId = 43112;
+      const tx = rawUnsignedEIP1559Transaction(chainId, {
+          // chainId: chainId is passed through,
+          nonce: '0x0a',
+          maxFeePerGas: '0x3400',
+          maxPriorityFeePerGas: '0x' + '64',
+          gasLimit: '0x' + 'ab',
+          to: '0x' + '0102030400000000000000000000000000000002',
+          value: '0x' + '1000',
+          data: '0x' + '90000102030405060708090a0b0c0d0e0f',
+          // accessList: use the default
+          // v: use the default
+          // r: use the default
+          // s: use the default
+      });
+    
+      const prompts =
+            [[{header: "Transfer",     body: '0.000004096 nAVAX' + " to " + '0x' + '0102030400000000000000000000000000000002'}],
+              [{header: "Contract Data", body: "Is Present (unsafe)"}],
+              [{header: "Maximum Fee",   body: "0.002293452 GWEI"}],
+              [finalizePrompt]
+            ];
+    
+      await testEIP1559Signing(this, chainId, prompts, tx);
+    });
 
-  it('can sign a larger transaction via the ethereum ledgerjs module', async function() {
-      await testSigning(this, 43114,
-                        transferPrompts('0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
-                                        '238547462614852887054687.704548455429902335 AVAX',
-                                        '9870000 GWEI'),
-                        'f83801856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c79529202bd072a24087400000f0fff0f0fff0f0fff8082a86a8080'
-                       );
-  });
+    it('can sign an EIP1559 transaction via the ethereum ledgerjs module without call data', async function() {
+      const chainId = 43112;
+      const tx = rawUnsignedEIP1559Transaction(chainId, {
+          // chainId: chainId is passed through,
+          nonce: '0x0a',
+          maxFeePerGas: '0x3400',
+          maxPriorityFeePerGas: '0x' + '64',
+          gasLimit: '0x' + 'ab',
+          to: '0x' + '0102030400000000000000000000000000000002',
+          value: '0x' + '1000',
+          // data: use the default
+          // accessList: use the default
+          // v: use the default
+          // r: use the default
+          // s: use the default
+      });
+    
+      const prompts =
+            [[{header: "Transfer",     body: '0.000004096 nAVAX' + " to " + '0x' + '0102030400000000000000000000000000000002'}],
+              [finalizePrompt]
+            ];
+    
+      await testEIP1559Signing(this, chainId, prompts, tx);
+    });
 
   it('A call to assetCall with incorrect call data rejects', async function() {
     try {
@@ -251,7 +336,7 @@ describe("Eth app compatibility tests", async function () {
   it('can sign a transaction deploying erc20 contract with funding',    testDeploy(43112, true));
 
   it('can sign a transaction with assetCall via the ethereum ledgerjs module', async function() {
-      await testSigning(this, 43112,
+      await testLegacySigning(this, 43112,
                         assetCallTransferPrompts('verma4Pa9biWKbjDGNsTXU47cYCyDSNGSU1iBkxucfVSFVXdv',
                                                  '0x41c9cc6fd27e26e70f951869fb09da685a696f0a',
                                                  '0x123456789abcdef'),
@@ -260,7 +345,7 @@ describe("Eth app compatibility tests", async function () {
   });
 
   it('can sign a transaction with assetCall deposit and funds via the ethereum ledgerjs module', async function() {
-      await testSigning(this, 43112,
+      await testLegacySigning(this, 43112,
                         assetCallDepositPrompts('verma4Pa9biWKbjDGNsTXU47cYCyDSNGSU1iBkxucfVSFVXdv',
                                                 '0x41c9cc6fd27e26e70f951869fb09da685a696f0a',
                                                 '0x0'),
@@ -272,7 +357,7 @@ describe("Eth app compatibility tests", async function () {
     const zrxInfo = byContractAddress("0xe41d2489571d322189246dafa5ebde1f4699f498");
     const result = await this.eth.provideERC20TokenInformation(zrxInfo);
 
-    await testSigning(this, 43114,
+    await testLegacySigning(this, 43114,
                       transferPrompts('0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
                                       '0.01234 AVAX',
                                       '441000 GWEI'),
@@ -313,7 +398,7 @@ describe("Eth app compatibility tests", async function () {
 
   it.skip('won\'t sign a transaction via a truely gargantuan number', async function() {
     try {
-      await testSigning(this, 43114, [],
+      await testLegacySigning(this, 43114, [],
                         'f85c01856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952b6002b0d072a024008740000000f0fff00f00fff0f00ff0f0fff00ff0f0fff0fff0fff0fff0fff0fff0fff0fff0fff0fff0fff0fff0fff8082a86a8080'
                        );
       throw "Signing should have been rejected";
@@ -325,7 +410,7 @@ describe("Eth app compatibility tests", async function () {
 
   it.skip('rejects assetCall with non-zero AVAX', async function() {
     try {
-      await testSigning(this, 43112, [],
+      await testLegacySigning(this, 43112, [],
                         'f87c01856d6e2edc00832dc6c094010000000000000000000000000000000000000201b85441c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a0000000000000000000000000000000000000000000000000000000000001234582a8688080'
                        );
       throw "Signing should have been rejected";
