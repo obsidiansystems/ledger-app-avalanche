@@ -1,8 +1,8 @@
 {
   "owner": "obsidiansystems",
   "repo": "ledger-platform",
-  "branch": "force-some-mthumb",
+  "branch": "develop",
   "private": false,
-  "rev": "d222bc0feb5f83cdf32eb5a727e5de38b48c2661",
+  "rev": "3b89c5c1da56be753fe4fc08e2cb426d7e457f35",
   "sha256": "1k4f8dv2c9pp00ad4lf7xxkhzqd92wsn4q3f4rz5rlgkz1rgq7z6"
 }
