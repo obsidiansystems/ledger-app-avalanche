@@ -106,12 +106,12 @@ endif
 # empty on purpose
 USE_SYSROOT =
 
-TOOL_PREFIX = armv6l-unknown-none-eabi-
+TOOL_PREFIX = armv6m-unknown-none-eabi-
 
-CFLAGS   += -O3 -Os -Wall -Wextra
+CFLAGS   += -O3 -Os -Wall -Wextra -mcpu=sc000
 
 LD       := $(GCCPATH)$(TOOL_PREFIX)gcc
-LDFLAGS  += -O3 -Os
+LDFLAGS  += -O3 -Os -mcpu=sc000
 LDLIBS   += -lm -lgcc -lc
 
 # import rules to compile glyphs(/pone)
