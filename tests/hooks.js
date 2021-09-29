@@ -28,7 +28,7 @@ exports.mochaHooks = {
         '--button-port', '' + BUTTON_PORT,
         '--automation-port', '' + AUTOMATION_PORT,
         '--apdu-port', '' + APDU_PORT,
-        '--sdk', '1.6',
+        '--sdk', '2.0',
       ], speculosProcessOptions);
       console.log("Speculos started");
       while (this.speculos === undefined) { // Let the test timeout handle the bad case
