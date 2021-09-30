@@ -1,7 +1,7 @@
 { ledger-platform ? import ./nix/dep/ledger-platform {}
 , gitDescribe ? "TEST-dirty"
 , debug ? false
-, runTest ? true
+, runTest ? false
 }:
 let
   inherit (ledger-platform)
@@ -243,7 +243,7 @@ let
        CCC_ANALYZER_HTML = "${placeholder "out"}";
        CCC_ANALYZER_OUTPUT_FORMAT = "html";
        CCC_ANALYZER_ANALYSIS = analysisOptions;
-       preBuild = ''
+       preBuild = (old.preBuild or "") + ''
          mkdir -p $out
          export CCC_CC=$CC
          export CCC_CXX=$CXX
