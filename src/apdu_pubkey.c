@@ -61,17 +61,6 @@ __attribute__((noreturn)) static void prompt_address(void) {
 }
 
 __attribute__((noreturn)) static void prompt_ext_pubkey(void) {
-    static size_t const TYPE_INDEX = 0;
-    static size_t const DRV_PATH_INDEX = 1;
-
-    static const char *const pubkey_labels[] = {
-        PROMPT("Provide"),
-        PROMPT("Derivation Path"),
-        NULL,
-    };
-    REGISTER_STATIC_UI_VALUE(TYPE_INDEX, "Extended Public Key");
-    register_ui_callback(DRV_PATH_INDEX, bip32_path_to_string, &G.bip32_path);
-    ui_prompt(pubkey_labels, ext_pubkey_ok, delay_reject);
 }
 
 __attribute__((noreturn)) size_t handle_apdu_get_public_key_impl(bool const prompt_ext) {
