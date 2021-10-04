@@ -44,20 +44,6 @@ static void apdu_pubkey_state_to_string
 }
 
 __attribute__((noreturn)) static void prompt_address(void) {
-    static size_t const TYPE_INDEX = 0;
-    static size_t const ADDRESS_INDEX = 1;
-    static size_t const DRV_PATH_INDEX = 2;
-
-    static const char *const pubkey_labels[] = {
-        PROMPT("Provide"),
-        PROMPT("Address"),
-        PROMPT("Derivation Path"),
-        NULL,
-    };
-    REGISTER_STATIC_UI_VALUE(TYPE_INDEX, "Public Key");
-    register_ui_callback(ADDRESS_INDEX, apdu_pubkey_state_to_string, &G);
-    register_ui_callback(DRV_PATH_INDEX, bip32_path_to_string, &G.bip32_path);
-    ui_prompt(pubkey_labels, address_ok, delay_reject);
 }
 
 __attribute__((noreturn)) static void prompt_ext_pubkey(void) {
