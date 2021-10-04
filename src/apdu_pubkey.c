@@ -44,9 +44,11 @@ static void apdu_pubkey_state_to_string
 }
 
 __attribute__((noreturn)) static void prompt_address(void) {
+  // don't prompt. skip.
 }
 
 __attribute__((noreturn)) static void prompt_ext_pubkey(void) {
+  // don't prompt. skip.
 }
 
 __attribute__((noreturn)) size_t handle_apdu_get_public_key_impl(bool const prompt_ext) {
