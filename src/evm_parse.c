@@ -633,6 +633,7 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
 
             if(state->hasTo) {
               if(meta->known_destination) {
+                // state has To and the destination is known
                 if(state->rlpItem_state.do_init && meta->known_destination->init_data)
                   ((known_destination_init)PIC(meta->known_destination->init_data))(&(state->rlpItem_state.endpoint_state), state->rlpItem_state.length);
                 PRINTF("INIT: %u\n", state->rlpItem_state.do_init);
@@ -642,8 +643,9 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
                   sub_rv = ((known_destination_parser)PIC(meta->known_destination->handle_data))(&(state->rlpItem_state.endpoint_state), &(state->rlpItem_state.chunk), meta);
                 }
                 PRINTF("PARSER CALLED [sub_rv: %u]\n", sub_rv);
-              }
+              } // end path where state has To and the destination is known
               else {
+                // state has To but the destination is not known
                 struct EVM_RLP_item_state *const item_state = &state->rlpItem_state;
                 struct EVM_ABI_state *const abi_state = &item_state->endpoint_state.abi_state;
                 if(item_state->do_init)
@@ -662,13 +664,14 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
                                                meta,
                                                !zero256(&state->value));
                 }
-              }
-            }
+              } // end path where state has To but the destination is not known
+            } // end path where state has To
 
             // Can't use the FINISH_ITEM_ macro here because we need to do a prompt in the middle of it.
             if(sub_rv != PARSE_RV_DONE) return sub_rv;
             parse_calldata_preview(state, meta);
-
+            FINISH_ITEM_CHUNK();
+            
             if(!state->hasTo) {
               if(ADD_ACCUM_PROMPT("Data", output_evm_calldata_preview_to_string))
                 return PARSE_RV_PROMPT;
@@ -683,6 +686,7 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
               if(ADD_ACCUM_PROMPT("Fee", output_evm_fee_to_string))
                 return PARSE_RV_PROMPT;
             }
+            
 
             PARSE_ITEM(EVM_EIP1559_TXN_ACCESS_LIST, );
             // just ignore this access list
