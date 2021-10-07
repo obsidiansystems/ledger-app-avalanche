@@ -281,8 +281,7 @@ const testData = {
 
     const prompts = [
         [{ header: 'Contract', body: 'Creation' }, { header: 'Gas Limit', body: '1500000' }],
-      //[ { header: 'Data', body: '0x608060405234801561001057600080fd5b506101...' } ],
-      //[ { header: 'Data', body: '61001057600080fd5b506101...' } ],
+      [ { header: 'Data', body: '0x608060405234801561001057600080fd5b506101...' } ],
         [finalizePrompt]
       ];
     await testEIP1559Signing(this, chainId, prompts, tx);
