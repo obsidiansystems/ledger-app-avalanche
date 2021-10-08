@@ -673,7 +673,8 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
                 return PARSE_RV_PROMPT;
             }
 
-            SET_PROMPT_VALUE(entry->data.output_prompt.fee = (state->priorityFeePerGas + state->baseFeePerGas) * state->gasLimit);
+            __builtin_mul_overflow(state->priorityFeePerGas + state->baseFeePerGas, state->gasLimit, &feeDummy);
+            SET_PROMPT_VALUE(entry->data.output_prompt.fee = feeDummy);
             if(state->hasData) {
               if(ADD_ACCUM_PROMPT("Maximum Fee", output_evm_fee_to_string))
                 return PARSE_RV_PROMPT;
