@@ -29,6 +29,7 @@ exports.mochaHooks = {
         '--automation-port', '' + AUTOMATION_PORT,
         '--apdu-port', '' + APDU_PORT,
         '--sdk', '1.6',
+        '--seed', 'wear chimney sense snack steel toilet laugh welcome fortune quantum net alpha member music reward agent polar now design sell hazard giggle world supreme'
       ], speculosProcessOptions);
       console.log("Speculos started");
       while (this.speculos === undefined) { // Let the test timeout handle the bad case
