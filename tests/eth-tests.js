@@ -289,7 +289,7 @@ const testData = {
       });
     
       const prompts =
-            [[{header: "Transfer",     body: '0.000004096 nAVAX' + " to " + '0x' + '0102030400000000000000000000000000000002'}],
+            [[{header: "Transfer",     body: '1 AVAX to 0x1008aacd107ccd90c9b3991b281c4c722c4cd4b1'}],
               [finalizePrompt]
             ];
     
