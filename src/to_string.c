@@ -294,7 +294,7 @@ void copy_string(char *const dest, size_t const buff_size, char const *const src
     // I don't care that we will loop through the string twice, latency is not an issue
     if (strlen(src_in) >= buff_size)
         THROW(EXC_WRONG_LENGTH);
-    strcpy(dest, src_in);
+    strncpy(dest, src_in, buff_size);
 }
 
 void bin_to_hex(char *const out, size_t const out_size, uint8_t const *const in, size_t const in_size) {
