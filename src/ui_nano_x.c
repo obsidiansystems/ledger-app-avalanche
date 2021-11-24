@@ -219,6 +219,7 @@ void switch_screen(uint32_t which) {
         THROW(EXC_MEMORY_ERROR);
     const char *label = (const char *)PIC(global.ui.prompt.prompts[which]);
     strncpy(global.ui.prompt.active_prompt, label, sizeof(global.ui.prompt.active_prompt));
+    global.ui.prompt.active_prompt[sizeof(global.ui.prompt.active_prompt) - 1] = 0;
     if (global.ui.prompt.callbacks[which] == NULL)
         THROW(EXC_MEMORY_ERROR);
     check_null(global.ui.prompt.active_value);
