@@ -493,7 +493,7 @@ void initTransaction(struct TransactionState *const state);
 
 enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta_state_t *const meta);
 
-#define MAX_EVM_BUFFER 20
+#define MAX_EVM_BUFFER 32
 
 struct EVM_RLP_item_state {
     int state;
