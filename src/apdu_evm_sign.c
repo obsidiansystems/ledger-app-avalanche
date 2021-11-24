@@ -153,7 +153,6 @@ size_t handle_apdu_sign_evm_transaction(void) {
     if (in_size > MAX_APDU_SIZE)
         THROW(EXC_WRONG_LENGTH_FOR_INS);
     uint8_t const p1 = READ_UNALIGNED_BIG_ENDIAN(uint8_t, &G_io_apdu_buffer[OFFSET_P1]);
-    uint8_t const p2 = READ_UNALIGNED_BIG_ENDIAN(uint8_t, &G_io_apdu_buffer[OFFSET_P2]);
 
     size_t ix = 0;
 

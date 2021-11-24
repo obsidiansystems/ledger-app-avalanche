@@ -42,11 +42,11 @@ struct FixedState {
   };
 
 #define IMPL_FIXED(name) \
-    inline enum parse_rv parse_ ## name (struct name ## _state *const state, parser_meta_state_t *const meta) { \
+    static inline enum parse_rv parse_ ## name (struct name ## _state *const state, parser_meta_state_t *const meta) { \
         return parseFixed((struct FixedState *const)state, &meta->input, sizeof(name));\
     } \
-    inline void init_ ## name (struct name ## _state *const state) { \
-        return initFixed((struct FixedState *const)state, sizeof(state)); \
+    static inline void init_ ## name (struct name ## _state *const state) { \
+        return initFixed((struct FixedState *const)state, sizeof(*state)); \
     }
 #define DEFINE_ARRAY(name) \
     struct name ## s_state { \
