@@ -22,8 +22,15 @@ bool evm_sign_ok() {
     }));
 
     memcpy(out+1, buf, 64);
-    // Ethereum doesn't handle the 4-address case and the protocol only allows one byte; signature will need repair after hw-app-eth has it.
-    out[0] = (buf[64]&0x01) + (G.meta_state.chainIdLowByte<<1) + 35;
+
+    if (G.meta_state.chainIdLowByte == 0) {
+        // we are signing a non-Legacy transaction
+        out[0] = (buf[64]&0x01);
+    } else {
+        // Ethereum doesn't handle the 4-address case and the protocol only allows one byte; signature will need repair after hw-app-eth has it.
+        out[0] = (buf[64]&0x01) + (G.meta_state.chainIdLowByte<<1) + 35;
+    }
+
 
     memset(&G, 0, sizeof(G));
     delayed_send(finalize_successful_send(tx));
@@ -121,7 +128,7 @@ static void empty_prompt_queue(void) {
 
 static size_t next_parse(bool const is_reentry) {
     PRINTF("Next parse\n");
-    enum parse_rv const rv = parse_rlp_txn(&G.state, &G.meta_state);
+    enum parse_rv const rv = parse_evm_txn(&G.state, &G.meta_state);
     empty_prompt_queue();
 
     if (rv == PARSE_RV_DONE || rv == PARSE_RV_NEED_MORE) {
@@ -164,7 +171,7 @@ size_t handle_apdu_sign_evm_transaction(void) {
           ix += read_bip32_path(&G.bip32_path, &in[ix], in_size - ix);
           check_bip32(&G.bip32_path, false);
           if (G.bip32_path.length < 3) THROW_(EXC_SECURITY, "Signing path not long enough");
-          init_rlp_list(&G.state);
+          init_evm_txn(&G.state);
           cx_keccak_init(&G.tx_hash_state, 256);
       }
       case 0x80: {

@@ -1,14 +1,19 @@
-{ pkgs ? import ./nix/dep/nixpkgs {}
+{ ledger-platform ? import ./nix/dep/ledger-platform {}
 , gitDescribe ? "TEST-dirty"
 , debug ? false
 , runTest ? true
 }:
 let
+  inherit (ledger-platform)
+    pkgs ledgerPkgs
+    gitignoreNix gitignoreSource
+    usbtool
+    speculos;
+
+  inherit (pkgs) lib;
+
   nix-thunk = import ./nix/dep/nix-thunk { inherit pkgs; };
   sources = nix-thunk.mapSubdirectories nix-thunk.thunkSource ./nix/dep;
-  gitignoreSource = (import sources."gitignore.nix" {}).gitignoreSource;
-
-  usbtool = import ./nix/usbtool.nix { inherit pkgs; };
 
   patchSDKBinBash = name: sdk: pkgs.stdenv.mkDerivation {
     # Replaces SDK's Makefile instances of /bin/bash with Nix's bash
@@ -26,12 +31,11 @@ let
       s = rec {
         name = "s";
         sdk = patchSDKBinBash "nanos-secure-sdk" (sources.nanos-secure-sdk);
-        env = pkgs.callPackage ./nix/bolos-env.nix { clangVersion = 4; };
         target = "TARGET_NANOS";
         targetId = "0x31100004";
         test = true;
         iconHex = pkgs.runCommand "nano-s-icon-hex" {
-          nativeBuildInputs = [ (pkgs.python.withPackages (ps: [ps.pillow])) ];
+          nativeBuildInputs = [ (pkgs.python3.withPackages (ps: [ps.pillow])) ];
         } ''
           python ${sdk + /icon.py} '${icons/nano-s.gif}' hexbitmaponly > "$out"
         '';
@@ -39,7 +43,6 @@ let
       x = rec {
         name = "x";
         sdk = patchSDKBinBash "ledger-nanox-sdk" (sources.ledger-nanox-sdk);
-        env = pkgs.callPackage ./nix/bolos-env.nix { clangVersion = 7; };
         target = "TARGET_NANOX";
         targetId = "0x33000004";
         test = false;
@@ -51,46 +54,63 @@ let
       };
     };
 
-  src = gitignoreSource ./.;
-  # src = foo: ./.;
-  # src = let glyphsFilter = (p: _: let p' = baseNameOf p; in p' != "glyphs.c" && p' != "glyphs.h");
-  #    in (pkgs.lib.sources.sourceFilesBySuffices
-  #        (pkgs.lib.sources.cleanSourceWith { src = ./.; filter = glyphsFilter; }) [".c" ".h" ".gif" "Makefile" ".sh" ".json" ".bats" ".txt" ".der" ".js" ".lock"]);
+  gitIgnoredSrc = gitignoreSource ./.;
 
-  speculos = pkgs.callPackage ./nix/dep/speculos { inherit pkgs; };
+  src0 = lib.sources.cleanSourceWith {
+    src = gitIgnoredSrc;
+    filter = p: _: let
+      p' = baseNameOf p;
+      srcStr = builtins.toString ./.;
+    in p' != "glyphs.c" && p' != "glyphs.h"
+      && (p == (srcStr + "/Makefile")
+          || lib.hasPrefix (srcStr + "/src") p
+          || lib.hasPrefix (srcStr + "/glyphs") p
+          || lib.hasPrefix (srcStr + "/tests") p
+         );
+  };
+
+  src = lib.sources.sourceFilesBySuffices src0 [
+    ".c" ".h" ".gif" "Makefile" ".sh" ".json" ".js" ".bats" ".txt" ".der"
+  ];
+
   tests = import ./tests { inherit pkgs; };
 
   build = bolos:
     let
-      app = pkgs.stdenv.mkDerivation {
+      app = ledgerPkgs.lldClangStdenv.mkDerivation {
         name = "ledger-app-avalanche-nano-${bolos.name}";
         inherit src;
         postConfigure = ''
           PATH="$BOLOS_ENV/clang-arm-fropi/bin:$PATH"
           patchShebangs test.sh
+          # hack to get around no tests for cross logic
+          doCheck=${toString (if runTest then bolos.test else false)};
         '';
+        hardeningDisable = [ "all" ];
+        prehook = ledger-platform.gccLibsPreHook;
         nativeBuildInputs = [
           (pkgs.python3.withPackages (ps: [ps.pillow ps.ledgerblue]))
-          bolos.env.clang
           pkgs.bats
           pkgs.entr
           pkgs.gdb
           pkgs.jq
           pkgs.libusb
-          pkgs.nodejs
+          pkgs.nodejs-12_x
           pkgs.openssl
           pkgs.pkg-config
-          pkgs.python2
           pkgs.xxd
           pkgs.yarn
           speculos.speculos
           tests
           # usbtool
         ];
+        makeFlags = [ "USE_NIX=1" ];
         TARGET = bolos.target;
         GIT_DESCRIBE = gitDescribe;
         BOLOS_SDK = bolos.sdk;
-        BOLOS_ENV = bolos.env;
+        # note trailing slash
+        CLANGPATH = "${ledgerPkgs.lldClangStdenv.cc}/bin/";
+        GCCPATH = "${ledgerPkgs.stdenv.cc}/bin/";
         DEBUG=if debug then "1" else "0";
         installPhase = ''
           mkdir -p $out
@@ -99,11 +119,11 @@ let
 
           echo
           echo ">>>> Application size: <<<<"
-          size $out/bin/app.elf
+          $SIZE $out/bin/app.elf
         '';
 
-        doCheck = if runTest then bolos.test else false;
         checkTarget = "test";
+        enableParallelBuilding = true;
       };
       ## Note: This has been known to change between sdk upgrades. Make sure to consult
       ## the $COMMON_LOAD_PARAMS in the Makefile.defines of both SDKs
@@ -166,7 +186,7 @@ let
   # So this script reproduces what it does with fewer magic attempts:
   # * It prepares the SDK like for a normal build.
   # * It intercepts the calls to the compiler with the `CC` make-variable
-  #   (pointing at `.../libexec/scan-build/ccc-analyzer`).
+  #   (pointing at `.../libexec/ccc-analyzer`).
   # * The `CCC_*` variables are used to configure `ccc-analyzer`: output directory
   #   and which *real* compiler to call after doing the analysis.
   # * After the build an `index.html` file is created to point to the individual
@@ -211,13 +231,13 @@ let
        CCC_ANALYZER_HTML = "${placeholder "out"}";
        CCC_ANALYZER_OUTPUT_FORMAT = "html";
        CCC_ANALYZER_ANALYSIS = analysisOptions;
-       CCC_CC = "${bolos.env}/clang-arm-fropi/bin/clang";
-       CLANG = "${bolos.env}/clang-arm-fropi/bin/clang";
        preBuild = ''
          mkdir -p $out
+         export CCC_CC=$CC
+         export CCC_CXX=$CXX
        '';
        makeFlags = old.makeFlags or []
-         ++ [ "CC=${pkgs.clangAnalyzer}/libexec/scan-build/ccc-analyzer" ];
+         ++ [ "CC=${pkgs.clangAnalyzer}/libexec/ccc-analyzer" ];
        installPhase = ''
         {
           echo "<html><title>Analyzer Report</title><body><h1>Clang Static Analyzer Results</h1>"
@@ -245,7 +265,9 @@ let
     x = mk targets.x;
   };
 in rec {
-  inherit pkgs;
+  inherit
+    pkgs
+    usbtool;
 
   nano = mkTargets build;
 
@@ -270,7 +292,6 @@ in rec {
       };
     };
 
-    inherit (bolos.env) clang gcc;
     inherit (bolos) sdk;
   });
   inherit speculos;

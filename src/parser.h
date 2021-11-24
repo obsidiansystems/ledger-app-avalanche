@@ -59,6 +59,7 @@ struct FixedState {
         }; \
     };
 
+DEFINE_FIXED(uint8_t);
 DEFINE_FIXED_BE(uint16_t);
 DEFINE_FIXED_BE(uint32_t);
 DEFINE_FIXED_BE(uint64_t);
@@ -510,15 +511,21 @@ struct EVM_RLP_item_state {
     };
 };
 
-struct EVM_RLP_list_state {
+enum txn_being_parsed_t {
+  LEGACY,
+  EIP1559
+};
+
+struct EVM_RLP_txn_state {
     int state;
     uint64_t remaining;
     uint8_t len_len;
     uint8_t item_index;
     bool hasTo;
     bool hasData;
-    uint64_t startGas;
-    uint64_t gasPrice;
+    uint64_t gasLimit;
+    uint64_t priorityFeePerGas;
+    uint64_t baseFeePerGas;
     uint256_t value;
     union {
         struct uint64_t_state uint64_state;
@@ -526,16 +533,34 @@ struct EVM_RLP_list_state {
     };
 };
 
+struct EVM_txn_state {
+    int state; // what step of parsing we are on
+    enum txn_being_parsed_t type; 
+    union {
+      struct uint8_t_state transaction_envelope_type;
+      struct EVM_RLP_txn_state txn_state;
+    };
+};
+
+
 void initFixed(struct FixedState *const state, size_t const len);
 
 enum parse_rv parseFixed(struct FixedState *const state, parser_input_meta_state_t *const input, size_t const len);
 
-void init_rlp_list(struct EVM_RLP_list_state *const state);
+void init_rlp_list(struct EVM_RLP_txn_state *const state);
 
-enum parse_rv parse_rlp_txn(struct EVM_RLP_list_state *const state, evm_parser_meta_state_t *const meta);
+void init_evm_txn(struct EVM_txn_state *const state);
+
+enum parse_rv parse_evm_txn(struct EVM_txn_state *const state, evm_parser_meta_state_t *const meta);
+
+enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta);
+
+enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta);
 
 void strcpy_prompt(char *const out, size_t const out_size, char const *const in);
 
 bool should_flush(prompt_batch_t prompt);
 
 void set_next_batch_size(prompt_batch_t *const prompt, size_t size);
+
+IMPL_FIXED(uint8_t);
