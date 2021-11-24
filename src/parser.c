@@ -133,18 +133,18 @@ static void output_prompt_to_string(char *const out, size_t const out_size, outp
     memcpy(&out[ix], to, sizeof(to));
     ix += sizeof(to) - 1;
 
-    ix += pkh_to_string(&out[ix], out_size - ix, hrp, strlen(hrp), &in->address.val);
+    pkh_to_string(&out[ix], out_size - ix, hrp, strlen(hrp), &in->address.val);
 }
 
 static void output_address_to_string(char *const out, size_t const out_size, address_prompt_t const *const in) {
     char const *const hrp = network_info_from_network_id_not_null(in->network_id)->hrp;
     size_t ix = 0;
-    ix += pkh_to_string(&out[ix], out_size - ix, hrp, strlen(hrp), &in->address.val);
+    pkh_to_string(&out[ix], out_size - ix, hrp, strlen(hrp), &in->address.val);
 }
 
 static void validator_to_string(char *const out, size_t const out_size, address_prompt_t const *const in) {
     size_t ix = 0;
-    ix += nodeid_to_string(&out[ix], out_size - ix, &in->address.val);
+    nodeid_to_string(&out[ix], out_size - ix, &in->address.val);
 }
 
 enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const state, parser_meta_state_t *const meta) {
@@ -339,7 +339,7 @@ static void lockedFundsPrompt(char *const out, size_t const out_size, locked_pro
     memcpy(&out[ix], to, sizeof(to));
     ix += sizeof(to) - 1;
 
-    ix += time_to_string(&out[ix], out_size - ix, &in->until);
+    time_to_string(&out[ix], out_size - ix, &in->until);
 }
 
 void init_StakeableLockOutput(struct StakeableLockOutput_state *const state) {
@@ -864,7 +864,6 @@ enum parse_rv parse_EVMOutput(struct EVMOutput_state *const state, parser_meta_s
           state->state++;
       }
       case 3: {
-          sub_rv=PARSE_RV_PROMPT;
           state->state++;
           output_prompt_t output_prompt;
           memset(&output_prompt, 0, sizeof(output_prompt));

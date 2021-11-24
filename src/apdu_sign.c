@@ -142,7 +142,7 @@ static size_t sign_hash_impl(
         ix += sizeof(G.final_hash);
 
         // N bytes - BIP-32 path prefix for future signature requests
-        ix += read_bip32_path(&G.bip32_path_prefix, &in[ix], in_size - ix);
+        read_bip32_path(&G.bip32_path_prefix, &in[ix], in_size - ix);
 
         // TODO: Make sure the prefix actually starts with the thing we care about
         if (G.bip32_path_prefix.length < 3) THROW(EXC_SECURITY);
@@ -309,7 +309,7 @@ size_t handle_apdu_sign_transaction(void) {
             if (hasChangePath) {
                 bip32_path_t change_path;
                 memset(&change_path, 0, sizeof(change_path));
-                ix += read_bip32_path(&change_path, &in[ix], in_size - ix);
+                read_bip32_path(&change_path, &in[ix], in_size - ix);
 
                 if (change_path.length != 5) {
                     THROW(EXC_WRONG_LENGTH);
