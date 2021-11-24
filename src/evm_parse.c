@@ -803,7 +803,7 @@ void init_assetCall_data(struct EVM_assetCall_state *const state, uint64_t lengt
     if(length < ASSETCALL_FIXED_DATA_WIDTH)
       REJECT("Calldata too small for assetCall");
     state->data_length = length - ASSETCALL_FIXED_DATA_WIDTH;
-    initFixed(&state->address_state.fixedState, sizeof(state->address_state));
+    initFixed((struct FixedState *const) &state->address_state, sizeof(state->address_state));
     PRINTF("Initing assetCall Data\n");
 }
 
@@ -811,7 +811,7 @@ void init_abi_call_data(struct EVM_ABI_state *const state, uint64_t length) {
   state->state = ABISTATE_SELECTOR;
   state->argument_index = 0;
   state->data_length = length;
-  initFixed(&state->argument_state.fixedState, sizeof(state->argument_state));
+  initFixed((struct FixedState *const) &state->argument_state, sizeof(state->argument_state));
 }
 
 enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
@@ -834,7 +834,7 @@ enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
 
     if(meta->known_endpoint) {
       state->state = ABISTATE_ARGUMENTS;
-      initFixed(&state->argument_state.fixedState, sizeof(state->argument_state));
+      initFixed((struct FixedState *const) &state->argument_state, sizeof(state->argument_state));
       if(hasValue) REJECT("No currently supported methods are marked as 'payable'");
       char *method_name = PIC(meta->known_endpoint->method_name);
       ADD_PROMPT("Contract Call", method_name, strlen(method_name), strcpy_prompt);
@@ -856,7 +856,7 @@ enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
     void (*setup_prompt)(uint8_t *buffer, output_prompt_t const *const prompt) = PIC(parameter.setup_prompt);
     SET_PROMPT_VALUE(setup_prompt(((struct FixedState*)(&state->argument_state))->buffer,
                                   &entry->data.output_prompt));
-    initFixed(&state->argument_state.fixedState, sizeof(state->argument_state));
+    initFixed((struct FixedState *const) &state->argument_state, sizeof(state->argument_state));
     ADD_ACCUM_PROMPT_ABI(argument_name, PIC(parameter.output_prompt));
     return PARSE_RV_PROMPT;
   }
@@ -890,14 +890,14 @@ enum parse_rv parse_assetCall_data(struct EVM_assetCall_state *const state, pars
       SET_PROMPT_VALUE(memcpy(entry->data.output_prompt.address.val, state->address_state.buf, ETHEREUM_ADDRESS_SIZE));
       PRINTF("Address: %.*h\n", ETHEREUM_ADDRESS_SIZE, state->address_state.buf);
       state->state++;
-      initFixed(&state->id32_state.fixedState, sizeof(state->id32_state));
+      initFixed((struct FixedState *const) &state->id32_state, sizeof(state->id32_state));
     case ASSETCALL_ASSETID:
       sub_rv = parseFixed(&state->id32_state.fixedState, input, sizeof(Id32));
       if(sub_rv != PARSE_RV_DONE) return sub_rv;
       SET_PROMPT_VALUE(memcpy(&entry->data.output_prompt.assetCall.assetID, state->id32_state.buf, sizeof(uint256_t)));
       PRINTF("Asset: %.*h\n", 32, state->id32_state.buf);
       state->state++;
-      initFixed(&state->uint256_state.fixedState, sizeof(state->uint256_state));
+      initFixed((struct FixedState *const) &state->uint256_state, sizeof(state->uint256_state));
     case ASSETCALL_AMOUNT:
       sub_rv = parseFixed(&state->uint256_state.fixedState, input, sizeof(uint256_t));
       if(sub_rv != PARSE_RV_DONE) return sub_rv;
@@ -915,7 +915,7 @@ enum parse_rv parse_assetCall_data(struct EVM_assetCall_state *const state, pars
       if (state->data_length != 4) {
         REJECT("unsupported assetCall length");
       }
-      initFixed(&state->selector_state.fixedState, sizeof(state->selector_state));
+      initFixed((struct FixedState *const) &state->selector_state, sizeof(state->selector_state));
     case ASSETCALL_DATA:
       sub_rv = parseFixed(&state->selector_state.fixedState, input, 4);
       if(sub_rv != PARSE_RV_DONE) return sub_rv;

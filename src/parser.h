@@ -14,14 +14,14 @@ enum parse_rv {
 
 struct FixedState {
     size_t filledTo;
-    uint8_t buffer[1]; // Actually bigger.
+    uint8_t buffer[];
 };
 #define DEFINE_FIXED(name) \
   struct name ## _state { \
     union { \
       struct FixedState fixedState; \
       struct { \
-        int state; \
+        size_t state; \
         union { \
             name val; \
             uint8_t buf[sizeof(name)]; \
@@ -34,7 +34,7 @@ struct FixedState {
     union { \
       struct FixedState fixedState; \
       struct { \
-        int state; \
+        size_t state; \
         uint8_t buf[sizeof(name)]; \
         name val; \
       }; \
