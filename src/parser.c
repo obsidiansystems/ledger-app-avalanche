@@ -6,8 +6,8 @@
 #include "types.h"
 #include "network_info.h"
 
-bool should_flush(prompt_batch_t prompt) {
-  return prompt.count > prompt.flushIndex;
+bool should_flush(const prompt_batch_t *const prompt) {
+  return prompt->count > prompt->flushIndex;
 }
 void set_next_batch_size(prompt_batch_t *const prompt, size_t size) {
   if(!size) size = NUM_ELEMENTS(prompt->entries);
@@ -23,7 +23,7 @@ void set_next_batch_size(prompt_batch_t *const prompt, size_t size) {
         meta->prompt.entries[meta->prompt.count].to_string = to_string_; \
         memcpy(&meta->prompt.entries[meta->prompt.count].data, data_, size_); \
         meta->prompt.count++; \
-        should_flush(meta->prompt); \
+        should_flush(&meta->prompt); \
     })
 
 #define CALL_SUBPARSER(subFieldName, subParser) { \
@@ -652,7 +652,7 @@ static bool prompt_fee(parser_meta_state_t *const meta) {
     meta->prompt.entries[meta->prompt.count].to_string = nano_avax_to_string_indirect64;
     memcpy(&meta->prompt.entries[meta->prompt.count].data, &fee, sizeof(fee));
     meta->prompt.count++;
-    bool should_break = should_flush(meta->prompt);
+    bool should_break = should_flush(&meta->prompt);
     return should_break;
 }
 

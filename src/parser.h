@@ -559,7 +559,7 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
 
 void strcpy_prompt(char *const out, size_t const out_size, char const *const in);
 
-bool should_flush(prompt_batch_t prompt);
+bool should_flush(const prompt_batch_t *const prompt);
 
 void set_next_batch_size(prompt_batch_t *const prompt, size_t size);
 

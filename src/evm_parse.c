@@ -30,7 +30,7 @@ void init_rlp_item(struct EVM_RLP_item_state *const state) {
       meta->prompt.labels[meta->prompt.count] = label_;                 \
       meta->prompt.entries[meta->prompt.count].to_string = to_string_;  \
       meta->prompt.count++;                                             \
-      should_flush(meta->prompt);                                       \
+      should_flush(&meta->prompt);                                       \
     })
 
 #define ADD_ACCUM_PROMPT(label_, to_string_) \
