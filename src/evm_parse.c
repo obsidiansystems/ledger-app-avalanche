@@ -231,7 +231,7 @@ enum parse_rv parse_evm_txn(struct EVM_txn_state *const state, evm_parser_meta_s
           meta->input.consumed--; 
         } 
         state->state++;
-      }
+      } fallthrough;
       case 1: {
         switch (state->type) {
           case EIP1559: {
@@ -735,7 +735,7 @@ enum parse_rv impl_parse_rlp_item(struct EVM_RLP_item_state *const state, evm_pa
               state->len_len = first - 0xf7;
               state->state = 1;
           }
-      }
+      } fallthrough;
       case 1:
         if(state->state == 1) {
             sub_rv = parseFixed((struct FixedState*) &state->uint64_state, &meta->input, state->len_len);
@@ -750,6 +750,7 @@ enum parse_rv impl_parse_rlp_item(struct EVM_RLP_item_state *const state, evm_pa
 
         state->do_init = !max_bytes_to_buffer;
         state->state = 2;
+        fallthrough;
       case 2: {
           uint64_t
             remaining = state->length-state->current,
@@ -891,6 +892,7 @@ enum parse_rv parse_assetCall_data(struct EVM_assetCall_state *const state, pars
       PRINTF("Address: %.*h\n", ETHEREUM_ADDRESS_SIZE, state->address_state.buf);
       state->state++;
       initFixed((struct FixedState *const) &state->id32_state, sizeof(state->id32_state));
+      fallthrough;
     case ASSETCALL_ASSETID:
       sub_rv = parseFixed(&state->id32_state.fixedState, input, sizeof(Id32));
       if(sub_rv != PARSE_RV_DONE) return sub_rv;
@@ -898,6 +900,7 @@ enum parse_rv parse_assetCall_data(struct EVM_assetCall_state *const state, pars
       PRINTF("Asset: %.*h\n", 32, state->id32_state.buf);
       state->state++;
       initFixed((struct FixedState *const) &state->uint256_state, sizeof(state->uint256_state));
+      fallthrough;
     case ASSETCALL_AMOUNT:
       sub_rv = parseFixed(&state->uint256_state.fixedState, input, sizeof(uint256_t));
       if(sub_rv != PARSE_RV_DONE) return sub_rv;
@@ -916,6 +919,7 @@ enum parse_rv parse_assetCall_data(struct EVM_assetCall_state *const state, pars
         REJECT("unsupported assetCall length");
       }
       initFixed((struct FixedState *const) &state->selector_state, sizeof(state->selector_state));
+      fallthrough;
     case ASSETCALL_DATA:
       sub_rv = parseFixed(&state->selector_state.fixedState, input, 4);
       if(sub_rv != PARSE_RV_DONE) return sub_rv;

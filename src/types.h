@@ -108,6 +108,12 @@ typedef char ascii_hrp_t[ASCII_HRP_MAX_SIZE];
         strcpy(buff, x);                                                                                               \
     })
 
+ #if __has_attribute(__fallthrough__)
+ # define fallthrough __attribute__((__fallthrough__))
+ #else
+ # define fallthrough do {} while (0)  /* fallthrough */
+ #endif
+
 #undef MAX
 #define MAX(a, b)                                                                                                      \
     ({                                                                                                                 \

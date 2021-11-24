@@ -174,6 +174,7 @@ size_t handle_apdu_sign_evm_transaction(void) {
           init_evm_txn(&G.state);
           cx_keccak_init(&G.tx_hash_state, 256);
       }
+      fallthrough;
       case 0x80: {
           G.meta_state.input.src = in+ix;
           G.meta_state.input.consumed=0;
