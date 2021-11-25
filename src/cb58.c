@@ -24,7 +24,7 @@ bool cb58enc(/* out */ char *cb58, /* in/out */ size_t *cb58sz, const void *data
     // append 4-byte checksum
     const size_t checked_binsz = binsz + 4;
     uint8_t checked_bin[checked_binsz];
-    memcpy(&checked_bin, data, checked_binsz);
+    memcpy(&checked_bin, data, binsz);
 
     cx_sha256_t hash_state;
     cx_sha256_init(&hash_state);
