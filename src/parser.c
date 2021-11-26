@@ -1038,18 +1038,24 @@ enum parse_rv parse_Validator(struct Validator_state *const state, parser_meta_s
       address_prompt_t pkh_prompt;
       pkh_prompt.network_id = meta->network_id;
       memcpy(&pkh_prompt.address, &state->addressState.val, sizeof(pkh_prompt.address));
-      INIT_SUBPARSER(uint64State, uint64_t);
-      if (ADD_PROMPT("Validator", &pkh_prompt, sizeof(address_prompt_t), validator_to_string)) break;
+      if (ADD_PROMPT("Validator", &pkh_prompt, sizeof(address_prompt_t), validator_to_string)) {
+        INIT_SUBPARSER(uint64State, uint64_t);
+        break;
+      }
     case 1:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
-      INIT_SUBPARSER(uint64State, uint64_t);
-      if (ADD_PROMPT("Start time", &state->uint64State.val, sizeof(uint64_t), time_to_string)) break;
+      if (ADD_PROMPT("Start time", &state->uint64State.val, sizeof(uint64_t), time_to_string)) {
+        INIT_SUBPARSER(uint64State, uint64_t);
+        break;
+      }
     case 2:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
-      INIT_SUBPARSER(uint64State, uint64_t);
-      if (ADD_PROMPT("End time", &state->uint64State.val, sizeof(uint64_t), time_to_string)) break;
+      if (ADD_PROMPT("End time", &state->uint64State.val, sizeof(uint64_t), time_to_string)) {
+        INIT_SUBPARSER(uint64State, uint64_t);
+        break;
+      }
     case 3:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
