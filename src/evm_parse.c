@@ -30,7 +30,7 @@ void init_rlp_item(struct EVM_RLP_item_state *const state) {
       meta->prompt.labels[meta->prompt.count] = label_;                 \
       meta->prompt.entries[meta->prompt.count].to_string = to_string_;  \
       meta->prompt.count++;                                             \
-      should_flush(meta->prompt);                                       \
+      should_flush(&meta->prompt);                                       \
     })
 
 #define ADD_ACCUM_PROMPT(label_, to_string_) \
@@ -211,7 +211,7 @@ void checkDataFieldLengthFitsTransaction(struct EVM_RLP_txn_state *const state) 
 }
 
 enum parse_rv parse_evm_txn(struct EVM_txn_state *const state, evm_parser_meta_state_t *const meta) {
-    enum parse_rv sub_rv;
+    enum parse_rv sub_rv = PARSE_RV_INVALID;
     switch (state->state) {
       case 0: {
         sub_rv = parse_uint8_t(&state->transaction_envelope_type, meta);
@@ -231,7 +231,7 @@ enum parse_rv parse_evm_txn(struct EVM_txn_state *const state, evm_parser_meta_s
           meta->input.consumed--; 
         } 
         state->state++;
-      }
+      } fallthrough;
       case 1: {
         switch (state->type) {
           case EIP1559: {
@@ -287,7 +287,7 @@ void parse_calldata_preview(struct EVM_RLP_txn_state *const state, evm_parser_me
 }
 
 enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta) {
-    enum parse_rv sub_rv;
+    enum parse_rv sub_rv = PARSE_RV_INVALID;
     switch(state->state) {
       case 0: {
           if(meta->input.consumed >= meta->input.length) return PARSE_RV_NEED_MORE;
@@ -314,6 +314,7 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
         state->state = 2;
       case 2: { // Now parse items.
           uint8_t itemStartIdx;
+          size_t gasPriceLength = 0;
           switch(state->item_index) {
 
             PARSE_ITEM(EVM_LEGACY_TXN_NONCE, );
@@ -328,7 +329,7 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
             // between legacy and non-legacy transaction parsers.
             PARSE_ITEM(EVM_LEGACY_TXN_GASPRICE, _to_buffer);
             uint64_t gasPrice = enforceParsedScalarFits64Bits(&state->rlpItem_state);
-            size_t gasPriceLength = state->rlpItem_state.length;
+            gasPriceLength = state->rlpItem_state.length;
             state->priorityFeePerGas = gasPrice;
             FINISH_ITEM_CHUNK();
 
@@ -421,7 +422,6 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
                   init_abi_call_data(abi_state, item_state->length);
 
                 if(abi_state->data_length == 0) {
-                  sub_rv = PARSE_RV_DONE;
                   state->item_index++;
                   init_rlp_item(&state->rlpItem_state);
                   ADD_ACCUM_PROMPT("Transfer", output_evm_prompt_to_string);
@@ -546,19 +546,16 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
             // between legacy and non-legacy transaction parsers.
             PARSE_ITEM(EVM_EIP1559_TXN_MAX_PRIORITY_FEE_PER_GAS, _to_buffer);
             uint64_t maxFeePerGas = enforceParsedScalarFits64Bits(&state->rlpItem_state);
-            size_t maxFeePerGasLength = state->rlpItem_state.length;
             state->priorityFeePerGas = maxFeePerGas;
             FINISH_ITEM_CHUNK();
 
             PARSE_ITEM(EVM_EIP1559_TXN_MAX_FEE_PER_GAS, _to_buffer);
             uint64_t baseFeePerGas = enforceParsedScalarFits64Bits(&state->rlpItem_state);
-            size_t baseFeePerGasLength = state->rlpItem_state.length;
             state->baseFeePerGas = baseFeePerGas;
             FINISH_ITEM_CHUNK();
 
             PARSE_ITEM(EVM_EIP1559_TXN_GAS_LIMIT, _to_buffer);
             uint64_t gasLimit = enforceParsedScalarFits64Bits(&state->rlpItem_state);
-            size_t gasLimitLength = state->rlpItem_state.length;
             state->gasLimit = gasLimit;
             FINISH_ITEM_CHUNK();
 
@@ -649,7 +646,6 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
                   init_abi_call_data(abi_state, item_state->length);
 
                 if(abi_state->data_length == 0) {
-                  sub_rv = PARSE_RV_DONE;
                   state->item_index++;
                   init_rlp_item(&state->rlpItem_state);
                   ADD_ACCUM_PROMPT("Transfer", output_evm_prompt_to_string);
@@ -706,7 +702,7 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
 }
 
 enum parse_rv impl_parse_rlp_item(struct EVM_RLP_item_state *const state, evm_parser_meta_state_t *const meta, size_t max_bytes_to_buffer) {
-    enum parse_rv sub_rv;
+    enum parse_rv sub_rv = PARSE_RV_INVALID;
     state->do_init = false;
     switch(state->state) {
       case 0: {
@@ -739,7 +735,7 @@ enum parse_rv impl_parse_rlp_item(struct EVM_RLP_item_state *const state, evm_pa
               state->len_len = first - 0xf7;
               state->state = 1;
           }
-      }
+      } fallthrough;
       case 1:
         if(state->state == 1) {
             sub_rv = parseFixed((struct FixedState*) &state->uint64_state, &meta->input, state->len_len);
@@ -754,6 +750,7 @@ enum parse_rv impl_parse_rlp_item(struct EVM_RLP_item_state *const state, evm_pa
 
         state->do_init = !max_bytes_to_buffer;
         state->state = 2;
+        fallthrough;
       case 2: {
           uint64_t
             remaining = state->length-state->current,
@@ -807,7 +804,7 @@ void init_assetCall_data(struct EVM_assetCall_state *const state, uint64_t lengt
     if(length < ASSETCALL_FIXED_DATA_WIDTH)
       REJECT("Calldata too small for assetCall");
     state->data_length = length - ASSETCALL_FIXED_DATA_WIDTH;
-    initFixed(&state->address_state.fixedState, sizeof(state->address_state));
+    initFixed((struct FixedState *const) &state->address_state, sizeof(state->address_state));
     PRINTF("Initing assetCall Data\n");
 }
 
@@ -815,7 +812,7 @@ void init_abi_call_data(struct EVM_ABI_state *const state, uint64_t length) {
   state->state = ABISTATE_SELECTOR;
   state->argument_index = 0;
   state->data_length = length;
-  initFixed(&state->argument_state.fixedState, sizeof(state->argument_state));
+  initFixed((struct FixedState *const) &state->argument_state, sizeof(state->argument_state));
 }
 
 enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
@@ -838,7 +835,7 @@ enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
 
     if(meta->known_endpoint) {
       state->state = ABISTATE_ARGUMENTS;
-      initFixed(&state->argument_state.fixedState, sizeof(state->argument_state));
+      initFixed((struct FixedState *const) &state->argument_state, sizeof(state->argument_state));
       if(hasValue) REJECT("No currently supported methods are marked as 'payable'");
       char *method_name = PIC(meta->known_endpoint->method_name);
       ADD_PROMPT("Contract Call", method_name, strlen(method_name), strcpy_prompt);
@@ -860,7 +857,7 @@ enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
     void (*setup_prompt)(uint8_t *buffer, output_prompt_t const *const prompt) = PIC(parameter.setup_prompt);
     SET_PROMPT_VALUE(setup_prompt(((struct FixedState*)(&state->argument_state))->buffer,
                                   &entry->data.output_prompt));
-    initFixed(&state->argument_state.fixedState, sizeof(state->argument_state));
+    initFixed((struct FixedState *const) &state->argument_state, sizeof(state->argument_state));
     ADD_ACCUM_PROMPT_ABI(argument_name, PIC(parameter.output_prompt));
     return PARSE_RV_PROMPT;
   }
@@ -894,14 +891,16 @@ enum parse_rv parse_assetCall_data(struct EVM_assetCall_state *const state, pars
       SET_PROMPT_VALUE(memcpy(entry->data.output_prompt.address.val, state->address_state.buf, ETHEREUM_ADDRESS_SIZE));
       PRINTF("Address: %.*h\n", ETHEREUM_ADDRESS_SIZE, state->address_state.buf);
       state->state++;
-      initFixed(&state->id32_state.fixedState, sizeof(state->id32_state));
+      initFixed((struct FixedState *const) &state->id32_state, sizeof(state->id32_state));
+      fallthrough;
     case ASSETCALL_ASSETID:
       sub_rv = parseFixed(&state->id32_state.fixedState, input, sizeof(Id32));
       if(sub_rv != PARSE_RV_DONE) return sub_rv;
       SET_PROMPT_VALUE(memcpy(&entry->data.output_prompt.assetCall.assetID, state->id32_state.buf, sizeof(uint256_t)));
       PRINTF("Asset: %.*h\n", 32, state->id32_state.buf);
       state->state++;
-      initFixed(&state->uint256_state.fixedState, sizeof(state->uint256_state));
+      initFixed((struct FixedState *const) &state->uint256_state, sizeof(state->uint256_state));
+      fallthrough;
     case ASSETCALL_AMOUNT:
       sub_rv = parseFixed(&state->uint256_state.fixedState, input, sizeof(uint256_t));
       if(sub_rv != PARSE_RV_DONE) return sub_rv;
@@ -919,7 +918,8 @@ enum parse_rv parse_assetCall_data(struct EVM_assetCall_state *const state, pars
       if (state->data_length != 4) {
         REJECT("unsupported assetCall length");
       }
-      initFixed(&state->selector_state.fixedState, sizeof(state->selector_state));
+      initFixed((struct FixedState *const) &state->selector_state, sizeof(state->selector_state));
+      fallthrough;
     case ASSETCALL_DATA:
       sub_rv = parseFixed(&state->selector_state.fixedState, input, 4);
       if(sub_rv != PARSE_RV_DONE) return sub_rv;

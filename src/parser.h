@@ -14,14 +14,14 @@ enum parse_rv {
 
 struct FixedState {
     size_t filledTo;
-    uint8_t buffer[1]; // Actually bigger.
+    uint8_t buffer[];
 };
 #define DEFINE_FIXED(name) \
   struct name ## _state { \
     union { \
       struct FixedState fixedState; \
       struct { \
-        int state; \
+        size_t state; \
         union { \
             name val; \
             uint8_t buf[sizeof(name)]; \
@@ -34,7 +34,7 @@ struct FixedState {
     union { \
       struct FixedState fixedState; \
       struct { \
-        int state; \
+        size_t state; \
         uint8_t buf[sizeof(name)]; \
         name val; \
       }; \
@@ -42,11 +42,11 @@ struct FixedState {
   };
 
 #define IMPL_FIXED(name) \
-    inline enum parse_rv parse_ ## name (struct name ## _state *const state, parser_meta_state_t *const meta) { \
+    static inline enum parse_rv parse_ ## name (struct name ## _state *const state, parser_meta_state_t *const meta) { \
         return parseFixed((struct FixedState *const)state, &meta->input, sizeof(name));\
     } \
-    inline void init_ ## name (struct name ## _state *const state) { \
-        return initFixed((struct FixedState *const)state, sizeof(state)); \
+    static inline void init_ ## name (struct name ## _state *const state) { \
+        return initFixed((struct FixedState *const)state, sizeof(*state)); \
     }
 #define DEFINE_ARRAY(name) \
     struct name ## s_state { \
@@ -493,7 +493,7 @@ void initTransaction(struct TransactionState *const state);
 
 enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta_state_t *const meta);
 
-#define MAX_EVM_BUFFER 20
+#define MAX_EVM_BUFFER 32
 
 struct EVM_RLP_item_state {
     int state;
@@ -559,7 +559,7 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
 
 void strcpy_prompt(char *const out, size_t const out_size, char const *const in);
 
-bool should_flush(prompt_batch_t prompt);
+bool should_flush(const prompt_batch_t *const prompt);
 
 void set_next_batch_size(prompt_batch_t *const prompt, size_t size);
 

@@ -84,8 +84,6 @@ void shiftl128(const uint128_t *number, uint32_t value, uint128_t *target) {
     } else if ((128 > value) && (value > 64)) {
         UPPER_P(target) = LOWER_P(number) << (value - 64);
         LOWER_P(target) = 0;
-    } else {
-        clear128(target);
     }
 }
 
@@ -109,8 +107,6 @@ void shiftl256(const uint256_t *number, uint32_t value, uint256_t *target) {
     } else if ((256 > value) && (value > 128)) {
         shiftl128(&LOWER_P(number), (value - 128), &UPPER_P(target));
         clear128(&LOWER_P(target));
-    } else {
-        clear256(target);
     }
 }
 
@@ -130,8 +126,6 @@ void shiftr128(const uint128_t *number, uint32_t value, uint128_t *target) {
     } else if ((128 > value) && (value > 64)) {
         LOWER_P(target) = UPPER_P(number) >> (value - 64);
         UPPER_P(target) = 0;
-    } else {
-        clear128(target);
     }
 }
 
@@ -155,8 +149,6 @@ void shiftr256(const uint256_t *number, uint32_t value, uint256_t *target) {
     } else if ((256 > value) && (value > 128)) {
         shiftr128(&UPPER_P(number), (value - 128), &LOWER_P(target));
         clear128(&UPPER_P(target));
-    } else {
-        clear256(target);
     }
 }
 
@@ -482,7 +474,7 @@ size_t tostring256(const uint256_t *number, size_t baseParam, char *out, size_t 
     return offset;
 }
 
-size_t tostring256_fixed_point(const uint256_t *number, size_t baseParam, size_t digits_of_resolution, char *out, size_t outLength) {
+size_t tostring256_fixed_point(const uint256_t *const number, size_t baseParam, size_t digits_of_resolution, char *out, size_t outLength) {
     uint256_t rDiv;
     uint256_t rMod;
     uint256_t base;

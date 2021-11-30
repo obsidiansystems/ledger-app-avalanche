@@ -67,10 +67,6 @@ unsigned char io_event(__attribute__((unused)) unsigned char channel) {
 void ui_cfg_screen(size_t);
 void ui_initial_screen(void);
 
-static const char prompt_warn[] = "Allow w/ warning";
-static const char prompt_allow[] = "Allow";
-static const char prompt_disallow[] = "Disallow";
-
 void switch_sign_hash_cb(void) {
     nvram_data data;
     memcpy(&data, &N_data, sizeof(nvram_data));
@@ -78,15 +74,15 @@ void switch_sign_hash_cb(void) {
     switch (data.sign_hash_policy) {
     case WARN_ON_SIGN_HASH:
         data.sign_hash_policy = DISALLOW_ON_SIGN_HASH;
-        strcpy(data.sign_hash_policy_prompt, prompt_disallow);
+        strcpy(data.sign_hash_policy_prompt, "Disallow");
         break;
     case DISALLOW_ON_SIGN_HASH:
         data.sign_hash_policy = ALLOW_ON_SIGN_HASH;
-        strcpy(data.sign_hash_policy_prompt, prompt_allow);
+        strcpy(data.sign_hash_policy_prompt, "Allow");
         break;
     case ALLOW_ON_SIGN_HASH:
         data.sign_hash_policy = WARN_ON_SIGN_HASH;
-        strcpy(data.sign_hash_policy_prompt, prompt_warn);
+        strcpy(data.sign_hash_policy_prompt, "Allow w/ warning");
         break;
     }
 
@@ -223,6 +219,7 @@ void switch_screen(uint32_t which) {
         THROW(EXC_MEMORY_ERROR);
     const char *label = (const char *)PIC(global.ui.prompt.prompts[which]);
     strncpy(global.ui.prompt.active_prompt, label, sizeof(global.ui.prompt.active_prompt));
+    global.ui.prompt.active_prompt[sizeof(global.ui.prompt.active_prompt) - 1] = 0;
     if (global.ui.prompt.callbacks[which] == NULL)
         THROW(EXC_MEMORY_ERROR);
     check_null(global.ui.prompt.active_value);
