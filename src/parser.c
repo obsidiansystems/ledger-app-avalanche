@@ -1042,6 +1042,7 @@ enum parse_rv parse_Validator(struct Validator_state *const state, parser_meta_s
         INIT_SUBPARSER(uint64State, uint64_t);
         break;
       }
+      INIT_SUBPARSER(uint64State, uint64_t);
     case 1:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
@@ -1049,6 +1050,7 @@ enum parse_rv parse_Validator(struct Validator_state *const state, parser_meta_s
         INIT_SUBPARSER(uint64State, uint64_t);
         break;
       }
+      INIT_SUBPARSER(uint64State, uint64_t);
     case 2:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
@@ -1056,6 +1058,7 @@ enum parse_rv parse_Validator(struct Validator_state *const state, parser_meta_s
         INIT_SUBPARSER(uint64State, uint64_t);
         break;
       }
+      INIT_SUBPARSER(uint64State, uint64_t);
     case 3:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
