@@ -1,8 +1,8 @@
 {
   "owner": "obsidiansystems",
   "repo": "ledger-platform",
-  "branch": "nanoized-newlib",
+  "branch": "develop",
   "private": false,
-  "rev": "1371c950cbda0e7c76bf076908d36c51afec03c0",
-  "sha256": "1691fkzwqjz4ig7mk96v66mbd3186zqr65565k14fjwbsvddx7g0"
+  "rev": "76e705463a709675501c76eaab077c72bfbbf5f7",
+  "sha256": "01ii3i2kl8563249kyzhbza6af2fr69g9a6frjqb9hx17779xr2s"
 }
