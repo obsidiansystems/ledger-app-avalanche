@@ -6,8 +6,8 @@
 #include "types.h"
 #include "network_info.h"
 
-bool should_flush(prompt_batch_t prompt) {
-  return prompt.count > prompt.flushIndex;
+bool should_flush(const prompt_batch_t *const prompt) {
+  return prompt->count > prompt->flushIndex;
 }
 void set_next_batch_size(prompt_batch_t *const prompt, size_t size) {
   if(!size) size = NUM_ELEMENTS(prompt->entries);
@@ -23,7 +23,7 @@ void set_next_batch_size(prompt_batch_t *const prompt, size_t size) {
         meta->prompt.entries[meta->prompt.count].to_string = to_string_; \
         memcpy(&meta->prompt.entries[meta->prompt.count].data, data_, size_); \
         meta->prompt.count++; \
-        should_flush(meta->prompt); \
+        should_flush(&meta->prompt); \
     })
 
 #define CALL_SUBPARSER(subFieldName, subParser) { \
@@ -96,7 +96,7 @@ enum parse_rv skipBytes(struct FixedState *const state, parser_input_meta_state_
 }
 
 #define IMPL_FIXED_BE(name) \
-    inline enum parse_rv parse_ ## name (struct name ## _state *const state, parser_meta_state_t *const meta) { \
+    static inline enum parse_rv parse_ ## name (struct name ## _state *const state, parser_meta_state_t *const meta) { \
         enum parse_rv sub_rv = PARSE_RV_INVALID; \
         sub_rv = parseFixed((struct FixedState *const)state, &meta->input, sizeof(name)); \
         if (sub_rv == PARSE_RV_DONE) { \
@@ -104,8 +104,8 @@ enum parse_rv skipBytes(struct FixedState *const state, parser_input_meta_state_
         } \
         return sub_rv; \
     } \
-    inline void init_ ## name (struct name ## _state *const state) { \
-        return initFixed((struct FixedState *const)state, sizeof(state)); \
+    static inline void init_ ## name (struct name ## _state *const state) { \
+        return initFixed((struct FixedState *const)state, sizeof(*state)); \
     }
 
 IMPL_FIXED_BE(uint16_t);
@@ -133,18 +133,18 @@ static void output_prompt_to_string(char *const out, size_t const out_size, outp
     memcpy(&out[ix], to, sizeof(to));
     ix += sizeof(to) - 1;
 
-    ix += pkh_to_string(&out[ix], out_size - ix, hrp, strlen(hrp), &in->address.val);
+    pkh_to_string(&out[ix], out_size - ix, hrp, strlen(hrp), &in->address.val);
 }
 
 static void output_address_to_string(char *const out, size_t const out_size, address_prompt_t const *const in) {
     char const *const hrp = network_info_from_network_id_not_null(in->network_id)->hrp;
     size_t ix = 0;
-    ix += pkh_to_string(&out[ix], out_size - ix, hrp, strlen(hrp), &in->address.val);
+    pkh_to_string(&out[ix], out_size - ix, hrp, strlen(hrp), &in->address.val);
 }
 
 static void validator_to_string(char *const out, size_t const out_size, address_prompt_t const *const in) {
     size_t ix = 0;
-    ix += nodeid_to_string(&out[ix], out_size - ix, &in->address.val);
+    nodeid_to_string(&out[ix], out_size - ix, &in->address.val);
 }
 
 enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const state, parser_meta_state_t *const meta) {
@@ -158,25 +158,28 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
             meta->last_output_amount = state->uint64State.val;
             state->state++;
             INIT_SUBPARSER(uint64State, uint64_t);
-        }
+        } fallthrough;
         case 1:
             // Locktime
             CALL_SUBPARSER(uint64State, uint64_t);
             PRINTF("LOCK TIME: %.*h\n", sizeof(state->uint64State.buf), state->uint64State.buf); // we don't seem to have longs in printf specfiers.
             state->state++;
             INIT_SUBPARSER(uint32State, uint32_t);
+            fallthrough;
         case 2:
             // Threshold
             CALL_SUBPARSER(uint32State, uint32_t);
             PRINTF("Threshold: %d\n", state->uint32State.val);
             state->state++;
             INIT_SUBPARSER(uint32State, uint32_t);
+            fallthrough;
         case 3: // Address Count
             CALL_SUBPARSER(uint32State, uint32_t);
             state->state++;
             state->address_n = state->uint32State.val;
             if (state->address_n != 1) REJECT("Multi-address outputs are not supported");
             INIT_SUBPARSER(addressState, Address);
+            fallthrough;
         case 4: {
             bool should_break = false;
             while (state->state == 4 && !should_break) {
@@ -284,19 +287,21 @@ enum parse_rv parse_SECP256K1OutputOwners(struct SECP256K1OutputOwners_state *co
             PRINTF("OUPTUT OWNERS\n");
             state->state++;
             INIT_SUBPARSER(uint64State, uint64_t);
-        }
+        } fallthrough;
         case 1:
             // Locktime
             CALL_SUBPARSER(uint64State, uint64_t);
             PRINTF("LOCK TIME: %.*h\n", sizeof(state->uint64State.buf), state->uint64State.buf); // we don't seem to have longs in printf specfiers.
             state->state++;
             INIT_SUBPARSER(uint32State, uint32_t);
+            fallthrough;
         case 2:
             // Threshold
             CALL_SUBPARSER(uint32State, uint32_t);
             PRINTF("Threshold: %d\n", state->uint32State.val);
             state->state++;
             INIT_SUBPARSER(uint32State, uint32_t);
+            fallthrough;
         case 3: // Address Count
             CALL_SUBPARSER(uint32State, uint32_t);
             state->state++;
@@ -304,6 +309,7 @@ enum parse_rv parse_SECP256K1OutputOwners(struct SECP256K1OutputOwners_state *co
             PRINTF("Addr Count\n");
             if (state->address_n != 1) REJECT("Multi-address outputs are not supported");
             INIT_SUBPARSER(addressState, Address);
+            fallthrough;
         case 4: {
             bool should_break = false;
             while (state->state == 4 && !should_break) {
@@ -323,7 +329,7 @@ enum parse_rv parse_SECP256K1OutputOwners(struct SECP256K1OutputOwners_state *co
                 }
             }
             if (should_break) break;
-        }
+        } fallthrough;
         case 5:
             sub_rv = PARSE_RV_DONE;
             break;
@@ -339,7 +345,7 @@ static void lockedFundsPrompt(char *const out, size_t const out_size, locked_pro
     memcpy(&out[ix], to, sizeof(to));
     ix += sizeof(to) - 1;
 
-    ix += time_to_string(&out[ix], out_size - ix, &in->until);
+    time_to_string(&out[ix], out_size - ix, &in->until);
 }
 
 void init_StakeableLockOutput(struct StakeableLockOutput_state *const state) {
@@ -356,11 +362,13 @@ enum parse_rv parse_StakeableLockOutput(struct StakeableLockOutput_state *const 
         PRINTF("StakeableLockOutput locktime: %.*h\n", 8, state->uint64State.buf);
         state->state++;
         INIT_SUBPARSER(uint32State, uint32_t);
+        fallthrough;
       case 1: // Parse the type field of the nested output here, rather than dispatching through Output.
         CALL_SUBPARSER(uint32State, uint32_t);
         if(state->uint32State.val != 0x00000007) REJECT("Can only parse SECP256K1TransferableOutput nested in StakeableLockoutput");
         state->state++;
         INIT_SUBPARSER(secp256k1TransferOutput, SECP256K1TransferOutput);
+        fallthrough;
       case 2: // nested TransferrableOutput
         CALL_SUBPARSER(secp256k1TransferOutput, SECP256K1TransferOutput);
         locked_prompt_t promptData;
@@ -370,6 +378,7 @@ enum parse_rv parse_StakeableLockOutput(struct StakeableLockOutput_state *const 
         if( ADD_PROMPT("Funds locked", &promptData, sizeof(locked_prompt_t), lockedFundsPrompt) ) {
           break;
         }
+        fallthrough;
       case 3:
         sub_rv=PARSE_RV_DONE;
         break;
@@ -399,6 +408,7 @@ enum parse_rv parse_Output(struct Output_state *const state, parser_meta_state_t
                     INIT_SUBPARSER(stakeableLockOutput, StakeableLockOutput);
                     break;
             }
+            fallthrough;
         case 1:
             switch (state->type) {
                 default: REJECT("Unrecognized output type");
@@ -430,6 +440,7 @@ enum parse_rv parse_TransferableOutput(struct TransferableOutput_state *const st
             check_asset_id(&state->id32State.val, meta);
             state->state++;
             INIT_SUBPARSER(outputState, Output);
+            fallthrough;
         case 1:
             CALL_SUBPARSER(outputState, Output);
     }
@@ -453,11 +464,13 @@ enum parse_rv parse_SECP256K1TransferInput(struct SECP256K1TransferInput_state *
             PRINTF("INPUT AMOUNT: %.*h\n", sizeof(uint64_t), state->uint64State.buf);
             if (__builtin_uaddll_overflow(state->uint64State.val, meta->sum_of_inputs, &meta->sum_of_inputs)) THROW_(EXC_MEMORY_ERROR, "Sum of inputs overflowed");
             INIT_SUBPARSER(uint32State, uint32_t);
+            fallthrough;
         case 1: // Number of address indices
             CALL_SUBPARSER(uint32State, uint32_t);
             state->address_index_n = state->uint32State.val;
             state->state++;
             INIT_SUBPARSER(uint32State, uint32_t);
+            fallthrough;
         case 2: // Address indices
             while (true) {
                 CALL_SUBPARSER(uint32State, uint32_t);
@@ -488,11 +501,13 @@ enum parse_rv parse_StakeableLockInput(struct StakeableLockInput_state *const st
         PRINTF("StakeableLockInput locktime: %.*h\n", 8, state->uint64State.buf);
         state->state++;
         INIT_SUBPARSER(uint32State, uint32_t);
+        fallthrough;
       case 1: // Parse the type field of the nested input here, rather than dispatching through Output.
         CALL_SUBPARSER(uint32State, uint32_t);
         if(state->uint32State.val != 0x00000005) REJECT("Can only parse SECP256K1TransferableInput nested in StakeableLockInput");
         state->state++;
         INIT_SUBPARSER(secp256k1TransferInput, SECP256K1TransferInput);
+        fallthrough;
       case 2: // nested Input
         CALL_SUBPARSER(secp256k1TransferInput, SECP256K1TransferInput);
     }
@@ -522,6 +537,7 @@ enum parse_rv parse_Input(struct Input_state *const state, parser_meta_state_t *
                     INIT_SUBPARSER(stakeableLockInput, StakeableLockInput);
                     break;
             }
+            fallthrough;
         case 1:
             switch (state->type) {
                 default: REJECT("Unrecognized input type");
@@ -551,17 +567,20 @@ enum parse_rv parse_TransferableInput(struct TransferableInput_state *const stat
             state->state++;
             PRINTF("TX_ID: %.*h\n", 32, state->id32State.buf);
             INIT_SUBPARSER(uint32State, uint32_t);
+            fallthrough;
         case 1: // utxo_index
             CALL_SUBPARSER(uint32State, uint32_t);
             PRINTF("UTXO_INDEX: %u\n", state->uint32State.val);
             state->state++;
             INIT_SUBPARSER(id32State, Id32);
+            fallthrough;
         case 2: // asset_id
             CALL_SUBPARSER(id32State, Id32);
             PRINTF("ASSET ID: %.*h\n", 32, state->id32State.buf);
             check_asset_id(&state->id32State.val, meta);
             state->state++;
             INIT_SUBPARSER(inputState, Input);
+            fallthrough;
         case 3: // Input
             CALL_SUBPARSER(inputState, Input);
     }
@@ -614,6 +633,7 @@ enum parse_rv parse_Memo(struct Memo_state *const state, parser_meta_state_t *co
             CALL_SUBPARSER(uint32State, uint32_t);
             state->n = state->uint32State.val;
             state->state++;
+            fallthrough;
         case 1: {
             size_t available = meta->input.length - meta->input.consumed;
             size_t needed = state->n - state->i;
@@ -652,10 +672,9 @@ static bool prompt_fee(parser_meta_state_t *const meta) {
     meta->prompt.entries[meta->prompt.count].to_string = nano_avax_to_string_indirect64;
     memcpy(&meta->prompt.entries[meta->prompt.count].data, &fee, sizeof(fee));
     meta->prompt.count++;
-    bool should_break = should_flush(meta->prompt);
+    bool should_break = should_flush(&meta->prompt);
     return should_break;
 }
-
 
 static bool is_pchain_transaction(enum transaction_type_id_t type) {
   switch(type) {
@@ -684,6 +703,7 @@ enum parse_rv parse_BaseTransactionHeader(struct BaseTransactionHeaderState *con
             meta->network_id = parse_network_id(state->uint32State.val);
             INIT_SUBPARSER(id32State, Id32);
       }
+      fallthrough;
       case BTSH_BlockchainId: {
             CALL_SUBPARSER(id32State, Id32);
             PRINTF("Blockchain ID: %.*h\n", 32, state->id32State.buf);
@@ -697,7 +717,7 @@ enum parse_rv parse_BaseTransactionHeader(struct BaseTransactionHeaderState *con
                 REJECT("Blockchain ID did not match expected value for network ID");
             }
             state->state++;
-      }
+      } fallthrough;
       case BTSH_Done:
         PRINTF("Done\n");
         sub_rv = PARSE_RV_DONE;
@@ -719,16 +739,18 @@ enum parse_rv parse_BaseTransaction(struct BaseTransactionState *const state, pa
             PRINTF("Done with outputs\n");
             state->state++;
             INIT_SUBPARSER(inputsState, TransferableInputs);
+            fallthrough;
         case BTS_Inputs: { // inputs
             CALL_SUBPARSER(inputsState, TransferableInputs);
             PRINTF("Done with inputs\n");
             state->state++;
             INIT_SUBPARSER(memoState, Memo);
-        }
+        } fallthrough;
         case BTS_Memo: // memo
             CALL_SUBPARSER(memoState, Memo);
             PRINTF("Done with memo;\n");
             state->state++;
+            fallthrough;
         case BTS_Done:
             PRINTF("Done\n");
             sub_rv = PARSE_RV_DONE;
@@ -779,6 +801,7 @@ enum parse_rv parse_ImportTransaction(struct ImportTransactionState *const state
                             strcpy_prompt))
                 return PARSE_RV_PROMPT;
             }
+            fallthrough;
 
         case 1: {
             meta->swap_output = true;
@@ -820,6 +843,7 @@ enum parse_rv parse_ExportTransaction(struct ExportTransactionState *const state
             state->state++;
             INIT_SUBPARSER(outputsState, TransferableOutputs);
             PRINTF("Done with ChainID;\n");
+            fallthrough;
 
         case 1: {// PChain Dst
             meta->swap_output = true;
@@ -850,7 +874,7 @@ enum parse_rv parse_EVMOutput(struct EVMOutput_state *const state, parser_meta_s
           state->state++;
           PRINTF("ADDRESS: %.*h\n", 20, state->addressState.buf);
           INIT_SUBPARSER(uint32State, uint32_t);
-      }
+      } fallthrough;
       case 1: { // Amount
           CALL_SUBPARSER(uint64State, uint64_t);
           PRINTF("AMOUNT: %x\n", state->uint64State.val);
@@ -858,14 +882,13 @@ enum parse_rv parse_EVMOutput(struct EVMOutput_state *const state, parser_meta_s
           meta->last_output_amount = state->uint64State.val;
           state->state++;
           INIT_SUBPARSER(id32State, Id32);
-      }
+      } fallthrough;
       case 2: { // AssetID
           CALL_SUBPARSER(id32State, Id32);
           PRINTF("ASSET: %.*h\n", 32, state->id32State.buf);
           state->state++;
-      }
+      } fallthrough;
       case 3: {
-          sub_rv=PARSE_RV_PROMPT;
           state->state++;
           output_prompt_t output_prompt;
           memset(&output_prompt, 0, sizeof(output_prompt));
@@ -883,7 +906,7 @@ enum parse_rv parse_EVMOutput(struct EVMOutput_state *const state, parser_meta_s
                 output_prompt_to_string
                 ))
               break;
-      }
+      } fallthrough;
       case 4:
         sub_rv=PARSE_RV_DONE;
     }
@@ -905,19 +928,19 @@ enum parse_rv parse_EVMInput(struct EVMInput_state *const state, parser_meta_sta
           state->state++;
           PRINTF("ADDRESS: %.*h\n", 20, state->addressState.buf);
           INIT_SUBPARSER(uint64State, uint64_t);
-      }
+      } fallthrough;
       case 1: { // Amount
           CALL_SUBPARSER(uint64State, uint64_t);
           PRINTF("AMOUNT: %.*h\n", 8, &state->uint64State.val);
             if (__builtin_uaddll_overflow(state->uint64State.val, meta->sum_of_inputs, &meta->sum_of_inputs)) THROW_(EXC_MEMORY_ERROR, "Sum of inputs overflowed");
           state->state++;
           INIT_SUBPARSER(id32State, Id32);
-      }
+      } fallthrough;
       case 2: { // AssetID
           CALL_SUBPARSER(id32State, Id32);
           PRINTF("ASSET: %.*h\n", 32, state->id32State.buf);
           INIT_SUBPARSER(uint64State, uint64_t);
-      }
+      } fallthrough;
       case 3: { // nonce
           CALL_SUBPARSER(uint64State, uint64_t);
           PRINTF("NONCE: %.*h\n", 8, &state->uint64State.val);
@@ -943,18 +966,18 @@ enum parse_rv parse_CChainImportTransaction(struct CChainImportTransactionState 
             state->state++;
             INIT_SUBPARSER(inputsState, TransferableInputs);
             PRINTF("Done with ChainID;\n");
-
+            fallthrough;
         case 1: {
             CALL_SUBPARSER(inputsState, TransferableInputs);
             state->state++;
             INIT_SUBPARSER(evmOutputsState, EVMOutputs);
             PRINTF("Done with TransferableInputs\n");
-        }
+        } fallthrough;
         case 2: { // EVMOutputs
             CALL_SUBPARSER(evmOutputsState, EVMOutputs);
             PRINTF("Done with EVMOutputs\n");
             state->state++;
-        }
+        } fallthrough;
         case 3:
              // This is bc we call the parser recursively, and, at the end, it gets called with
              // nothing to parse...But it exits without unwinding the stack, so if we are here,
@@ -979,18 +1002,18 @@ enum parse_rv parse_CChainExportTransaction(struct CChainExportTransactionState 
             state->state++;
             INIT_SUBPARSER(inputsState, EVMInputs);
             PRINTF("Done with ChainID;\n");
-
+            fallthrough;
         case 1: { // Inputs
             CALL_SUBPARSER(inputsState, EVMInputs);
             state->state++;
             INIT_SUBPARSER(outputsState, TransferableOutputs);
             PRINTF("Done with EVMInputs\n");
-        }
+        } fallthrough;
         case 2: { // TransferableOutputs
             CALL_SUBPARSER(outputsState, TransferableOutputs);
             PRINTF("Done with TransferableOutputs\n");
             state->state++;
-        }
+        } fallthrough;
         case 3:
              // This is bc we call the parser recursively, and, at the end, it gets called with
              // nothing to parse...But it exits without unwinding the stack, so if we are here,
@@ -1015,18 +1038,24 @@ enum parse_rv parse_Validator(struct Validator_state *const state, parser_meta_s
       address_prompt_t pkh_prompt;
       pkh_prompt.network_id = meta->network_id;
       memcpy(&pkh_prompt.address, &state->addressState.val, sizeof(pkh_prompt.address));
-      INIT_SUBPARSER(uint64State, uint64_t);
-      if (ADD_PROMPT("Validator", &pkh_prompt, sizeof(address_prompt_t), validator_to_string)) break;
+      if (ADD_PROMPT("Validator", &pkh_prompt, sizeof(address_prompt_t), validator_to_string)) {
+        INIT_SUBPARSER(uint64State, uint64_t);
+        break;
+      }
     case 1:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
-      INIT_SUBPARSER(uint64State, uint64_t);
-      if (ADD_PROMPT("Start time", &state->uint64State.val, sizeof(uint64_t), time_to_string)) break;
+      if (ADD_PROMPT("Start time", &state->uint64State.val, sizeof(uint64_t), time_to_string)) {
+        INIT_SUBPARSER(uint64State, uint64_t);
+        break;
+      }
     case 2:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
-      INIT_SUBPARSER(uint64State, uint64_t);
-      if (ADD_PROMPT("End time", &state->uint64State.val, sizeof(uint64_t), time_to_string)) break;
+      if (ADD_PROMPT("End time", &state->uint64State.val, sizeof(uint64_t), time_to_string)) {
+        INIT_SUBPARSER(uint64State, uint64_t);
+        break;
+      }
     case 3:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
@@ -1054,19 +1083,19 @@ enum parse_rv parse_AddValidatorTransaction(struct AddValidatorTransactionState
           CALL_SUBPARSER(validatorState, Validator);
           state->state++;
           INIT_SUBPARSER(outputsState, TransferableOutputs);
-
+          fallthrough;
         case 1: {// Value
             meta->swap_output = true;
             CALL_SUBPARSER(outputsState, TransferableOutputs);
             state->state++;
             INIT_SUBPARSER(ownersState, SECP256K1OutputOwners);
-        }
+        } fallthrough;
         case 2: {
             if ( meta->staking_weight != meta->staked ) REJECT("Stake total did not match sum of stake UTXOs: %.*h %.*h", 8, &meta->staking_weight, 8, &meta->staked);
             CALL_SUBPARSER(ownersState, SECP256K1OutputOwners);
             state->state++;
             INIT_SUBPARSER(uint32State, uint32_t);
-                }
+        } fallthrough;
         case 3: {
             // Add delegator transactions don't include shares.
             if(meta->type_id==TRANSACTION_TYPE_ID_ADD_DELEGATOR) {
@@ -1077,7 +1106,7 @@ enum parse_rv parse_AddValidatorTransaction(struct AddValidatorTransactionState
             CALL_SUBPARSER(uint32State, uint32_t);
             state->state++;
             if(ADD_PROMPT("Delegation Fee", &state->uint32State.val, sizeof(uint32_t), delegation_fee_to_string)) break;
-                }
+        } fallthrough;
         case 4:
              // This is bc we call the parser recursively, and, at the end, it gets called with
              // nothing to parse...But it exits without unwinding the stack, so if we are here,
@@ -1137,6 +1166,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             if (state->uint16State.val != 0) REJECT("Only codec ID 0 is supported");
             state->state++;
             INIT_SUBPARSER(uint32State, uint32_t);
+            fallthrough;
         case 1: { // type ID
             CALL_SUBPARSER_BREAK(uint32State, uint32_t);
             state->type = state->uint32State.val;
@@ -1147,7 +1177,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             PRINTF("Type ID: %.*h\n", sizeof(state->uint32State.buf), state->uint32State.buf);
 
             INIT_SUBPARSER(baseTxHdrState, BaseTransactionHeader);
-        }
+        } fallthrough;
         case 2: { // Base transaction header
             CALL_SUBPARSER_BREAK(baseTxHdrState, BaseTransactionHeader);
             PRINTF("Parsed BTH\n");
@@ -1165,7 +1195,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
 
             INIT_SUBPARSER(baseTxState, BaseTransaction);
             if (ADD_PROMPT("Sign", label.label, label.label_size, strcpy_prompt)) break;
-        }
+        } fallthrough;
         case 3: { // Base transaction
             if(! meta->is_c_chain) { // C-chain atomic transactions have a different format; skip here.
                 PRINTF("TRACE\n");
@@ -1203,7 +1233,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
               default:
                 REJECT("Only base, export, and import transactions are supported");
             }
-        }
+        } fallthrough;
         case 4: {
             switch (meta->type_id | meta->is_c_chain << 8) {
               case TRANSACTION_TYPE_ID_BASE:
@@ -1236,7 +1266,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             }
             BUBBLE_SWITCH_BREAK;
             state->state++;
-                }
+        } fallthrough;
         case 5: {
                   PRINTF("Prompting for fee\n");
                   bool should_break = prompt_fee(meta);
@@ -1244,7 +1274,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
                   state->state++;
                   PRINTF("Prompted for fee\n");
                   if (should_break) break;
-                }
+        } fallthrough;
         case 6:
                 return PARSE_RV_DONE;
     }

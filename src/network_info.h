@@ -41,7 +41,7 @@ typedef struct {
 
 #define NETWORK_INFO_SIZE 3
 
-extern const network_info_t const network_info[NETWORK_INFO_SIZE];
+extern const network_info_t network_info[NETWORK_INFO_SIZE];
 
 static inline network_info_t const *network_info_from_network_id(network_id_t const network_id) {
   for (int i = 0; i < NETWORK_INFO_SIZE; i++)
@@ -59,7 +59,7 @@ static inline network_info_t const *network_info_from_network_id_not_null(networ
   }
 }
 
-static inline network_info_t const *network_info_from_blockchain_id(const blockchain_id_t const blockchain_id) {
+static inline network_info_t const *network_info_from_blockchain_id(const blockchain_id_t blockchain_id) {
   if (blockchain_id == NULL) return NULL;
   for (int i = 0; i < NETWORK_INFO_SIZE; i++)
     if (memcmp(blockchain_id, network_info[i].x_blockchain_id, sizeof(*blockchain_id)) == 0)
@@ -67,7 +67,7 @@ static inline network_info_t const *network_info_from_blockchain_id(const blockc
   return NULL;
 }
 
-static inline network_info_t const *network_info_from_blockchain_id_not_null(const blockchain_id_t const blockchain_id) {
+static inline network_info_t const *network_info_from_blockchain_id_not_null(const blockchain_id_t blockchain_id) {
   network_info_t const *res = network_info_from_blockchain_id(blockchain_id);
   if (res == NULL) {
     THROW(EXC_PARSE_ERROR);

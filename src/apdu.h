@@ -5,8 +5,6 @@
 #include "ui.h"
 #include "apdu_sign.h"
 
-#include "os.h"
-
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -36,6 +34,9 @@ struct app_handlers {
 __attribute__((noreturn)) void main_loop(struct app_handlers const *const handlers);
 
 static inline size_t finalize_successful_send(size_t tx) {
+    if (tx + 2 > IO_APDU_BUFFER_SIZE) {
+        THROW(EXC_MEMORY_ERROR);
+    }
     G_io_apdu_buffer[tx++] = 0x90;
     G_io_apdu_buffer[tx++] = 0x00;
     return tx;

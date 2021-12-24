@@ -1,6 +1,6 @@
 #include "network_info.h"
 
-const network_info_t const network_info[NETWORK_INFO_SIZE] =
+const network_info_t network_info[NETWORK_INFO_SIZE] =
 {
   { .network_id = NETWORK_ID_MAINNET,
     // 2oYMBNV4eNHyqk2fjjV5nVQLDbtmNJzq5s3qs3Lo6ftnC6FByM

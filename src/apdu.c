@@ -46,7 +46,7 @@ size_t provide_evm_address(uint8_t *const io_buffer, extended_public_key_t const
 
     // And the address, in hex
     io_buffer[tx++] = sizeof(*pubkey_hash)*2; // times 2 because it'll be in hex.
-    bin_to_hex_lc(io_buffer + tx, IO_APDU_BUFFER_SIZE-tx, pubkey_hash, sizeof(*pubkey_hash));
+    bin_to_hex_lc((char *) io_buffer + tx, IO_APDU_BUFFER_SIZE-tx, pubkey_hash, sizeof(*pubkey_hash));
     tx+=sizeof(*pubkey_hash)*2;
 
     // and the chain code, if requested.

@@ -113,6 +113,7 @@ let
           tests
           # usbtool
         ];
+        makeFlags = [ "USE_NIX=1" ];
         TARGET = bolos.target;
         GIT_DESCRIBE = gitDescribe;
         BOLOS_SDK = bolos.sdk;
