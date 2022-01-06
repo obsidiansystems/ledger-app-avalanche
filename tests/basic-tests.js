@@ -17,7 +17,7 @@ describe("Basic Tests", () => {
       // const flow = await flowAccept(this.speculos);
       const key = await this.ava.getWalletAddress("44'/9000'/0'/0/0");
       expect(key).to.equalBytes('41c9cc6fd27e26e70f951869fb09da685a696f0a');
-      await flow.promptsPromise;
+      // await flow.promptsPromise;
     });
     it('can retrieve a different address from the app', async function() {
       // await flowAccept(this.speculos);
