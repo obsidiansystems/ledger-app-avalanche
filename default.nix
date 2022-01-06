@@ -1,7 +1,7 @@
 { ledger-platform ? import ./nix/dep/ledger-platform {}
 , gitDescribe ? "TEST-dirty"
 , debug ? false
-, runTest ? false
+, runTest ? true
 }:
 let
   inherit (ledger-platform)
@@ -90,13 +90,11 @@ let
         name = "ledger-app-avalanche-nano-${bolos.name}";
         inherit src;
         postConfigure = ''
-          PATH="$BOLOS_ENV/clang-arm-fropi/bin:$PATH"
           patchShebangs test.sh
           # hack to get around no tests for cross logic
           doCheck=${toString (if runTest then bolos.test else false)};
+          export USE_NIX=1
         '';
-        hardeningDisable = [ "all" ];
-        prehook = ledger-platform.gccLibsPreHook;
         nativeBuildInputs = [
           (pkgs.python3.withPackages (ps: [ps.pillow ps.ledgerblue]))
           pkgs.bats
@@ -113,7 +111,6 @@ let
           tests
           # usbtool
         ];
-        makeFlags = [ "USE_NIX=1" ];
         TARGET = bolos.target;
         GIT_DESCRIBE = gitDescribe;
         BOLOS_SDK = bolos.sdk;
@@ -123,7 +120,9 @@ let
 
         # Do both ways, so nix builds and users running make both work.
         preBuild = setAssembler;
-        shellHook = setAssembler;
+        shellHook = ''
+          export USE_NIX=1
+        '' + setAssembler;
 
         installPhase = ''
           mkdir -p $out
