@@ -13,19 +13,19 @@ describe("Basic Tests", () => {
   });
 
   context('Public Keys', function () {
-    it('can retrieve an address from the app', async function() {
-      const flow = await flowAccept(this.speculos);
+    it.only('can retrieve an address from the app', async function() {
+      // const flow = await flowAccept(this.speculos);
       const key = await this.ava.getWalletAddress("44'/9000'/0'/0/0");
       expect(key).to.equalBytes('41c9cc6fd27e26e70f951869fb09da685a696f0a');
       await flow.promptsPromise;
     });
     it('can retrieve a different address from the app', async function() {
-      await flowAccept(this.speculos);
+      // await flowAccept(this.speculos);
       const key = await this.ava.getWalletAddress("44'/9000'/0'/0/1");
       expect(key).to.equalBytes('68c2185ed05ab18220808fb6a11731c9952bd9aa');
     });
     it('can retrieve a change address from the app', async function() {
-      await flowAccept(this.speculos);
+      // await flowAccept(this.speculos);
       const key = await this.ava.getWalletAddress("44'/9000'/0'/1/0");
       expect(key).to.equalBytes('95250c0b1dccfe79388290381e44cdf6956b55e6');
     });
@@ -39,13 +39,13 @@ describe("Basic Tests", () => {
       }
     });
     it('produces the expected top-level extended key for the zeroeth account', async function() {
-      await flowAccept(this.speculos);
+      // await flowAccept(this.speculos);
       const key = await this.ava.getWalletExtendedPublicKey("44'/9000'/0'");
       expect(key).to.have.property('public_key').equalBytes('043033e21973c30ed7e50fa546f8690e25685ac900c3be24c5f641b9c1b959344151169853808be753760dd6aeddd3556f0efaafa6279b64f0ae49de0417ea70b2');
       expect(key).to.have.property('chain_code').to.equalBytes('590c70e192c597c23ad7c8185c12952b50525ff9d839a95bf6a7e6da359ce873');
     });
     it('can retrieve an extended public key from the app', async function() {
-      await flowAccept(this.speculos);
+      // await flowAccept(this.speculos);
       const key = await this.ava.getWalletExtendedPublicKey("44'/9000'/0'/0/0");
       expect(key).to.have.property('public_key').to.equalBytes('046b3cdd6f3313c11165a28463715f9cdb704f8163d04f25e814c0471c58da35637469a60d22c1eab5347c3a0a2920f27539730ebfc74d172c200a8164eaa70878');
       expect(key).to.have.property('chain_code').to.equalBytes('3b63e0f576c7b865a46c357bcfb2751e914af951f84e5eef0592e9ea7e3ea3c2');
