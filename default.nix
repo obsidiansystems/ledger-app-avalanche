@@ -89,8 +89,6 @@ let
           doCheck=${toString (if runTest then bolos.test else false)};
           export USE_NIX=1
         '';
-        hardeningDisable = [ "all" ];
-        prehook = ledger-platform.gccLibsPreHook;
         nativeBuildInputs = [
           (pkgs.python3.withPackages (ps: [ps.pillow ps.ledgerblue]))
           pkgs.bats
