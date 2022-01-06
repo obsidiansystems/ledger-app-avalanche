@@ -16,17 +16,17 @@
 static bool address_ok(void) {
     switch(G.type) {
       case PUBKEY_STATE_AVM:
-        delayed_send(provide_address(G_io_apdu_buffer, &G.pkh));
+        provide_address(G_io_apdu_buffer, &G.pkh);
         break;
       case PUBKEY_STATE_EVM:
-        delayed_send(provide_evm_address(G_io_apdu_buffer, &G.ext_public_key, &G.pkh, true));
+        provide_evm_address(G_io_apdu_buffer, &G.ext_public_key, &G.pkh, true);
         break;
     }
     return true;
 }
 
 static bool ext_pubkey_ok(void) {
-    delayed_send(provide_ext_pubkey(G_io_apdu_buffer, &G.ext_public_key));
+    provide_ext_pubkey(G_io_apdu_buffer, &G.ext_public_key);
     return true;
 }
 
@@ -41,14 +41,6 @@ static void apdu_pubkey_state_to_string
       bin_to_hex_lc(out, out_size, &payload->pkh, 20);
       break;
   }
-}
-
-__attribute__((noreturn)) static void prompt_address(void) {
-  // don't prompt. skip.
-}
-
-__attribute__((noreturn)) static void prompt_ext_pubkey(void) {
-  // don't prompt. skip.
 }
 
 __attribute__((noreturn)) size_t handle_apdu_get_public_key_impl(bool const prompt_ext) {
@@ -84,10 +76,10 @@ __attribute__((noreturn)) size_t handle_apdu_get_public_key_impl(bool const prom
 
     if (prompt_ext) {
         check_bip32(&G.bip32_path, false);
-        prompt_ext_pubkey();
+        ext_pubkey_ok();
     } else {
         check_bip32(&G.bip32_path, true);
-        prompt_address();
+        address_ok();
     }
 }
 
@@ -115,7 +107,7 @@ __attribute__((noreturn)) size_t handle_apdu_evm_get_address(void) {
     G.type = PUBKEY_STATE_EVM;
 
     check_bip32(&G.bip32_path, false);
-    prompt_address();
+    address_ok();
 }
 
 __attribute__((noreturn)) size_t handle_apdu_get_public_key_ext(void) {
