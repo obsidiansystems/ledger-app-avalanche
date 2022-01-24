@@ -236,14 +236,14 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                       break;
                     case TRANSACTION_TYPE_ID_PLATFORM_IMPORT:
                       should_break = ADD_PROMPT(
-                          "From X chain",
+                          "P chain import",
                           &output_prompt, sizeof(output_prompt),
                           output_prompt_to_string
                           );
                       break;
                     case 1<<c_chain_bit | TRANSACTION_TYPE_ID_C_CHAIN_EXPORT:
                       should_break = ADD_PROMPT(
-                          "C to X chain",
+                          "C chain export",
                           &output_prompt, sizeof(output_prompt),
                           output_prompt_to_string
                           );
