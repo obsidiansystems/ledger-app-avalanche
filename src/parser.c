@@ -776,10 +776,7 @@ enum parse_rv parse_ImportTransaction(struct ImportTransactionState *const state
       switch (state->state) {
         case 0: // ChainID
             CALL_SUBPARSER(id32State, Id32);
-            if(is_pchain_transaction(meta->type_id)) {
-              if(memcmp(network_info_from_network_id_not_null(meta->network_id)->x_blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
-                REJECT("Invalid XChain ID");
-            } else {
+            if(!is_pchain_transaction(meta->type_id)) {
               showChainPrompt = true;
               if (is_pchain(state->id32State.buf))
                 meta->swapCounterpartChain = SWAPCOUNTERPARTCHAIN_P;
