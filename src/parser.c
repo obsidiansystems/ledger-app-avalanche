@@ -989,8 +989,6 @@ enum parse_rv parse_CChainExportTransaction(struct CChainExportTransactionState 
       switch (state->state) {
         case 0: // destinationChain
             CALL_SUBPARSER(id32State, Id32);
-            if(memcmp(network_info_from_network_id_not_null(meta->network_id)->x_blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
-              REJECT("Invalid XChain ID");
             state->state++;
             INIT_SUBPARSER(inputsState, EVMInputs);
             PRINTF("Done with ChainID;\n");
