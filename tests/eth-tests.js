@@ -401,6 +401,33 @@ const testData = {
     expect(rv).to.equalBytes(testData.signatures.transferFrom);
   });
 
+  it('signs personal message', async function () {
+    const data = "arbitrary data string";
+    result = await self.eth.signPersonalMessage("44'/60'/0'/0/0", Buffer.from(data).toString("hex"));
+    // TODO expected flowMultiPrompt
+    var v = result['v'] - 27;
+    var vstr = v.toString(16);
+    if (vstr.length < 2) {
+        vstr = "0" + vstr;
+    }
+    console.log("Signature 0x" + result['r'] + result['s'] + vstr);
+    // TODO expected r, s, v
+  });
+
+  it('signs EIP712 hashed message', async function () {
+    const domainSeparatorHex = Buffer.from("0101010101010101010101010101010101010101010101010101010101010101").toString("hex");
+    const hashStructMessageHex = Buffer.from("0202020202020202020202020202020202020202020202020202020202020202").toString("hex");
+    const result = await ethApp.signEIP712HashedMessage("44'/60'/0'/0/0", domainSeparatorHex, hashStructMessageHex);
+    // TODO expected flowMultiPrompt
+    var v = result['v'] - 27;
+    var vstr = v.toString(16);
+    if (vstr.length < 2) {
+        vstr = "0" + vstr;
+    }
+    console.log("Signature 0x" + result['r'] + result['s'] + vstr);
+    // TODO expected r, s, v
+  });
+
   it('rejects transaction with incoherent tx/data length', async function () {
     const hex = 'e00400003d058000002c8000003c800600000000000000000000ed01856d6e2edc0782520894010000000000000000000000000000000000000200ffffffdadadada';
     const body = Buffer.from(hex, 'hex');
