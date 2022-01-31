@@ -713,9 +713,6 @@ enum parse_rv parse_BaseTransactionHeader(struct BaseTransactionHeaderState *con
             meta->is_p_chain = is_pchain(state->id32State.val.val);
             meta->is_x_chain = !memcmp(x_blockchain_id, &state->id32State.val, sizeof(state->id32State.val));
             meta->is_c_chain = !memcmp(c_blockchain_id, &state->id32State.val, sizeof(state->id32State.val));
-            if(!(meta->is_p_chain || meta->is_x_chain || meta->is_c_chain)) {
-                REJECT("Blockchain ID did not match expected value for network ID");
-            }
             state->state++;
       } fallthrough;
       case BTSH_Done:
