@@ -1175,14 +1175,6 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             state->state++;
 
             label_t label = type_id_to_label(meta->type_id, meta->is_c_chain);
-            if (is_pchain_transaction(meta->type_id)) {
-              if (!meta->is_p_chain)
-                REJECT("Transaction ID indicates P-chain but blockchain ID is is not 0");
-            } else {
-              if (!(meta->is_x_chain || meta->is_c_chain))
-                REJECT("Blockchain ID did not match expected value for network ID");
-            }
-
             INIT_SUBPARSER(baseTxState, BaseTransaction);
             if (ADD_PROMPT("Sign", label.label, label.label_size, strcpy_prompt)) break;
         } fallthrough;
