@@ -12,7 +12,7 @@ localAssetId = [
 ];
 
 describe("P-chain import and export tests", () => {
-  it('can sign a P-chain import transaction', async function () {
+  it('can sign a transaction importing to P-chain from X-chain', async function () {
     const txn = Buffer.from([
       // CodecID
       0x00, 0x00,
@@ -60,7 +60,7 @@ describe("P-chain import and export tests", () => {
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
       [{header:"Sign",body:"Import"}],
-      [{header:"From X chain",body:"19999.999 AVAX to fuji18jma8ppw3nhx5r4ap8clazz0dps7rv5u6wmu4t"}],
+      [{header:"P chain import",body:"19999.999 AVAX to fuji18jma8ppw3nhx5r4ap8clazz0dps7rv5u6wmu4t"}],
       [{header:"Fee",body:"15188.373088832 AVAX"}],
       [{header:"Finalize",body:"Transaction"}],
     ]);
@@ -73,7 +73,7 @@ describe("P-chain import and export tests", () => {
     await ui.promptsPromise;
   });
 
-  it('can sign a P-chain export transaction', async function () {
+  it('can sign a transaction exporting to X-chain from P-chain', async function () {
     const txn = Buffer.from([
       0x00, 0x00,
       // base tx:
@@ -126,7 +126,7 @@ describe("P-chain import and export tests", () => {
     const ui = await flowMultiPrompt(this.speculos, [
       [{header:"Sign",body:"Export"}],
       [{header:"Transfer",body:'0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3'}],
-      [{header:"P to X chain",body:'0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx'}],
+      [{header:"export from P",body:'0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx'}],
       [{header:"Fee",body:"0.123432099 AVAX"}],
       [{header:"Finalize",body:"Transaction"}],
     ]);
@@ -139,13 +139,15 @@ describe("P-chain import and export tests", () => {
     await ui.promptsPromise;
   });
 
-  it('Can sign a transaction exporting to C from P', async function() {
+  it('can sign a transaction exporting to C-chain from P-chain', async function() {
     // Collected from avalanchejs examples:
     const txn = Buffer.from('0000000000120000303900000000000000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000000000000dbcf890f77f49b96857648b72b77f9f82937f28a68704af05da0dc12ba53f2db0000000500470de4df8200000000000100000000000000000000000000000000000000000000000000000000000000000000000000000001dbcf890f77f49b96857648b72b77f9f82937f28a68704af05da0dc12ba53f2db00000005002386f26fc10000000000010000000000000056506c6174666f726d564d207574696c697479206d6574686f64206275696c644578706f7274547820746f206578706f727420415641582066726f6d2074686520502d436861696e20746f2074686520432d436861696e9d0775f450604bd2fbc49ce0c5c1c6dfeb2dc2acb8c92c26eeae6e6df4502b1900000001dbcf890f77f49b96857648b72b77f9f82937f28a68704af05da0dc12ba53f2db00000007006a94d713a83600000000000000000000000001000000013cb7d3842e8cee6a0ebd09f1fe884f6861e1b29c', 'hex');
+    const pathPrefix = "44'/9000'/0'";
+    const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
       [{header:"Sign",body:"Export"}], // TODO prompts need fixing
       [{header:"Transfer",body:'0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3'}],
-      [{header:"P to X chain",body:'0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx'}],
+      [{header:"export from P",body:'0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx'}],
       [{header:"Fee",body:"0.123432099 AVAX"}],
       [{header:"Finalize",body:"Transaction"}],
     ]);
@@ -158,13 +160,15 @@ describe("P-chain import and export tests", () => {
     await ui.promptsPromise;
   });
 
-  it('Can sign a transaction importing to P from C', async function() {
+  it('can sign a transaction importing to P-chain from C-chain', async function() {
     // Collected from avalanchejs examples:
     const txn = Buffer.from('000000000000000030399d0775f450604bd2fbc49ce0c5c1c6dfeb2dc2acb8c92c26eeae6e6df4502b190000000000000000000000000000000000000000000000000000000000000000000000011d77d94aaefd25c0c2544acaff85290690737d7f0234d3fc754276b40f98d5d900000000dbcf890f77f49b96857648b72b77f9f82937f28a68704af05da0dc12ba53f2db00000005006a94d713a836000000000100000000000000018db97c7cece249c2b98bdc0226cc4c2a57bf52fc00619ac63f788a00dbcf890f77f49b96857648b72b77f9f82937f28a68704af05da0dc12ba53f2db', 'hex');
+    const pathPrefix = "44'/9000'/0'";
+    const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
       [{header:"Sign",body:"Export"}], // TODO prompts need fixing
       [{header:"Transfer",body:'0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3'}],
-      [{header:"P to X chain",body:'0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx'}],
+      [{header:"export from P",body:'0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx'}],
       [{header:"Fee",body:"0.123432099 AVAX"}],
       [{header:"Finalize",body:"Transaction"}],
     ]);

@@ -287,35 +287,6 @@ const testData = {
     await testEIP1559Signing(this, chainId, prompts, tx);
   });
 
-
-  it('Can sign a transaction exporting to P from C', async function() {
-    this.timeout(8000);
-    const chainId = 43112;
-    // Collected from avalanchejs examples:
-    const tx = Buffer.from('000000000001000030399d0775f450604bd2fbc49ce0c5c1c6dfeb2dc2acb8c92c26eeae6e6df4502b190000000000000000000000000000000000000000000000000000000000000000000000018db97c7cece249c2b98bdc0226cc4c2a57bf52fc00b1a2bc2ec50000dbcf890f77f49b96857648b72b77f9f82937f28a68704af05da0dc12ba53f2db000000000000000000000001dbcf890f77f49b96857648b72b77f9f82937f28a68704af05da0dc12ba53f2db0000000700a8a8ab5a955400000000000000000000000001000000013cb7d3842e8cee6a0ebd09f1fe884f6861e1b29c', 'hex');
-
-    const prompts = [ // TODO prompts need fixing
-        [{ header: 'Contract', body: 'Creation' }, { header: 'Gas Limit', body: '1500000' }],
-      [ { header: 'Data', body: '0x608060405234801561001057600080fd5b506101...' } ],
-        [finalizePrompt]
-      ];
-    await testEIP1559Signing(this, chainId, prompts, tx); // TODO is testEIP1559signing even appropriate? the hex is an EIP1559 compliant transaction
-  });
-
-  it('Can sign a transaction importing to C from P', async function() {
-    this.timeout(8000);
-    const chainId = 43112;
-    // Collected from avalanchejs examples:
-    const tx = Buffer.from('000000000000000030399d0775f450604bd2fbc49ce0c5c1c6dfeb2dc2acb8c92c26eeae6e6df4502b190000000000000000000000000000000000000000000000000000000000000000000000011d77d94aaefd25c0c2544acaff85290690737d7f0234d3fc754276b40f98d5d900000000dbcf890f77f49b96857648b72b77f9f82937f28a68704af05da0dc12ba53f2db00000005006a94d713a836000000000100000000000000018db97c7cece249c2b98bdc0226cc4c2a57bf52fc00619ac63f788a00dbcf890f77f49b96857648b72b77f9f82937f28a68704af05da0dc12ba53f2db', 'hex');
-
-    const prompts = [ // TODO prompts need fixing
-        [{ header: 'Contract', body: 'Creation' }, { header: 'Gas Limit', body: '1500000' }],
-      [ { header: 'Data', body: '0x608060405234801561001057600080fd5b506101...' } ],
-        [finalizePrompt]
-      ];
-    await testEIP1559Signing(this, chainId, prompts, tx); // TODO is testEIP1559signing even appropriate? the hex is an EIP1559 compliant transaction
-  });
-
   it('A call to assetCall with incorrect call data rejects', async function() {
     try {
       const dat = await this.eth.signTransaction(
