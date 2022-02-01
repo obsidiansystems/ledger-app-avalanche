@@ -163,15 +163,15 @@ describe("C-chain import and export tests", () => {
     await ui.promptsPromise;
   });
 
-  it('can sign an P-chain to C-chain import transaction', async function() {
+  it.only('can sign an P-chain to C-chain import transaction', async function() {
     // Collected from avalanchejs examples:
     const txn = Buffer.from('000000000000000030399d0775f450604bd2fbc49ce0c5c1c6dfeb2dc2acb8c92c26eeae6e6df4502b190000000000000000000000000000000000000000000000000000000000000000000000011d77d94aaefd25c0c2544acaff85290690737d7f0234d3fc754276b40f98d5d900000000dbcf890f77f49b96857648b72b77f9f82937f28a68704af05da0dc12ba53f2db00000005006a94d713a836000000000100000000000000018db97c7cece249c2b98bdc0226cc4c2a57bf52fc00619ac63f788a00dbcf890f77f49b96857648b72b77f9f82937f28a68704af05da0dc12ba53f2db', 'hex');
     const pathPrefix = "44'/60'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
       [{header:"Sign", body:"Import"}], // TODO prompts need fixing
-      [{header:"From X chain",body:"0.268435456 AVAX to local1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqljssag"}],
-      [{header:"Fee", body:"0 AVAX"}],
+      [{header:"From X chain",body:"27473249 AVAX to local13kuhcl8vufyu9wvtmspzdnzv9ftm75hunmtqe9"}],
+      [{header:"Fee", body:"2526750 AVAX"}],
       [{header:"Finalize",body:"Transaction"}],
     ]);
     const sigPromise = this.ava.signTransaction(
