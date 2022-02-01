@@ -423,6 +423,15 @@ describe("Basic Tests", () => {
       );
     });
 
+    it('rejects a recognized network ID that does not match blockchain ID', async function () {
+      await expectSignFailure(
+        this.speculos,
+        this.ava,
+        { networkId: Buffer.from([0x00, 0x00, 0x00, 0x01]) },
+        [],
+      );
+    });
+
     it('rejects an unrecognized output type ID', async function () {
       await expectSignFailure(
         this.speculos,
