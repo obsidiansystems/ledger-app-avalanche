@@ -25,10 +25,10 @@ describe("C-chain import and export tests", () => {
       0x00, 0x00, 0x30, 0x39, // Network ID
 
       // C chain on local testnet (destination)
-      0x91, 0x06, 0x0e, 0xab, 0xfb, 0x5a, 0x57, 0x17,
-      0x20, 0x10, 0x9b, 0x58, 0x96, 0xe5, 0xff, 0x00,
-      0x01, 0x0a, 0x1c, 0xfe, 0x6b, 0x10, 0x3d, 0x58,
-      0x5e, 0x6e, 0xbf, 0x27, 0xb9, 0x7a, 0x17, 0x35,
+      0x9d, 0x07, 0x75, 0xf4, 0x50, 0x60, 0x4b, 0xd2,
+      0xfb, 0xc4, 0x9c, 0xe0, 0xc5, 0xc1, 0xc6, 0xdf,
+      0xeb, 0x2d, 0xc2, 0xac, 0xb8, 0xc9, 0x2c, 0x26,
+      0xee, 0xae, 0x6e, 0x6d, 0xf4, 0x50, 0x2b, 0x19,
 
       // X chain on local testnet (source)
 
@@ -69,7 +69,7 @@ describe("C-chain import and export tests", () => {
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
       [{header:"Sign", body:"Import"}],
-      [{header:"From X chain",body:"0.268435456 AVAX to local1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqljssag"}],
+      [{header:"Importing",body:"0.268435456 AVAX to local1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqljssag"}],
       [{header:"Fee", body:"0 AVAX"}],
       [{header:"Finalize",body:"Transaction"}],
     ]);
@@ -91,10 +91,10 @@ describe("C-chain import and export tests", () => {
       // networkID:
       0x00, 0x00, 0x30, 0x39, // Network ID
       // blockchainID:
-      0x91, 0x06, 0x0e, 0xab, 0xfb, 0x5a, 0x57, 0x17,
-      0x20, 0x10, 0x9b, 0x58, 0x96, 0xe5, 0xff, 0x00,
-      0x01, 0x0a, 0x1c, 0xfe, 0x6b, 0x10, 0x3d, 0x58,
-      0x5e, 0x6e, 0xbf, 0x27, 0xb9, 0x7a, 0x17, 0x35,
+      0x9d, 0x07, 0x75, 0xf4, 0x50, 0x60, 0x4b, 0xd2,
+      0xfb, 0xc4, 0x9c, 0xe0, 0xc5, 0xc1, 0xc6, 0xdf,
+      0xeb, 0x2d, 0xc2, 0xac, 0xb8, 0xc9, 0x2c, 0x26,
+      0xee, 0xae, 0x6e, 0x6d, 0xf4, 0x50, 0x2b, 0x19,
       // destination_chain:
       0xd8, 0x91, 0xad, 0x56, 0x05, 0x6d, 0x9c, 0x01,
       0xf1, 0x8f, 0x43, 0xf5, 0x8b, 0x5c, 0x78, 0x4a,
@@ -143,13 +143,13 @@ describe("C-chain import and export tests", () => {
     await ui.promptsPromise;
   });
 
-  it.only('can sign a C-chain to P-chain export transaction', async function() {
+  it('can sign a C-chain to P-chain export transaction', async function() {
     // Collected from avalanchejs examples:
     const txn = Buffer.from('000000000001000030399d0775f450604bd2fbc49ce0c5c1c6dfeb2dc2acb8c92c26eeae6e6df4502b190000000000000000000000000000000000000000000000000000000000000000000000018db97c7cece249c2b98bdc0226cc4c2a57bf52fc00b1a2bc2ec50000dbcf890f77f49b96857648b72b77f9f82937f28a68704af05da0dc12ba53f2db000000000000000000000001dbcf890f77f49b96857648b72b77f9f82937f28a68704af05da0dc12ba53f2db0000000700a8a8ab5a955400000000000000000000000001000000013cb7d3842e8cee6a0ebd09f1fe884f6861e1b29c', 'hex');
     const pathPrefix = "44'/60'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
-      [{header:"Sign",body:"Export"}], // TODO prompts need fixing
+      [{header:"Sign",body:"Export"}],
       [{header:"C chain export",body:'47473250 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'}],
       [{header:"Fee",body:"2526750 AVAX"}],
       [{header:"Finalize",body:"Transaction"}],
@@ -163,14 +163,14 @@ describe("C-chain import and export tests", () => {
     await ui.promptsPromise;
   });
 
-  it.only('can sign an P-chain to C-chain import transaction', async function() {
+  it('can sign an P-chain to C-chain import transaction', async function() {
     // Collected from avalanchejs examples:
     const txn = Buffer.from('000000000000000030399d0775f450604bd2fbc49ce0c5c1c6dfeb2dc2acb8c92c26eeae6e6df4502b190000000000000000000000000000000000000000000000000000000000000000000000011d77d94aaefd25c0c2544acaff85290690737d7f0234d3fc754276b40f98d5d900000000dbcf890f77f49b96857648b72b77f9f82937f28a68704af05da0dc12ba53f2db00000005006a94d713a836000000000100000000000000018db97c7cece249c2b98bdc0226cc4c2a57bf52fc00619ac63f788a00dbcf890f77f49b96857648b72b77f9f82937f28a68704af05da0dc12ba53f2db', 'hex');
     const pathPrefix = "44'/60'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
-      [{header:"Sign", body:"Import"}], // TODO prompts need fixing
-      [{header:"From X chain",body:"27473249 AVAX to local13kuhcl8vufyu9wvtmspzdnzv9ftm75hunmtqe9"}],
+      [{header:"Sign", body:"Import"}],
+      [{header:"Importing",body:"27473249 AVAX to local13kuhcl8vufyu9wvtmspzdnzv9ftm75hunmtqe9"}],
       [{header:"Fee", body:"2526750 AVAX"}],
       [{header:"Finalize",body:"Transaction"}],
     ]);

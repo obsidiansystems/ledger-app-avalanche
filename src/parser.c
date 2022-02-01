@@ -892,7 +892,7 @@ enum parse_rv parse_EVMOutput(struct EVMOutput_state *const state, parser_meta_s
               sizeof(output_prompt.address));
 
           if(ADD_PROMPT(
-                "From X chain",
+                "Importing",
                 &output_prompt, sizeof(output_prompt),
                 output_prompt_to_string
                 ))
