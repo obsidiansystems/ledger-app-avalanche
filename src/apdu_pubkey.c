@@ -38,7 +38,8 @@ static void apdu_pubkey_state_to_string
       pkh_to_string(out, out_size, payload->hrp, payload->hrp_len, &payload->pkh);
       break;
     case PUBKEY_STATE_EVM:
-      bin_to_hex_lc(out, out_size, &payload->pkh, 20);
+      // [0] aids in array pointer decay
+      bin_to_hex_lc(out, out_size, &payload->pkh[0], 20);
       break;
   }
 }

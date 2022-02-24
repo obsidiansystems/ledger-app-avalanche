@@ -1,7 +1,8 @@
 #include "cb58.h"
 #include "exception.h"
 #include "globals.h"
-#include "parser.h"
+#include "evm_parse.h"
+#include "parser-impl.h"
 #include "protocol.h"
 #include "to_string.h"
 #include "types.h"
@@ -54,7 +55,10 @@ static void setup_prompt_evm_bytes32(uint8_t *buffer, output_prompt_t *const pro
   memcpy(prompt->bytes32, buffer, 32);
 }
 
-static size_t output_hex_to_string(char *const out, size_t const out_size, output_prompt_t const *const in, size_t in_size) {
+static size_t output_hex_to_string(
+  char out[const], size_t const out_size,
+  uint8_t const in[const], size_t in_size)
+{
   size_t ix = 0;
   out[ix] = '0'; ix++;
   out[ix] = 'x'; ix++;
@@ -63,8 +67,14 @@ static size_t output_hex_to_string(char *const out, size_t const out_size, outpu
   return ix;
 }
 
-static void output_evm_calldata_preview_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
-  size_t ix = output_hex_to_string(out, out_size, &in->calldata_preview.buffer, in->calldata_preview.count);
+static void output_evm_calldata_preview_to_string(
+  char out[const], size_t const out_size,
+  output_prompt_t const *const in)
+{
+  size_t ix = output_hex_to_string(
+    out, out_size,
+    // [0] aids in array pointer decay
+    &in->calldata_preview.buffer[0], in->calldata_preview.count);
   if(in->calldata_preview.cropped) {
     if (ix + 3 > out_size) THROW_(EXC_MEMORY_ERROR, "Can't fit into prompt value string");
     out[ix] = '.'; ix++;
@@ -74,26 +84,55 @@ static void output_evm_calldata_preview_to_string(char *const out, size_t const 
   out[ix] = '\0';
 }
 
-static void output_evm_gas_limit_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
+static void output_evm_gas_limit_to_string(
+  char out[const], size_t const out_size,
+  output_prompt_t const *const in)
+{
+  (void)out_size;
   number_to_string(out, in->start_gas);
 }
-static void output_evm_amount_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
-  wei_to_gwei_string256(out, out_size, &in->amount_big);
-}
-static void output_evm_fee_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
-  wei_to_gwei_string(out, out_size, in->fee);
-}
-static void output_evm_fund_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
-  wei_to_avax_or_navax_string_256(out, out_size, &in->amount_big);
-}
-static void output_evm_address_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
-  output_hex_to_string(out, out_size, &in->address.val, ETHEREUM_ADDRESS_SIZE);
-}
-static void output_evm_bytes32_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
-  output_hex_to_string(out, out_size, in->bytes32, 32);
+
+static void output_evm_amount_to_string(
+  char out[const], size_t const out_size,
+  output_prompt_t const *const in)
+{
+  wei_to_gwei_string_256(out, out_size, &in->amount_big);
 }
 
-static void output_evm_prompt_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
+static void output_evm_fee_to_string(
+  char out[const], size_t const out_size,
+  output_prompt_t const *const in)
+{
+  wei_to_gwei_string(out, out_size, in->fee);
+}
+
+static void output_evm_fund_to_string(
+  char out[const], size_t const out_size,
+  output_prompt_t const *const in)
+{
+  wei_to_avax_or_navax_string_256(out, out_size, &in->amount_big);
+}
+
+#define output_hex_to_string_size(out, out_size, in) \
+  /* [0] aids in array pointer decay */ \
+  output_hex_to_string(out, out_size, &in[0], sizeof(in))
+
+static void output_evm_address_to_string(
+  char out[const], size_t const out_size,
+  output_prompt_t const *const in)
+{
+  output_hex_to_string_size(out, out_size, in->address.val);
+}
+
+static void output_evm_bytes32_to_string(
+  char out[const], size_t const out_size,
+  output_prompt_t const *const in)
+{
+  output_hex_to_string_size(out, out_size, in->bytes32);
+}
+
+static void output_evm_prompt_to_string(
+    char out[const], size_t const out_size, output_prompt_t const *const in) {
     size_t ix = wei_to_avax_or_navax_string_256(out, out_size, &in->amount_big);
 
     static char const to[] = " to ";
@@ -104,7 +143,10 @@ static void output_evm_prompt_to_string(char *const out, size_t const out_size, 
     output_evm_address_to_string(&out[ix], out_size - ix, in);
 }
 
-static void output_assetCall_prompt_to_string(char *const out, size_t const out_size, output_prompt_t const *const in) {
+static void output_assetCall_prompt_to_string(
+  char out[const], size_t const out_size,
+  output_prompt_t const *const in)
+{
   size_t ix = 0;
 
   out[ix] = '0'; ix++;
@@ -214,7 +256,7 @@ enum parse_rv parse_evm_txn(struct EVM_txn_state *const state, evm_parser_meta_s
     enum parse_rv sub_rv = PARSE_RV_INVALID;
     switch (state->state) {
       case 0: {
-        sub_rv = parse_uint8_t(&state->transaction_envelope_type, meta);
+        sub_rv = parse_core_uint8_t(&state->transaction_envelope_type, &meta->input);
         if (sub_rv != PARSE_RV_DONE){
           return sub_rv;
         }
@@ -794,7 +836,7 @@ enum parse_rv parse_rlp_item_data(struct EVM_RLP_txn_state *const state, evm_par
   return impl_parse_rlp_item(&state->rlpItem_state, meta, state->hasTo ? 0 : MAX_CALLDATA_PREVIEW);
 }
 
-IMPL_FIXED(uint256_t);
+//IMPL_FIXED(uint256_t);
 
 #define ASSETCALL_FIXED_DATA_WIDTH (20 + 32 + 32)
 
@@ -804,15 +846,23 @@ void init_assetCall_data(struct EVM_assetCall_state *const state, uint64_t lengt
     if(length < ASSETCALL_FIXED_DATA_WIDTH)
       REJECT("Calldata too small for assetCall");
     state->data_length = length - ASSETCALL_FIXED_DATA_WIDTH;
-    initFixed((struct FixedState *const) &state->address_state, sizeof(state->address_state));
+    initFixed(fs(&state->address_state), sizeof(state->address_state));
     PRINTF("Initing assetCall Data\n");
 }
+
+_Static_assert(
+  (
+    offsetof(union EVM_endpoint_argument_states, uint256_state.buf)
+    ==
+    offsetof(union EVM_endpoint_argument_states, fixed_state.buffer_)
+  ),
+  "buffers do not line up in EVM_endpoint_argument_states");
 
 void init_abi_call_data(struct EVM_ABI_state *const state, uint64_t length) {
   state->state = ABISTATE_SELECTOR;
   state->argument_index = 0;
   state->data_length = length;
-  initFixed((struct FixedState *const) &state->argument_state, sizeof(state->argument_state));
+  initFixed(fs(&state->argument_state), sizeof(state->argument_state));
 }
 
 enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
@@ -824,7 +874,7 @@ enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
   enum parse_rv sub_rv;
   switch(state->state) {
   case ABISTATE_SELECTOR: {
-    sub_rv = parseFixed(&state->selector_state.fixedState, input, ETHEREUM_SELECTOR_SIZE);
+    sub_rv = parseFixed(fs(&state->selector_state), input, ETHEREUM_SELECTOR_SIZE);
     if(sub_rv != PARSE_RV_DONE) return sub_rv;
     for(size_t i = 0; i < NUM_ELEMENTS(known_endpoints); i++) {
       if(!memcmp(&known_endpoints[i].selector, state->selector_state.buf, ETHEREUM_SELECTOR_SIZE)) {
@@ -835,7 +885,7 @@ enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
 
     if(meta->known_endpoint) {
       state->state = ABISTATE_ARGUMENTS;
-      initFixed((struct FixedState *const) &state->argument_state, sizeof(state->argument_state));
+      initFixed(fs(&state->argument_state), sizeof(state->argument_state));
       if(hasValue) REJECT("No currently supported methods are marked as 'payable'");
       char *method_name = PIC(meta->known_endpoint->method_name);
       ADD_PROMPT("Contract Call", method_name, strlen(method_name), strcpy_prompt);
@@ -850,21 +900,21 @@ enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
   case ABISTATE_ARGUMENTS: {
     if(state->argument_index >= meta->known_endpoint->parameters_count)
       return PARSE_RV_DONE;
-    sub_rv = parseFixed(&state->argument_state.fixedState, input, ETHEREUM_WORD_SIZE); // TODO: non-word size values
+    sub_rv = parseFixed(fs(&state->argument_state), input, ETHEREUM_WORD_SIZE); // TODO: non-word size values
     if(sub_rv != PARSE_RV_DONE) return sub_rv;
     const struct contract_endpoint_param parameter = meta->known_endpoint->parameters[state->argument_index++];
     char *argument_name = PIC(parameter.name);
-    void (*setup_prompt)(uint8_t *buffer, output_prompt_t const *const prompt) = PIC(parameter.setup_prompt);
+    setup_prompt_fun_t setup_prompt = PIC(parameter.setup_prompt);
     SET_PROMPT_VALUE(setup_prompt(((struct FixedState*)(&state->argument_state))->buffer,
                                   &entry->data.output_prompt));
-    initFixed((struct FixedState *const) &state->argument_state, sizeof(state->argument_state));
+    initFixed(fs(&state->argument_state), sizeof(state->argument_state));
     ADD_ACCUM_PROMPT_ABI(argument_name, PIC(parameter.output_prompt));
     return PARSE_RV_PROMPT;
   }
 
   // Probably we have to allow this, as the metamask constraint means _this_ endpoint will be getting stuff it doesn't understand a lot.
   case ABISTATE_UNRECOGNIZED: {
-    sub_rv = skipBytes(&state->argument_state.fixedState, input, state->data_length);
+    sub_rv = skipBytes(fs(&state->argument_state), input, state->data_length);
     if(sub_rv != PARSE_RV_DONE) return sub_rv;
     state->state = ABISTATE_DONE;
     static char const isPresentLabel[]="Is Present (unsafe)";
@@ -886,23 +936,23 @@ enum parse_rv parse_assetCall_data(struct EVM_assetCall_state *const state, pars
     PRINTF("state: %u\n", state->state);
     switch(state->state) {
     case ASSETCALL_ADDRESS:
-      sub_rv = parseFixed(&state->address_state.fixedState, input, ETHEREUM_ADDRESS_SIZE);
+      sub_rv = parseFixed(fs(&state->address_state), input, ETHEREUM_ADDRESS_SIZE);
       if(sub_rv != PARSE_RV_DONE) return sub_rv;
       SET_PROMPT_VALUE(memcpy(entry->data.output_prompt.address.val, state->address_state.buf, ETHEREUM_ADDRESS_SIZE));
       PRINTF("Address: %.*h\n", ETHEREUM_ADDRESS_SIZE, state->address_state.buf);
       state->state++;
-      initFixed((struct FixedState *const) &state->id32_state, sizeof(state->id32_state));
+      initFixed(fs(&state->id32_state), sizeof(state->id32_state));
       fallthrough;
     case ASSETCALL_ASSETID:
-      sub_rv = parseFixed(&state->id32_state.fixedState, input, sizeof(Id32));
+      sub_rv = parseFixed(fs(&state->id32_state), input, sizeof(Id32));
       if(sub_rv != PARSE_RV_DONE) return sub_rv;
       SET_PROMPT_VALUE(memcpy(&entry->data.output_prompt.assetCall.assetID, state->id32_state.buf, sizeof(uint256_t)));
       PRINTF("Asset: %.*h\n", 32, state->id32_state.buf);
       state->state++;
-      initFixed((struct FixedState *const) &state->uint256_state, sizeof(state->uint256_state));
+      initFixed(fs(&state->uint256_state), sizeof(state->uint256_state));
       fallthrough;
     case ASSETCALL_AMOUNT:
-      sub_rv = parseFixed(&state->uint256_state.fixedState, input, sizeof(uint256_t));
+      sub_rv = parseFixed(fs(&state->uint256_state), input, sizeof(uint256_t));
       if(sub_rv != PARSE_RV_DONE) return sub_rv;
       SET_PROMPT_VALUE(readu256BE(state->uint256_state.buf, &entry->data.output_prompt.assetCall.amount));
       PRINTF("Amount: %.*h\n", 32, state->uint256_state.buf);
@@ -918,14 +968,14 @@ enum parse_rv parse_assetCall_data(struct EVM_assetCall_state *const state, pars
       if (state->data_length != 4) {
         REJECT("unsupported assetCall length");
       }
-      initFixed((struct FixedState *const) &state->selector_state, sizeof(state->selector_state));
+      initFixed(fs(&state->selector_state), sizeof(state->selector_state));
       fallthrough;
     case ASSETCALL_DATA:
-      sub_rv = parseFixed(&state->selector_state.fixedState, input, 4);
+      sub_rv = parseFixed(fs(&state->selector_state), input, 4);
       if(sub_rv != PARSE_RV_DONE) return sub_rv;
 
       static const uint8_t depositSelectorBytes [4] = { 0xd0, 0xe3, 0x0d, 0xb0 };
-      if(memcmp(PIC(depositSelectorBytes), state->selector_state.buf, 4))
+      if(memcmp(PIC(&depositSelectorBytes), state->selector_state.buf, 4))
         REJECT("unsupported assetCall selector");
 
       PRINTF("Selector %.*h\n", 4, state->selector_state.buf);

@@ -67,11 +67,16 @@ static void setup_prompt_evm_bytes32(uint8_t *buffer, output_prompt_t *const pro
              ABI_BYTES32("role")                                        \
              ABI_ADDRESS("account"))                                    \
 
+typedef void (*setup_prompt_fun_t)(
+    uint8_t *buffer, output_prompt_t *const prompt);
+
+typedef void (*output_prompt_fun_t)(
+    char *const out, size_t const out_size, output_prompt_t const *const in);
 
 struct contract_endpoint_param {
   char *name;
-  void (*setup_prompt)(uint8_t *buffer, output_prompt_t *const prompt);
-  void (*output_prompt)(char *const out, size_t const out_size, output_prompt_t const *const in);
+  setup_prompt_fun_t setup_prompt;
+  output_prompt_fun_t output_prompt;
 };
 
 #define ABI_MAX_PARAMETERS 3
