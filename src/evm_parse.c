@@ -346,7 +346,7 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
       case 1:
         if(state->state==1) {
             // Max length we could get for this value is 8 bytes so uint64_state is appropriate.
-            sub_rv = parseFixed(((struct FixedState*)&state->uint64_state), &meta->input, state->len_len);
+            sub_rv = parseFixed(fs(&state->uint64_state), &meta->input, state->len_len);
             if(sub_rv != PARSE_RV_DONE) return sub_rv;
             for(size_t i = 0; i < state->len_len; i++) {
                 ((uint8_t*)(&state->remaining))[i] = state->uint64_state.buf[state->len_len-i-1];
@@ -553,7 +553,7 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
       case 1:
         if(state->state==1) {
             // Max length we could get for this value is 8 bytes so uint64_state is appropriate.
-            sub_rv = parseFixed(((struct FixedState*)&state->uint64_state), &meta->input, state->len_len);
+            sub_rv = parseFixed(fs(&state->uint64_state), &meta->input, state->len_len);
             if(sub_rv != PARSE_RV_DONE) return sub_rv;
             for(size_t i = 0; i < state->len_len; i++) {
                 ((uint8_t*)(&state->remaining))[i] = state->uint64_state.buf[state->len_len-i-1];
@@ -780,7 +780,7 @@ enum parse_rv impl_parse_rlp_item(struct EVM_RLP_item_state *const state, evm_pa
       } fallthrough;
       case 1:
         if(state->state == 1) {
-            sub_rv = parseFixed((struct FixedState*) &state->uint64_state, &meta->input, state->len_len);
+            sub_rv = parseFixed(fs(&state->uint64_state), &meta->input, state->len_len);
             if(sub_rv != PARSE_RV_DONE) break;
             for(size_t i = 0; i < state->len_len; i++) {
                 ((uint8_t*)(&state->length))[i] = state->uint64_state.buf[state->len_len-i-1];
@@ -905,7 +905,7 @@ enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
     const struct contract_endpoint_param parameter = meta->known_endpoint->parameters[state->argument_index++];
     char *argument_name = PIC(parameter.name);
     setup_prompt_fun_t setup_prompt = PIC(parameter.setup_prompt);
-    SET_PROMPT_VALUE(setup_prompt(((struct FixedState*)(&state->argument_state))->buffer,
+    SET_PROMPT_VALUE(setup_prompt(fs(&state->argument_state)->buffer,
                                   &entry->data.output_prompt));
     initFixed(fs(&state->argument_state), sizeof(state->argument_state));
     ADD_ACCUM_PROMPT_ABI(argument_name, PIC(parameter.output_prompt));
