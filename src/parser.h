@@ -12,16 +12,18 @@ enum parse_rv {
     PARSE_RV_DONE,
 };
 
-struct FixedState {
-    size_t filledTo;
-    uint8_t buffer[];
+// This will be casted to a FixedState elsewhere
+struct FixedState0 {
+    size_t filledTo_;
+    uint8_t buffer_[0];
 };
+
 #define DEFINE_FIXED(name) \
   struct name ## _state { \
     union { \
-      struct FixedState fixedState; \
+      struct FixedState0 fixed_state; \
       struct { \
-        size_t state; \
+        size_t padding_; \
         union { \
             name val; \
             uint8_t buf[sizeof(name)]; \
@@ -29,25 +31,19 @@ struct FixedState {
       }; \
     }; \
   };
+
 #define DEFINE_FIXED_BE(name) \
   struct name ## _state { \
     union { \
-      struct FixedState fixedState; \
+      struct FixedState0 fixed_state; \
       struct { \
-        size_t state; \
+        size_t padding_; \
         uint8_t buf[sizeof(name)]; \
-        name val; \
       }; \
     }; \
+    name val; \
   };
 
-#define IMPL_FIXED(name) \
-    static inline enum parse_rv parse_ ## name (struct name ## _state *const state, parser_meta_state_t *const meta) { \
-        return parseFixed((struct FixedState *const)state, &meta->input, sizeof(name));\
-    } \
-    static inline void init_ ## name (struct name ## _state *const state) { \
-        return initFixed((struct FixedState *const)state, sizeof(*state)); \
-    }
 #define DEFINE_ARRAY(name) \
     struct name ## s_state { \
         int state; \
@@ -413,154 +409,3 @@ typedef struct {
 
 
 } parser_meta_state_t;
-
-// EVM stuff below this line
-
-union EVM_endpoint_argument_states {
-  struct FixedState fixedState;
-  struct uint256_t_state uint256_state;
-  struct Address_state address_state;
-};
-
-enum assetCall_state_t {
-    ASSETCALL_ADDRESS,
-    ASSETCALL_ASSETID,
-    ASSETCALL_AMOUNT,
-    ASSETCALL_DATA,
-    ASSETCALL_DONE,
-};
-
-struct EVM_assetCall_state {
-  enum assetCall_state_t state;
-  uint64_t data_length;
-    union {
-        struct Id32_state id32_state;
-        struct uint256_t_state uint256_state;
-        struct uint32_t_state selector_state;
-        struct {
-            struct Address_state address_state;
-            parser_input_meta_state_t chunk;
-            // union EVM_endpoint_states endpoint_state;
-        };
-    };
-};
-
-enum abi_state_t {
-  ABISTATE_SELECTOR,
-  ABISTATE_ARGUMENTS,
-  ABISTATE_UNRECOGNIZED,
-  ABISTATE_DONE,
-};
-
-struct EVM_ABI_state {
-  enum abi_state_t state;
-  size_t argument_index;
-  size_t data_length;
-  union {
-    struct uint32_t_state selector_state;
-    union EVM_endpoint_argument_states argument_state;
-  };
-};
-
-union EVM_endpoint_states {
-    struct EVM_ABI_state abi_state;
-    struct EVM_assetCall_state assetCall_state;
-};
-
-struct struct_evm_parser_meta_state_t;
-typedef struct struct_evm_parser_meta_state_t evm_parser_meta_state_t;
-
-typedef enum parse_rv (*known_destination_init)(union EVM_endpoint_states *const state, uint64_t length);
-typedef enum parse_rv (*known_destination_parser)(union EVM_endpoint_states *const state, parser_input_meta_state_t *const input, evm_parser_meta_state_t *const meta);
-
-struct known_destination {
-  uint8_t to[20];
-  known_destination_init init_value;
-  known_destination_parser handle_value;
-  known_destination_init init_data;
-  known_destination_parser handle_data;
-};
-
-struct struct_evm_parser_meta_state_t {
-    parser_input_meta_state_t input;
-    uint8_t chainIdLowByte;
-    struct known_destination const *known_destination;
-    struct contract_endpoint const *known_endpoint;
-    prompt_batch_t prompt;
-};
-
-void initTransaction(struct TransactionState *const state);
-
-enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta_state_t *const meta);
-
-#define MAX_EVM_BUFFER 32
-
-struct EVM_RLP_item_state {
-    int state;
-    uint64_t length;
-    uint64_t current;
-    uint8_t len_len;
-    bool do_init;
-    union {
-        struct uint64_t_state uint64_state;
-        uint8_t buffer[MAX_EVM_BUFFER];
-        struct {
-            parser_input_meta_state_t chunk;
-            union EVM_endpoint_states endpoint_state;
-        };
-    };
-};
-
-enum txn_being_parsed_t {
-  LEGACY,
-  EIP1559
-};
-
-struct EVM_RLP_txn_state {
-    int state;
-    uint64_t remaining;
-    uint8_t len_len;
-    uint8_t item_index;
-    bool hasTo;
-    bool hasData;
-    uint64_t gasLimit;
-    uint64_t priorityFeePerGas;
-    uint64_t baseFeePerGas;
-    uint256_t value;
-    union {
-        struct uint64_t_state uint64_state;
-        struct EVM_RLP_item_state rlpItem_state;
-    };
-};
-
-struct EVM_txn_state {
-    int state; // what step of parsing we are on
-    enum txn_being_parsed_t type; 
-    union {
-      struct uint8_t_state transaction_envelope_type;
-      struct EVM_RLP_txn_state txn_state;
-    };
-};
-
-
-void initFixed(struct FixedState *const state, size_t const len);
-
-enum parse_rv parseFixed(struct FixedState *const state, parser_input_meta_state_t *const input, size_t const len);
-
-void init_rlp_list(struct EVM_RLP_txn_state *const state);
-
-void init_evm_txn(struct EVM_txn_state *const state);
-
-enum parse_rv parse_evm_txn(struct EVM_txn_state *const state, evm_parser_meta_state_t *const meta);
-
-enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta);
-
-enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_parser_meta_state_t *const meta);
-
-void strcpy_prompt(char *const out, size_t const out_size, char const *const in);
-
-bool should_flush(const prompt_batch_t *const prompt);
-
-void set_next_batch_size(prompt_batch_t *const prompt, size_t size);
-
-IMPL_FIXED(uint8_t);

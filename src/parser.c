@@ -1,6 +1,6 @@
 #include "exception.h"
 #include "globals.h"
-#include "parser.h"
+#include "parser-impl.h"
 #include "protocol.h"
 #include "to_string.h"
 #include "types.h"
@@ -17,7 +17,9 @@ void set_next_batch_size(prompt_batch_t *const prompt, size_t size) {
 #define REJECT(msg, ...) { PRINTF("Rejecting: " msg "\n", ##__VA_ARGS__); THROW_(EXC_PARSE_ERROR, "Rejected"); }
 
 #define ADD_PROMPT(label_, data_, size_, to_string_) ({ \
-        if (meta->prompt.count >= NUM_ELEMENTS(meta->prompt.entries)) THROW_(EXC_MEMORY_ERROR, "Tried to add a prompt to full queue"); \
+        if (meta->prompt.count >= NUM_ELEMENTS(meta->prompt.entries)) { \
+            THROW_(EXC_MEMORY_ERROR, "Tried to add a prompt to full queue"); \
+		} \
         sub_rv = PARSE_RV_PROMPT; \
         meta->prompt.labels[meta->prompt.count] = PROMPT(label_); \
         meta->prompt.entries[meta->prompt.count].to_string = to_string_; \
@@ -94,19 +96,6 @@ enum parse_rv skipBytes(struct FixedState *const state, parser_input_meta_state_
   input->consumed += to_copy;
   return state->filledTo == len ? PARSE_RV_DONE : PARSE_RV_NEED_MORE;
 }
-
-#define IMPL_FIXED_BE(name) \
-    static inline enum parse_rv parse_ ## name (struct name ## _state *const state, parser_meta_state_t *const meta) { \
-        enum parse_rv sub_rv = PARSE_RV_INVALID; \
-        sub_rv = parseFixed((struct FixedState *const)state, &meta->input, sizeof(name)); \
-        if (sub_rv == PARSE_RV_DONE) { \
-            state->val = READ_UNALIGNED_BIG_ENDIAN(name, state->buf); \
-        } \
-        return sub_rv; \
-    } \
-    static inline void init_ ## name (struct name ## _state *const state) { \
-        return initFixed((struct FixedState *const)state, sizeof(*state)); \
-    }
 
 IMPL_FIXED_BE(uint16_t);
 IMPL_FIXED_BE(uint32_t);
@@ -652,6 +641,7 @@ void initTransaction(struct TransactionState *const state) {
     state->state = 0;
     init_uint32_t(&state->uint32State);
     cx_sha256_init(&state->hash_state);
+    INIT_SUBPARSER(uint16State, uint16_t);
 }
 
 void update_transaction_hash(cx_sha256_t *const state, uint8_t const *const src, size_t const length) {
@@ -1045,14 +1035,14 @@ enum parse_rv parse_Validator(struct Validator_state *const state, parser_meta_s
     case 1:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
-      if (ADD_PROMPT("Start time", &state->uint64State.val, sizeof(uint64_t), time_to_string)) {
+      if (ADD_PROMPT("Start time", &state->uint64State.val, sizeof(uint64_t), time_to_string_void_ret)) {
         INIT_SUBPARSER(uint64State, uint64_t);
         break;
       }
     case 2:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
-      if (ADD_PROMPT("End time", &state->uint64State.val, sizeof(uint64_t), time_to_string)) {
+      if (ADD_PROMPT("End time", &state->uint64State.val, sizeof(uint64_t), time_to_string_void_ret)) {
         INIT_SUBPARSER(uint64State, uint64_t);
         break;
       }
