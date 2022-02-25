@@ -398,14 +398,18 @@ typedef struct  {
   prompt_entry_t entries[TRANSACTION_PROMPT_MAX_BATCH_SIZE];
 } prompt_batch_t;
 
+enum chain_role {
+  CHAIN_P,
+  CHAIN_X,
+  CHAIN_C,
+};
+
 typedef struct {
     parser_input_meta_state_t input;
     prompt_batch_t prompt;
     uint32_t raw_type_id;
     union transaction_type_id_t type_id;
-    bool is_p_chain;
-    bool is_x_chain;
-    bool is_c_chain;
+    enum chain_role chain;
     enum SwapCounterpartChain swapCounterpartChain;
     bool swap_output;
     uint64_t last_output_amount;
