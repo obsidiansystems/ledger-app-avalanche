@@ -366,16 +366,24 @@ typedef struct {
 
 #define TRANSACTION_PROMPT_MAX_BATCH_SIZE 2
 
-enum transaction_type_id_t {
+enum transaction_reg_type_id_t {
     TRANSACTION_TYPE_ID_BASE = 0,
     TRANSACTION_TYPE_ID_IMPORT = 3,
     TRANSACTION_TYPE_ID_EXPORT = 4,
     TRANSACTION_TYPE_ID_ADD_VALIDATOR = 0x0c,
     TRANSACTION_TYPE_ID_ADD_DELEGATOR = 0x0e,
     TRANSACTION_TYPE_ID_PLATFORM_IMPORT = 0x11,
-    TRANSACTION_TYPE_ID_PLATFORM_EXPORT = 0x12,
-    TRANSACTION_TYPE_ID_C_CHAIN_IMPORT = 0x00, // Yes, this is duplicate with BASE.
+    TRANSACTION_TYPE_ID_PLATFORM_EXPORT = 0x12
+};
+
+enum transaction_c_type_id_t {
+    TRANSACTION_TYPE_ID_C_CHAIN_IMPORT = 0x00,
     TRANSACTION_TYPE_ID_C_CHAIN_EXPORT = 0x01
+};
+
+union transaction_type_id_t {
+    enum transaction_reg_type_id_t reg;
+    enum transaction_c_type_id_t c;
 };
 
 enum SwapCounterpartChain {
@@ -394,7 +402,7 @@ typedef struct {
     parser_input_meta_state_t input;
     prompt_batch_t prompt;
     uint32_t raw_type_id;
-    enum transaction_type_id_t type_id;
+    union transaction_type_id_t type_id;
     bool is_p_chain;
     bool is_x_chain;
     bool is_c_chain;
