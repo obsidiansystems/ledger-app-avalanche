@@ -207,12 +207,21 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                 if (memcmp(state->addressState.buf, global.apdu.u.sign.change_address, sizeof(public_key_hash_t)) == 0) {
                   // skip change address
                 } else if(meta->swap_output) {
-                  switch (meta->type_id.x) {
+                  switch (meta->chain) {
+                  case CHAIN_X:
+                    switch (meta->type_id.x) {
                     case TRANSACTION_X_CHAIN_TYPE_ID_EXPORT:
-                      should_break = meta->swapCounterpartChain == SWAPCOUNTERPARTCHAIN_P
+                        should_break = meta->swapCounterpartChain == SWAPCOUNTERPARTCHAIN_P
                           ? ADD_PROMPT("X to P chain", &output_prompt, sizeof(output_prompt), output_prompt_to_string)
                           : ADD_PROMPT("X to C chain", &output_prompt, sizeof(output_prompt), output_prompt_to_string);
                         break;
+                    default:
+                        // If we throw here, we set swap_output somewhere _wrong_.
+                        THROW(EXC_PARSE_ERROR);
+                    };
+                    break;
+                  case CHAIN_P:
+                    switch (meta->type_id.p) {
                     case TRANSACTION_P_CHAIN_TYPE_ID_EXPORT:
                         should_break = ADD_PROMPT(
                             "P to X chain",
@@ -233,6 +242,11 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                     default:
                         // If we throw here, we set swap_output somewhere _wrong_.
                         THROW(EXC_PARSE_ERROR);
+                    };
+                    break;
+                  case CHAIN_C:
+                    // If we throw here, we set swap_output somewhere _wrong_.
+                    THROW(EXC_PARSE_ERROR);
                   }
                 } else {
                   switch (meta->chain) {
@@ -710,12 +724,33 @@ static bool prompt_fee(parser_meta_state_t *const meta) {
     return should_break;
 }
 
-static bool is_pchain_transaction(union transaction_type_id_t type) {
-  switch (type.p) {
+static bool is_xchain_transaction(enum transaction_x_chain_type_id_t type) {
+  switch (type) {
+    case TRANSACTION_X_CHAIN_TYPE_ID_BASE:
+    case TRANSACTION_X_CHAIN_TYPE_ID_IMPORT:
+    case TRANSACTION_X_CHAIN_TYPE_ID_EXPORT:
+      return true;
+    default:
+      return false;
+  }
+}
+
+static bool is_pchain_transaction(enum transaction_p_chain_type_id_t type) {
+  switch (type) {
     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR:
     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR:
     case TRANSACTION_P_CHAIN_TYPE_ID_IMPORT:
     case TRANSACTION_P_CHAIN_TYPE_ID_EXPORT:
+      return true;
+    default:
+      return false;
+  }
+}
+
+static bool is_cchain_transaction(enum transaction_c_chain_type_id_t type) {
+  switch (type) {
+    case TRANSACTION_C_CHAIN_TYPE_ID_IMPORT:
+    case TRANSACTION_C_CHAIN_TYPE_ID_EXPORT:
       return true;
     default:
       return false;
@@ -813,7 +848,7 @@ enum parse_rv parse_ImportTransaction(struct ImportTransactionState *const state
       switch (state->state) {
         case 0: // ChainID
             CALL_SUBPARSER(id32State, Id32);
-            if(is_pchain_transaction(meta->type_id)) {
+            if(is_pchain_transaction(meta->type_id.p)) {
               if(memcmp(network_info_from_network_id_not_null(meta->network_id)->x_blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
                 REJECT("Invalid XChain ID");
             } else {
@@ -866,7 +901,7 @@ enum parse_rv parse_ExportTransaction(struct ExportTransactionState *const state
     switch (state->state) {
         case 0: // ChainID
             CALL_SUBPARSER(id32State, Id32);
-            if(is_pchain_transaction(meta->type_id)) {
+            if(is_pchain_transaction(meta->type_id.p)) {
               if(memcmp(network_info_from_network_id_not_null(meta->network_id)->x_blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
                 REJECT("Invalid XChain ID");
             } else {
@@ -1237,15 +1272,21 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             state->state++;
 
             switch (meta->chain) {
-            case CHAIN_P:
-              if (!is_pchain_transaction(meta->type_id)) {
+            case CHAIN_X:
+              if (!is_xchain_transaction(meta->type_id.x)) {
                 REJECT("Blockchain ID did not match expected value for network ID");
               }
               break;
-            case CHAIN_X:
+            case CHAIN_P:
+              if (!is_pchain_transaction(meta->type_id.p)) {
+                REJECT("Blockchain ID did not match expected value for network ID");
+              }
+              break;
             case CHAIN_C:
-              if (is_pchain_transaction(meta->type_id)) {
+              if (is_pchain_transaction(meta->type_id.p)) {
                 REJECT("Transaction ID indicates P-chain but blockchain ID is is not 0");
+              } else if (!is_cchain_transaction(meta->type_id.c)) {
+                REJECT("Blockchain ID did not match expected value for network ID");
               }
               break;
             }
@@ -1290,7 +1331,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
                 break;
               default:
                 REJECT("Only base, export, and import transactions are supported");
-              }
+              };
               break;
             case CHAIN_C:
               switch (meta->type_id.c) {
@@ -1302,8 +1343,8 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
                 break;
               default:
                 REJECT("Only base, export, and import transactions are supported");
-              }
-            }
+              };
+            };
         } fallthrough;
         case 4: {
             switch (meta->chain) {
