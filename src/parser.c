@@ -1305,9 +1305,9 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
         } fallthrough;
         case 3: { // Base transaction
             if(meta->chain != CHAIN_C) { // C-chain atomic transactions have a different format; skip here.
-                PRINTF("TRACE\n");
+                PRINTF("TRACE pre basic tx subparser break, chain enum: %d\n", meta->chain);
                 CALL_SUBPARSER_BREAK(baseTxState, BaseTransaction);
-                PRINTF("TRACE\n");
+                PRINTF("TRACE post basic tx subparser");
             } else {
                 PRINTF("SKIPPING BASE TRANSACTION\n");
             }
