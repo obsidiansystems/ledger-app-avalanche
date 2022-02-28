@@ -366,10 +366,13 @@ typedef struct {
 
 #define TRANSACTION_PROMPT_MAX_BATCH_SIZE 2
 
-enum transaction_reg_type_id_t {
+enum transaction_x_chain_type_id_t {
     TRANSACTION_X_CHAIN_TYPE_ID_BASE            = 0x00,
     TRANSACTION_X_CHAIN_TYPE_ID_IMPORT          = 0x03,
-    TRANSACTION_X_CHAIN_TYPE_ID_EXPORT          = 0x04,
+    TRANSACTION_X_CHAIN_TYPE_ID_EXPORT          = 0x04
+};
+
+enum transaction_p_chain_type_id_t {
     TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR   = 0x0c,
     TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR   = 0x0e,
     TRANSACTION_P_CHAIN_TYPE_ID_IMPORT          = 0x11,
@@ -382,7 +385,8 @@ enum transaction_c_chain_type_id_t {
 };
 
 union transaction_type_id_t {
-    enum transaction_reg_type_id_t reg;
+    enum transaction_x_chain_type_id_t x;
+    enum transaction_p_chain_type_id_t p;
     enum transaction_c_chain_type_id_t c;
 };
 
