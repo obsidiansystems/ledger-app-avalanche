@@ -236,7 +236,6 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                   }
                 } else {
                   switch (meta->chain) {
-                  case CHAIN_P:
                   case CHAIN_X:
                     switch (meta->type_id.reg) {
                     case TRANSACTION_X_CHAIN_TYPE_ID_IMPORT:
@@ -246,6 +245,16 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                           output_prompt_to_string
                           );
                       break;
+                    default:
+                      should_break = ADD_PROMPT(
+                          "Transfer",
+                          &output_prompt, sizeof(output_prompt),
+                          output_prompt_to_string
+                          );
+                    }
+                    break;
+                  case CHAIN_P:
+                    switch (meta->type_id.reg) {
                     case TRANSACTION_P_CHAIN_TYPE_ID_IMPORT:
                       should_break = ADD_PROMPT(
                           "From X chain",
