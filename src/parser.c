@@ -65,12 +65,18 @@ union transaction_type_id_t convert_type_id_to_type(uint32_t raw_type_id, enum c
       REJECT("Invalid transaction type_id; Must be base, export, or import; found %d", raw_type_id);
     }
     switch (chain) {
-    case CHAIN_P:
     case CHAIN_X:
         switch (raw_type_id) {
         case TRANSACTION_X_CHAIN_TYPE_ID_BASE:
         case TRANSACTION_X_CHAIN_TYPE_ID_IMPORT:
         case TRANSACTION_X_CHAIN_TYPE_ID_EXPORT:
+          return (union transaction_type_id_t) { .reg = raw_type_id };
+        default:
+          ; // error at end
+        }
+        break;
+    case CHAIN_P:
+        switch (raw_type_id) {
         case TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR:
         case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR:
         case TRANSACTION_P_CHAIN_TYPE_ID_IMPORT:
