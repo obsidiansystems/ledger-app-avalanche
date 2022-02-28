@@ -1163,27 +1163,33 @@ typedef struct { char const* label; size_t label_size; } label_t;
 
 #define LABEL(l) (label_t) { .label = l ## Label, .label_size = sizeof(l ## Label) }
 
-static label_t type_id_to_label(union transaction_type_id_t type_id, bool is_c_chain) {
-  if (!is_c_chain) {
+static label_t type_id_to_label(union transaction_type_id_t type_id, enum chain_role chain) {
+  switch (chain) {
+  case CHAIN_X:
     switch (type_id.reg) {
     case TRANSACTION_X_CHAIN_TYPE_ID_BASE: return LABEL(transaction);
     case TRANSACTION_X_CHAIN_TYPE_ID_IMPORT: return LABEL(import);
     case TRANSACTION_X_CHAIN_TYPE_ID_EXPORT: return LABEL(export);
+    default:; // throws below
+    };
+    break;
+  case CHAIN_P:
+    switch (type_id.reg) {
     case TRANSACTION_P_CHAIN_TYPE_ID_IMPORT: return LABEL(import);
     case TRANSACTION_P_CHAIN_TYPE_ID_EXPORT: return LABEL(export);
     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR: return LABEL(validate);
     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR: return LABEL(delegate);
-    default:
-      THROW(EXC_PARSE_ERROR);
-    }
-  } else {
+    default:; // throws below
+    };
+    break;
+  case CHAIN_C:
     switch (type_id.c) {
     case TRANSACTION_C_CHAIN_TYPE_ID_IMPORT: return LABEL(import);
     case TRANSACTION_C_CHAIN_TYPE_ID_EXPORT: return LABEL(export);
-    default:
-      THROW(EXC_PARSE_ERROR);
-    }
-  }
+    default:; // throws below
+    };
+  };
+  THROW(EXC_PARSE_ERROR);
 }
 
 #undef LABEL
@@ -1245,7 +1251,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             }
 
             INIT_SUBPARSER(baseTxState, BaseTransaction);
-            label_t label = type_id_to_label(meta->type_id, meta->chain == CHAIN_C);
+            label_t label = type_id_to_label(meta->type_id, meta->chain);
             if (ADD_PROMPT("Sign", label.label, label.label_size, strcpy_prompt)) break;
         } fallthrough;
         case 3: { // Base transaction
