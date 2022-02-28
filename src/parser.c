@@ -70,7 +70,7 @@ union transaction_type_id_t convert_type_id_to_type(uint32_t raw_type_id, enum c
         case TRANSACTION_X_CHAIN_TYPE_ID_BASE:
         case TRANSACTION_X_CHAIN_TYPE_ID_IMPORT:
         case TRANSACTION_X_CHAIN_TYPE_ID_EXPORT:
-          return (union transaction_type_id_t) { .reg = raw_type_id };
+          return (union transaction_type_id_t) { .x = raw_type_id };
         default:
           ; // error at end
         }
@@ -81,7 +81,7 @@ union transaction_type_id_t convert_type_id_to_type(uint32_t raw_type_id, enum c
         case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR:
         case TRANSACTION_P_CHAIN_TYPE_ID_IMPORT:
         case TRANSACTION_P_CHAIN_TYPE_ID_EXPORT:
-          return (union transaction_type_id_t) { .reg = raw_type_id };
+          return (union transaction_type_id_t) { .p = raw_type_id };
         default:
           ; // error at end
         }
@@ -207,7 +207,7 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                 if (memcmp(state->addressState.buf, global.apdu.u.sign.change_address, sizeof(public_key_hash_t)) == 0) {
                   // skip change address
                 } else if(meta->swap_output) {
-                  switch(meta->type_id.reg) {
+                  switch (meta->type_id.x) {
                     case TRANSACTION_X_CHAIN_TYPE_ID_EXPORT:
                       should_break = meta->swapCounterpartChain == SWAPCOUNTERPARTCHAIN_P
                           ? ADD_PROMPT("X to P chain", &output_prompt, sizeof(output_prompt), output_prompt_to_string)
@@ -237,7 +237,7 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                 } else {
                   switch (meta->chain) {
                   case CHAIN_X:
-                    switch (meta->type_id.reg) {
+                    switch (meta->type_id.x) {
                     case TRANSACTION_X_CHAIN_TYPE_ID_IMPORT:
                       should_break = ADD_PROMPT(
                           "Sending",
@@ -254,7 +254,7 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                     }
                     break;
                   case CHAIN_P:
-                    switch (meta->type_id.reg) {
+                    switch (meta->type_id.p) {
                     case TRANSACTION_P_CHAIN_TYPE_ID_IMPORT:
                       should_break = ADD_PROMPT(
                           "From X chain",
@@ -711,7 +711,7 @@ static bool prompt_fee(parser_meta_state_t *const meta) {
 }
 
 static bool is_pchain_transaction(union transaction_type_id_t type) {
-  switch (type.reg) {
+  switch (type.p) {
     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR:
     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR:
     case TRANSACTION_P_CHAIN_TYPE_ID_IMPORT:
@@ -1135,7 +1135,7 @@ enum parse_rv parse_AddValidatorTransaction(struct AddValidatorTransactionState
         } fallthrough;
         case 3: {
             // Add delegator transactions don't include shares.
-            if(meta->type_id.reg == TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR) {
+            if(meta->type_id.p == TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR) {
               sub_rv = PARSE_RV_DONE;
               state->state++;
               break;
@@ -1166,7 +1166,7 @@ typedef struct { char const* label; size_t label_size; } label_t;
 static label_t type_id_to_label(union transaction_type_id_t type_id, enum chain_role chain) {
   switch (chain) {
   case CHAIN_X:
-    switch (type_id.reg) {
+    switch (type_id.x) {
     case TRANSACTION_X_CHAIN_TYPE_ID_BASE: return LABEL(transaction);
     case TRANSACTION_X_CHAIN_TYPE_ID_IMPORT: return LABEL(import);
     case TRANSACTION_X_CHAIN_TYPE_ID_EXPORT: return LABEL(export);
@@ -1174,7 +1174,7 @@ static label_t type_id_to_label(union transaction_type_id_t type_id, enum chain_
     };
     break;
   case CHAIN_P:
-    switch (type_id.reg) {
+    switch (type_id.p) {
     case TRANSACTION_P_CHAIN_TYPE_ID_IMPORT: return LABEL(import);
     case TRANSACTION_P_CHAIN_TYPE_ID_EXPORT: return LABEL(export);
     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR: return LABEL(validate);
@@ -1266,7 +1266,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             switch (meta->chain) {
             case CHAIN_P:
             case CHAIN_X:
-              switch (meta->type_id.reg) {
+              switch (meta->type_id.x) {
               case TRANSACTION_X_CHAIN_TYPE_ID_BASE:
                 break;
               case TRANSACTION_X_CHAIN_TYPE_ID_IMPORT:
@@ -1306,7 +1306,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             switch (meta->chain) {
             case CHAIN_P:
             case CHAIN_X:
-              switch (meta->type_id.reg) {
+              switch (meta->type_id.x) {
               case TRANSACTION_X_CHAIN_TYPE_ID_BASE:
                 sub_rv = PARSE_RV_DONE;
                 break;

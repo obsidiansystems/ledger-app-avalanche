@@ -382,7 +382,8 @@ enum transaction_c_chain_type_id_t {
 };
 
 union transaction_type_id_t {
-    enum transaction_reg_type_id_t reg;
+    enum transaction_reg_type_id_t x;
+    enum transaction_reg_type_id_t p;
     enum transaction_c_chain_type_id_t c;
 };
 
