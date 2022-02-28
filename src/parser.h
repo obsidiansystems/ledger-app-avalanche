@@ -367,23 +367,23 @@ typedef struct {
 #define TRANSACTION_PROMPT_MAX_BATCH_SIZE 2
 
 enum transaction_reg_type_id_t {
-    TRANSACTION_TYPE_ID_BASE = 0,
-    TRANSACTION_TYPE_ID_IMPORT = 3,
-    TRANSACTION_TYPE_ID_EXPORT = 4,
-    TRANSACTION_TYPE_ID_ADD_VALIDATOR = 0x0c,
-    TRANSACTION_TYPE_ID_ADD_DELEGATOR = 0x0e,
-    TRANSACTION_TYPE_ID_PLATFORM_IMPORT = 0x11,
-    TRANSACTION_TYPE_ID_PLATFORM_EXPORT = 0x12
+    TRANSACTION_X_CHAIN_TYPE_ID_BASE            = 0x00,
+    TRANSACTION_X_CHAIN_TYPE_ID_IMPORT          = 0x03,
+    TRANSACTION_X_CHAIN_TYPE_ID_EXPORT          = 0x04,
+    TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR   = 0x0c,
+    TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR   = 0x0e,
+    TRANSACTION_P_CHAIN_TYPE_ID_IMPORT          = 0x11,
+    TRANSACTION_P_CHAIN_TYPE_ID_EXPORT          = 0x12
 };
 
-enum transaction_c_type_id_t {
-    TRANSACTION_TYPE_ID_C_CHAIN_IMPORT = 0x00,
-    TRANSACTION_TYPE_ID_C_CHAIN_EXPORT = 0x01
+enum transaction_c_chain_type_id_t {
+    TRANSACTION_C_CHAIN_TYPE_ID_IMPORT          = 0x00,
+    TRANSACTION_C_CHAIN_TYPE_ID_EXPORT          = 0x01
 };
 
 union transaction_type_id_t {
     enum transaction_reg_type_id_t reg;
-    enum transaction_c_type_id_t c;
+    enum transaction_c_chain_type_id_t c;
 };
 
 enum SwapCounterpartChain {
