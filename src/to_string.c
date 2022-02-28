@@ -11,7 +11,8 @@
 #include <limits.h>
 
 static const char nodeid_prefix[] = "NodeID-";
-size_t nodeid_to_string(char *const out, size_t const out_size, public_key_hash_t const *const payload)
+size_t nodeid_to_string(
+    char out[const], size_t const out_size, public_key_hash_t const *const payload)
 {
     if (out_size < sizeof(nodeid_prefix) - 1)
         THROW(EXC_MEMORY_ERROR);
@@ -27,8 +28,10 @@ size_t nodeid_to_string(char *const out, size_t const out_size, public_key_hash_
     return b58sz;
 }
 
-size_t pkh_to_string(char *const out, size_t const out_size, char const *const hrp, size_t const hrp_size,
-                   public_key_hash_t const *const payload)
+size_t pkh_to_string(
+    char out[const], size_t const out_size,
+    char const *const hrp, size_t const hrp_size,
+    public_key_hash_t const *const payload)
 {
     uint8_t base32_enc[32];
 
@@ -50,7 +53,9 @@ static inline void bound_check_buffer(size_t const counter, size_t const size) {
     }
 }
 
-void bip32_path_to_string(char *const out, size_t const out_size, bip32_path_t const *const path) {
+void bip32_path_to_string(
+    char out[const], size_t const out_size, bip32_path_t const *const path)
+{
     check_null(out);
     check_null(path);
     size_t out_current_offset = 0;
@@ -77,7 +82,9 @@ void bip32_path_to_string(char *const out, size_t const out_size, bip32_path_t c
 // This function fills digits, potentially with all leading zeroes, from the end of the buffer backwards
 // This is intended to be used with a temporary buffer of length MAX_INT_DIGITS
 // Returns offset of where it stopped filling in
-static inline size_t convert_number(char dest[MAX_INT_DIGITS], uint64_t number, bool leading_zeroes) {
+static inline size_t convert_number(
+	char dest[MAX_INT_DIGITS], uint64_t number, bool leading_zeroes)
+{
     check_null(dest);
     char *const end = dest + MAX_INT_DIGITS;
     for (char *ptr = end - 1; ptr >= dest; ptr--) {
@@ -91,7 +98,9 @@ static inline size_t convert_number(char dest[MAX_INT_DIGITS], uint64_t number, 
 }
 
 // add a fixed number of zeros with padding
-static inline size_t convert_number_fixed(char dest[MAX_INT_DIGITS], uint64_t number, size_t padding) {
+static inline size_t convert_number_fixed(
+	char dest[MAX_INT_DIGITS], uint64_t number, size_t padding)
+{
     check_null(dest);
     char *const end = dest + padding;
     for (char *ptr = end - 1; ptr >= dest; ptr--) {
@@ -102,7 +111,10 @@ static inline size_t convert_number_fixed(char dest[MAX_INT_DIGITS], uint64_t nu
     return padding;
 }
 
-void number_to_string_indirect64(char *const dest, size_t const buff_size, uint64_t const *const number) {
+void number_to_string_indirect64(
+    char dest[const], size_t const buff_size,
+    uint64_t const *const number)
+{
   check_null(dest);
   check_null(number);
   if (buff_size < MAX_INT_DIGITS + 1)
@@ -110,7 +122,10 @@ void number_to_string_indirect64(char *const dest, size_t const buff_size, uint6
   number_to_string(dest, *number);
 }
 
-void number_to_string_indirect32(char *const dest, size_t const buff_size, uint32_t const *const number) {
+void number_to_string_indirect32(
+    char dest[const], size_t const buff_size,
+    uint32_t const *const number)
+{
     check_null(dest);
     check_null(number);
     if (buff_size < MAX_INT_DIGITS + 1)
@@ -121,7 +136,10 @@ void number_to_string_indirect32(char *const dest, size_t const buff_size, uint3
 #define DELEGATION_FEE_DIGITS 4
 #define DELEGATION_FEE_SCALE 10000
 
-void delegation_fee_to_string(char *const dest, size_t const buff_size, uint32_t const *const delegation_fee) {
+void delegation_fee_to_string(
+    char dest[const], size_t const buff_size,
+    uint32_t const *const delegation_fee)
+{
     check_null(dest);
     check_null(delegation_fee);
 
@@ -159,7 +177,8 @@ void delegation_fee_to_string(char *const dest, size_t const buff_size, uint32_t
     dest[off++] = '\0';
 }
 
-size_t number_to_string(char *const dest, uint64_t number) {
+size_t number_to_string(
+    char dest[const], uint64_t number) {
     check_null(dest);
     char tmp[MAX_INT_DIGITS];
     size_t off = convert_number(tmp, number, false);
@@ -178,7 +197,10 @@ size_t number_to_string(char *const dest, uint64_t number) {
 #define WEI_AVAX_DIGITS 18
 
 // Display avax in human readable form
-size_t subunit_to_unit_string(char *const dest, size_t const buff_size, uint64_t subunits, uint64_t scale) {
+size_t subunit_to_unit_string(
+    char dest[const], size_t const buff_size,
+    uint64_t subunits, uint64_t scale)
+{
     check_null(dest);
 
     if (buff_size < MAX_INT_DIGITS + 2)
@@ -213,7 +235,10 @@ size_t subunit_to_unit_string(char *const dest, size_t const buff_size, uint64_t
 }
 
 // Display avax in human readable form
-size_t subunit_to_unit_string_256(char *const dest, size_t const buff_size, const uint256_t *const subunits, uint8_t digits) {
+size_t subunit_to_unit_string_256(
+    char dest[const], size_t const buff_size,
+    const uint256_t *const subunits, uint8_t digits)
+{
     check_null(dest);
     size_t off = tostring256_fixed_point(subunits, 10, digits, dest, buff_size);
 
@@ -223,7 +248,10 @@ size_t subunit_to_unit_string_256(char *const dest, size_t const buff_size, cons
     return off;
 }
 
-size_t nano_avax_to_string(char *const dest, size_t const buff_size, uint64_t const nano_avax) {
+size_t nano_avax_to_string(
+    char dest[const], size_t const buff_size,
+    uint64_t const nano_avax)
+{
   static char const unit[] = " AVAX";
   size_t ix = subunit_to_unit_string(dest, buff_size, nano_avax, NANO_AVAX_SCALE);
   if (ix + sizeof(unit) > buff_size) THROW_(EXC_MEMORY_ERROR, "Can't fit ' AVAX' into prompt value string");
@@ -231,7 +259,10 @@ size_t nano_avax_to_string(char *const dest, size_t const buff_size, uint64_t co
   ix += sizeof(unit) - 1;
   return ix;
 }
-size_t wei_to_gwei_string(char *const dest, size_t const buff_size, uint64_t const wei) {
+size_t wei_to_gwei_string(
+    char dest[const], size_t const buff_size,
+    uint64_t const wei)
+{
   static char const unit[] = " GWEI";
   size_t ix = subunit_to_unit_string(dest, buff_size, wei, WEI_GWEI_SCALE);
   if (ix + sizeof(unit) > buff_size) THROW_(EXC_MEMORY_ERROR, "Can't fit ' GWEI' into prompt value string");
@@ -239,7 +270,10 @@ size_t wei_to_gwei_string(char *const dest, size_t const buff_size, uint64_t con
   ix += sizeof(unit) - 1;
   return ix;
 }
-size_t wei_to_gwei_string256(char *const dest, size_t const buff_size, uint64_t const wei) {
+size_t wei_to_gwei_string_256(
+    char dest[const], size_t const buff_size,
+    uint256_t const* wei)
+{
   static char const unit[] = " GWEI";
   size_t ix = subunit_to_unit_string_256(dest, buff_size, wei, 9);
   if (ix + sizeof(unit) > buff_size) THROW_(EXC_MEMORY_ERROR, "Can't fit ' GWEI' into prompt value string");
@@ -247,7 +281,10 @@ size_t wei_to_gwei_string256(char *const dest, size_t const buff_size, uint64_t 
   ix += sizeof(unit) - 1;
   return ix;
 }
-size_t wei_to_navax_string(char *const dest, size_t const buff_size, uint64_t const wei) {
+size_t wei_to_navax_string(
+    char dest[const], size_t const buff_size,
+    uint64_t const wei)
+{
   static char const unit[] = " nAVAX";
   size_t ix = subunit_to_unit_string(dest, buff_size, wei, WEI_GWEI_SCALE);
   if (ix + sizeof(unit) > buff_size) THROW_(EXC_MEMORY_ERROR, "Can't fit ' nAVAX' into prompt value string");
@@ -256,7 +293,10 @@ size_t wei_to_navax_string(char *const dest, size_t const buff_size, uint64_t co
   return ix;
 }
 
-size_t wei_to_avax_or_navax_string_256(char *const dest, size_t const buff_size, uint256_t const *const wei) {
+size_t wei_to_avax_or_navax_string_256(
+    char dest[const], size_t const buff_size,
+    uint256_t const *const wei)
+{
   const uint8_t AVAX_NAVAX_DISPLAY_THRESHOLD_BE[] = {
       0x0, 0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,
       0x0, 0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,      
@@ -282,12 +322,18 @@ size_t wei_to_avax_or_navax_string_256(char *const dest, size_t const buff_size,
   }
 }
 
-void nano_avax_to_string_indirect64(char *const dest, size_t const buff_size, uint64_t const *const number) {
+void nano_avax_to_string_indirect64(
+    char dest[const], size_t const buff_size,
+    uint64_t const *const number)
+{
     check_null(number);
     nano_avax_to_string(dest, buff_size, *number);
 }
 
-void copy_string(char *const dest, size_t const buff_size, char const *const src) {
+void copy_string(
+    char dest[const], size_t const buff_size,
+    char const *const src)
+{
     check_null(dest);
     check_null(src);
     char const *const src_in = (char const *)PIC(src);
@@ -297,7 +343,10 @@ void copy_string(char *const dest, size_t const buff_size, char const *const src
     strncpy(dest, src_in, buff_size);
 }
 
-void bin_to_hex(char *const out, size_t const out_size, uint8_t const *const in, size_t const in_size) {
+void bin_to_hex(
+    char out[const], size_t const out_size,
+    uint8_t const *const in, size_t const in_size)
+{
     check_null(out);
     check_null(in);
 
@@ -313,7 +362,10 @@ void bin_to_hex(char *const out, size_t const out_size, uint8_t const *const in,
     out[out_len] = '\0';
 }
 
-void bin_to_hex_lc(char *const out, size_t const out_size, uint8_t const *const in, size_t const in_size) {
+void bin_to_hex_lc(
+    char out[], size_t const out_size,
+    uint8_t const in[], size_t const in_size)
+{
     check_null(out);
     check_null(in);
 
@@ -332,7 +384,8 @@ void bin_to_hex_lc(char *const out, size_t const out_size, uint8_t const *const 
     out[out_len] = '\0';
 }
 
-void buffer_to_hex(char *const out, size_t const out_size, buffer_t const *const in) {
+void buffer_to_hex(
+    char out[const], size_t const out_size, buffer_t const *const in) {
     check_null(out);
     check_null(in);
     buffer_t const *const src = (buffer_t const *)PIC(in);
@@ -352,7 +405,10 @@ void buffer_to_hex(char *const out, size_t const out_size, buffer_t const *const
  // YYYY-MM-DD HH:MM:SS UTC
 #define TIME_FORMAT_SIZE 23
 
-size_t time_to_string(char *const dest, size_t const buff_size, uint64_t const *const time) {
+size_t time_to_string(
+    char dest[const], size_t const buff_size,
+    uint64_t const *const time)
+{
     check_null(dest);
     check_null(time);
 
@@ -425,4 +481,12 @@ size_t time_to_string(char *const dest, size_t const buff_size, uint64_t const *
     dest[ix++] = '\0';
 
     return ix;
+}
+
+
+void time_to_string_void_ret(
+    char dest[const], size_t const buff_size,
+    uint64_t const *const time)
+{
+	return (void)time_to_string(dest, buff_size, time);
 }

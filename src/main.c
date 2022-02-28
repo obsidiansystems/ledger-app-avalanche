@@ -18,11 +18,11 @@ static const apdu_handler evm_handlers[] = {
 
 static const struct app_handlers g_handlers = {
     .avm = {
-        .handlers = avm_handlers,
+        .handlers = &avm_handlers,
         .handlers_size = NUM_ELEMENTS(avm_handlers)
     },
     .evm = {
-        .handlers = evm_handlers,
+        .handlers = &evm_handlers,
         .handlers_size = NUM_ELEMENTS(evm_handlers)
     }
 };
