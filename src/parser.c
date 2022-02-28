@@ -759,6 +759,28 @@ void init_BaseTransactionHeader(struct BaseTransactionHeaderState *const state) 
   INIT_SUBPARSER(uint32State, uint32_t);
 }
 
+enum opt_chain_role {
+  OPT_CHAIN_X = CHAIN_X,
+  OPT_CHAIN_P = CHAIN_P,
+  OPT_CHAIN_C = CHAIN_C,
+  OPT_CHAIN_INVAL = -1
+};
+
+static enum opt_chain_role decode_chain_id(network_id_t const network_id, blockchain_id_t *blockchain_id) {
+  const network_info_t *const net_info = network_info_from_network_id_not_null(network_id);
+  const blockchain_id_t *const x_blockchain_id = &net_info->x_blockchain_id;
+  const blockchain_id_t *const c_blockchain_id = &net_info->c_blockchain_id;
+  if (is_pchain(blockchain_id)) {
+    return OPT_CHAIN_P;
+  } else if (!memcmp(x_blockchain_id, blockchain_id, sizeof(*blockchain_id))) {
+    return OPT_CHAIN_X;
+  } else if (!memcmp(c_blockchain_id, blockchain_id, sizeof(*blockchain_id))) {
+    return OPT_CHAIN_C;
+  } else {
+    return OPT_CHAIN_INVAL;
+  }
+}
+
 enum parse_rv parse_BaseTransactionHeader(struct BaseTransactionHeaderState *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
     switch(state->state) {
@@ -772,19 +794,12 @@ enum parse_rv parse_BaseTransactionHeader(struct BaseTransactionHeaderState *con
       fallthrough;
       case BTSH_BlockchainId: {
             CALL_SUBPARSER(bidState, blockchain_id_t);
-            PRINTF("Blockchain ID: %.*h\n", 32, state->bidState.buf);
-            const network_info_t *const net_info = network_info_from_network_id_not_null(meta->network_id);
-            const blockchain_id_t *const x_blockchain_id = &net_info->x_blockchain_id;
-            const blockchain_id_t *const c_blockchain_id = &net_info->c_blockchain_id;
-            if (is_pchain(&state->bidState.val)) {
-                meta->chain = CHAIN_P;
-            } else if (!memcmp(x_blockchain_id, &state->bidState.val, sizeof(state->bidState.val))) {
-                meta->chain = CHAIN_X;
-            } else if (!memcmp(c_blockchain_id, &state->bidState.val, sizeof(state->bidState.val))) {
-                meta->chain = CHAIN_C;
-            } else {
+            PRINTF("Blockchain ID: %.*h\n", 32, state->bidState.val.bytes);
+            enum opt_chain_role chain = decode_chain_id(meta->network_id, &state->bidState.val);
+            if (chain == OPT_CHAIN_INVAL) {
                 REJECT("Blockchain ID did not match expected value for network ID");
             }
+            meta->chain = chain;
             state->state++;
       } fallthrough;
       case BTSH_Done:
@@ -845,20 +860,28 @@ enum parse_rv parse_ImportTransaction(struct ImportTransactionState *const state
       switch (state->state) {
         case 0: // ChainID
             CALL_SUBPARSER(bidState, blockchain_id_t);
+            enum opt_chain_role counterpart_chain = decode_chain_id(meta->network_id, &state->bidState.val);
+            if (counterpart_chain == OPT_CHAIN_INVAL) {
+                REJECT("Invalid counterpart Chain ID");
+            }
             switch (meta->chain) {
+            case CHAIN_C:
+              REJECT("internal error: C Chain not handled here");
             case CHAIN_P:
-              if(memcmp(&network_info_from_network_id_not_null(meta->network_id)->x_blockchain_id, state->bidState.buf, sizeof(blockchain_id_t)))
+              if (counterpart_chain != CHAIN_X)
                 REJECT("Invalid XChain ID");
               break;
             case CHAIN_X:
-            case CHAIN_C:
               showChainPrompt = true;
-              if (is_pchain(&state->bidState.val))
-                meta->swapCounterpartChain = SWAPCOUNTERPARTCHAIN_P;
-              else if(!memcmp(&network_info_from_network_id_not_null(meta->network_id)->c_blockchain_id, state->bidState.buf, sizeof(blockchain_id_t)))
-                meta->swapCounterpartChain = SWAPCOUNTERPARTCHAIN_C;
-              else
+              switch (counterpart_chain) {
+              case SWAPCOUNTERPARTCHAIN_P:
+              case SWAPCOUNTERPARTCHAIN_C:
+                meta->swapCounterpartChain = counterpart_chain;
+                break;
+              default:
                 REJECT("Invalid Chain ID - must be P or C");
+              }
+              break;
             }
             state->state++;
             INIT_SUBPARSER(inputsState, TransferableInputs);
@@ -901,19 +924,26 @@ enum parse_rv parse_ExportTransaction(struct ExportTransactionState *const state
     switch (state->state) {
         case 0: // ChainID
             CALL_SUBPARSER(bidState, blockchain_id_t);
+            enum opt_chain_role counterpart_chain = decode_chain_id(meta->network_id, &state->bidState.val);
+            if (counterpart_chain == OPT_CHAIN_INVAL) {
+                REJECT("Invalid counterpart Chain ID");
+            }
             switch (meta->chain) {
+            case CHAIN_C:
+              REJECT("internal error: C Chain not handled here");
             case CHAIN_P:
-              if(memcmp(&network_info_from_network_id_not_null(meta->network_id)->x_blockchain_id, state->bidState.buf, sizeof(blockchain_id_t)))
+              if (counterpart_chain != CHAIN_X)
                 REJECT("Invalid XChain ID");
               break;
             case CHAIN_X:
-            case CHAIN_C:
-              if (is_pchain(&state->bidState.val))
-                meta->swapCounterpartChain = SWAPCOUNTERPARTCHAIN_P;
-              else if(!memcmp(&network_info_from_network_id_not_null(meta->network_id)->c_blockchain_id, state->bidState.buf, sizeof(blockchain_id_t)))
-                meta->swapCounterpartChain = SWAPCOUNTERPARTCHAIN_C;
-              else
+              switch (counterpart_chain) {
+              case SWAPCOUNTERPARTCHAIN_P:
+              case SWAPCOUNTERPARTCHAIN_C:
+                meta->swapCounterpartChain = counterpart_chain;
+                break;
+              default:
                 REJECT("Invalid Chain ID - must be P or C");
+              }
             }
             state->state++;
             INIT_SUBPARSER(outputsState, TransferableOutputs);
