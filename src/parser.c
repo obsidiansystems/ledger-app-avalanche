@@ -58,6 +58,24 @@ void initFixed(struct FixedState *const state, size_t const len) {
     memset(state, 0, len);
 }
 
+// Do TRANSACTION_X_CHAIN_TYPE_ID_BASE and TRANSACTION_C_CHAIN_TYPE_ID_IMPORT
+// manually because overlap
+
+#define X_TXTS \
+    /* case TRANSACTION_X_CHAIN_TYPE_ID_BASE: */ \
+    /**/ TRANSACTION_X_CHAIN_TYPE_ID_IMPORT: \
+    case TRANSACTION_X_CHAIN_TYPE_ID_EXPORT
+
+#define P_TXTS \
+    /**/ TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR: \
+    case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR: \
+    case TRANSACTION_P_CHAIN_TYPE_ID_IMPORT: \
+    case TRANSACTION_P_CHAIN_TYPE_ID_EXPORT
+
+#define C_TXTS \
+    /* case TRANSACTION_C_CHAIN_TYPE_ID_IMPORT: */ \
+    /**/ TRANSACTION_C_CHAIN_TYPE_ID_EXPORT
+
 union transaction_type_id_t convert_type_id_to_type(uint32_t raw_type_id, enum chain_role chain) {
     static const uint32_t c_chain_bit = 24;
     if(raw_type_id & 1<<c_chain_bit) {
@@ -67,30 +85,39 @@ union transaction_type_id_t convert_type_id_to_type(uint32_t raw_type_id, enum c
     switch (chain) {
     case CHAIN_X:
         switch (raw_type_id) {
-        case TRANSACTION_X_CHAIN_TYPE_ID_BASE:
-        case TRANSACTION_X_CHAIN_TYPE_ID_IMPORT:
-        case TRANSACTION_X_CHAIN_TYPE_ID_EXPORT:
+        case TRANSACTION_X_CHAIN_TYPE_ID_BASE: // overlaps with C
+        case X_TXTS:
           return (union transaction_type_id_t) { .x = raw_type_id };
+        case P_TXTS:
+        case C_TXTS:
+          REJECT("Blockchain ID did not match expected value for network ID");
         default:
           ; // error at end
         }
         break;
     case CHAIN_P:
         switch (raw_type_id) {
-        case TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR:
-        case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR:
-        case TRANSACTION_P_CHAIN_TYPE_ID_IMPORT:
-        case TRANSACTION_P_CHAIN_TYPE_ID_EXPORT:
+        case P_TXTS:
           return (union transaction_type_id_t) { .p = raw_type_id };
+        case TRANSACTION_X_CHAIN_TYPE_ID_BASE: // overlaps with C
+        case X_TXTS:
+        case C_TXTS:
+          REJECT("Blockchain ID did not match expected value for network ID");
         default:
           ; // error at end
         }
         break;
     case CHAIN_C:
         switch (raw_type_id) {
-        case TRANSACTION_C_CHAIN_TYPE_ID_IMPORT:
-        case TRANSACTION_C_CHAIN_TYPE_ID_EXPORT:
+        case TRANSACTION_C_CHAIN_TYPE_ID_IMPORT: // overlaps with X
+        case C_TXTS:
           return (union transaction_type_id_t) { .c = raw_type_id };
+        // case P_TXTS: // nicer error below
+        case X_TXTS:
+          REJECT("Blockchain ID did not match expected value for network ID");
+        case P_TXTS:
+          // Redundant check just for nicer error. TODO: be more systematic?
+          REJECT("Transaction ID indicates P-chain but blockchain ID is is not 0");
         default:
           ; // error at end
         }
@@ -726,39 +753,6 @@ static bool prompt_fee(parser_meta_state_t *const meta) {
     return should_break;
 }
 
-static bool is_xchain_transaction(enum transaction_x_chain_type_id_t type) {
-  switch (type) {
-    case TRANSACTION_X_CHAIN_TYPE_ID_BASE:
-    case TRANSACTION_X_CHAIN_TYPE_ID_IMPORT:
-    case TRANSACTION_X_CHAIN_TYPE_ID_EXPORT:
-      return true;
-    default:
-      return false;
-  }
-}
-
-static bool is_pchain_transaction(enum transaction_p_chain_type_id_t type) {
-  switch (type) {
-    case TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR:
-    case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR:
-    case TRANSACTION_P_CHAIN_TYPE_ID_IMPORT:
-    case TRANSACTION_P_CHAIN_TYPE_ID_EXPORT:
-      return true;
-    default:
-      return false;
-  }
-}
-
-static bool is_cchain_transaction(enum transaction_c_chain_type_id_t type) {
-  switch (type) {
-    case TRANSACTION_C_CHAIN_TYPE_ID_IMPORT:
-    case TRANSACTION_C_CHAIN_TYPE_ID_EXPORT:
-      return true;
-    default:
-      return false;
-  }
-}
-
 void init_BaseTransactionHeader(struct BaseTransactionHeaderState *const state) {
   state->state = BTSH_NetworkId; // We start on Network ID
   INIT_SUBPARSER(uint32State, uint32_t);
@@ -850,10 +844,13 @@ enum parse_rv parse_ImportTransaction(struct ImportTransactionState *const state
       switch (state->state) {
         case 0: // ChainID
             CALL_SUBPARSER(id32State, Id32);
-            if(is_pchain_transaction(meta->type_id.p)) {
+            switch (meta->chain) {
+            case CHAIN_P:
               if(memcmp(network_info_from_network_id_not_null(meta->network_id)->x_blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
                 REJECT("Invalid XChain ID");
-            } else {
+              break;
+            case CHAIN_X:
+            case CHAIN_C:
               showChainPrompt = true;
               if (is_pchain(state->id32State.buf))
                 meta->swapCounterpartChain = SWAPCOUNTERPARTCHAIN_P;
@@ -903,10 +900,13 @@ enum parse_rv parse_ExportTransaction(struct ExportTransactionState *const state
     switch (state->state) {
         case 0: // ChainID
             CALL_SUBPARSER(id32State, Id32);
-            if(is_pchain_transaction(meta->type_id.p)) {
+            switch (meta->chain) {
+            case CHAIN_P:
               if(memcmp(network_info_from_network_id_not_null(meta->network_id)->x_blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
                 REJECT("Invalid XChain ID");
-            } else {
+              break;
+            case CHAIN_X:
+            case CHAIN_C:
               if (is_pchain(state->id32State.buf))
                 meta->swapCounterpartChain = SWAPCOUNTERPARTCHAIN_P;
               else if(!memcmp(network_info_from_network_id_not_null(meta->network_id)->c_blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
@@ -1279,38 +1279,26 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             meta->type_id = convert_type_id_to_type(meta->raw_type_id, meta->chain);
             state->state++;
 
-            switch (meta->chain) {
-            case CHAIN_X:
-              if (!is_xchain_transaction(meta->type_id.x)) {
-                REJECT("Blockchain ID did not match expected value for network ID");
-              }
-              break;
-            case CHAIN_P:
-              if (!is_pchain_transaction(meta->type_id.p)) {
-                REJECT("Blockchain ID did not match expected value for network ID");
-              }
-              break;
-            case CHAIN_C:
-              if (is_pchain_transaction(meta->type_id.p)) {
-                REJECT("Transaction ID indicates P-chain but blockchain ID is is not 0");
-              } else if (!is_cchain_transaction(meta->type_id.c)) {
-                REJECT("Blockchain ID did not match expected value for network ID");
-              }
-              break;
-            }
-
             INIT_SUBPARSER(baseTxState, BaseTransaction);
             label_t label = type_id_to_label(meta->type_id, meta->chain);
             if (ADD_PROMPT("Sign", label.label, label.label_size, strcpy_prompt)) break;
         } fallthrough;
         case 3: { // Base transaction
-            if(meta->chain != CHAIN_C) { // C-chain atomic transactions have a different format; skip here.
-                PRINTF("TRACE\n");
+            switch (meta->chain) {
+              case CHAIN_X:
+              case CHAIN_P:
+                PRINTF("TRACE pre basic tx subparser break, chain enum: %d\n", meta->chain);
                 CALL_SUBPARSER_BREAK(baseTxState, BaseTransaction);
-                PRINTF("TRACE\n");
-            } else {
+                PRINTF("TRACE post basic tx subparser");
+                break;
+              case CHAIN_C:
+                // C-chain atomic transactions have a different format; skip here.
                 PRINTF("SKIPPING BASE TRANSACTION\n");
+                sub_rv = PARSE_RV_DONE;
+                break;
             }
+            BUBBLE_SWITCH_BREAK;
+
             state->state++;
             switch (meta->chain) {
             case CHAIN_X:
