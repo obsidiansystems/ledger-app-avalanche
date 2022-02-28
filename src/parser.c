@@ -312,6 +312,7 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
             }
             if (should_break) break;
         }
+        fallthrough; // NOTE
         case 5:
             sub_rv = PARSE_RV_DONE;
             break;
@@ -649,6 +650,7 @@ enum parse_rv parse_TransferableInput(struct TransferableInput_state *const stat
                 state->state++; \
                 if(state->len == 0) break; \
                 init_ ## name(&state->item); \
+                fallthrough; /* NOTE! */ \
             case 1: \
                 while (true) { \
                     PRINTF(#name " %d\n", state->i + 1); \
@@ -1114,6 +1116,7 @@ enum parse_rv parse_Validator(struct Validator_state *const state, parser_meta_s
         INIT_SUBPARSER(uint64State, uint64_t);
         break;
       }
+      fallthrough; // NOTE
     case 1:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
@@ -1121,6 +1124,7 @@ enum parse_rv parse_Validator(struct Validator_state *const state, parser_meta_s
         INIT_SUBPARSER(uint64State, uint64_t);
         break;
       }
+      fallthrough; // NOTE
     case 2:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
@@ -1128,11 +1132,15 @@ enum parse_rv parse_Validator(struct Validator_state *const state, parser_meta_s
         INIT_SUBPARSER(uint64State, uint64_t);
         break;
       }
+      fallthrough; // NOTE
     case 3:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
       meta->staking_weight = state->uint64State.val;
-      if (ADD_PROMPT("Total Stake", &state->uint64State.val, sizeof(uint64_t), nano_avax_to_string_indirect64)) break;
+      if (ADD_PROMPT("Total Stake", &state->uint64State.val, sizeof(uint64_t), nano_avax_to_string_indirect64)) {
+        break;
+      }
+      fallthrough; // NOTE
     case 4:
       return PARSE_RV_DONE;
   }
