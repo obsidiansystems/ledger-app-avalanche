@@ -218,7 +218,7 @@ __attribute__((noreturn)) void main_loop(struct app_handlers const *const app_ha
                 switch (sw) {
                     default:
                         sw = 0x6800 | (e & 0x7FF);
-                        // FALL THROUGH
+                        fallthrough; // NOTE!
                     case 0x6000 ... 0x6FFF:
                     case 0x9000 ... 0x9FFF: {
                         PRINTF("Line number: %d\n", sw & 0x0FFF);

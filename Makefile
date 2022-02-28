@@ -133,7 +133,7 @@ CC       := $(CLANGPATH)clang
 AS       := $(GCCPATH)$(TOOL_PREFIX)gcc
 endif
 
-CFLAGS   += -O3 -Os -Wall -Wextra
+CFLAGS   += -O3 -Os -Wall -Wextra -Wimplicit-fallthrough
 ifneq ($(USE_NIX),)
 CFLAGS   += -mcpu=sc000
 endif

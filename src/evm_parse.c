@@ -297,13 +297,20 @@ void init_evm_txn(struct EVM_txn_state *const state) {
     init_uint8_t(&state->transaction_envelope_type);
 }
 #define PARSE_ITEM(ITEM, save) \
-            case ITEM: {\
+            /* NOTE! */ \
+            fallthrough; \
+            PARSE_ITEM_FIRST(ITEM, save)
+
+// No fallthrough, so we don't get warning
+#define PARSE_ITEM_FIRST(ITEM, save) \
+            case ITEM: { \
                 itemStartIdx = meta->input.consumed; \
                 PRINTF("Entering " #ITEM "\n");                          \
                 sub_rv = parse_rlp_item ## save(state, meta); \
                 PRINTF("Exiting " #ITEM "\n");                          \
                 state->remaining -= meta->input.consumed - itemStartIdx; \
             } (void)0
+
 #define FINISH_ITEM_CHUNK() \
             if(sub_rv != PARSE_RV_DONE) return sub_rv;                  \
             state->item_index++;                                        \
@@ -342,7 +349,8 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
               state->len_len = first - 0xf7;
               state->state=1;
           }
-      }
+        }
+        fallthrough; // NOTE
       case 1:
         if(state->state==1) {
             // Max length we could get for this value is 8 bytes so uint64_state is appropriate.
@@ -354,12 +362,13 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
         }
         init_rlp_item(&state->rlpItem_state);
         state->state = 2;
+        fallthrough; // NOTE
       case 2: { // Now parse items.
           uint8_t itemStartIdx;
           size_t gasPriceLength = 0;
           switch(state->item_index) {
 
-            PARSE_ITEM(EVM_LEGACY_TXN_NONCE, );
+            PARSE_ITEM_FIRST(EVM_LEGACY_TXN_NONCE, );
             FINISH_ITEM_CHUNK();
 
             //TODO: now that there's 256 bit support,
@@ -549,7 +558,8 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
               state->len_len = first - 0xf7;
               state->state=1;
           }
-      }
+        }
+        fallthrough;
       case 1:
         if(state->state==1) {
             // Max length we could get for this value is 8 bytes so uint64_state is appropriate.
@@ -561,10 +571,11 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
         }
         init_rlp_item(&state->rlpItem_state);
         state->state = 2;
+        fallthrough;
       case 2: { // Now parse items.
           uint8_t itemStartIdx;
           switch(state->item_index) {
-            PARSE_ITEM(EVM_EIP1559_TXN_CHAINID, _to_buffer);
+            PARSE_ITEM_FIRST(EVM_EIP1559_TXN_CHAINID, _to_buffer);
 
             if(state->rlpItem_state.length != 2
                || state->rlpItem_state.buffer[0] != 0xa8
@@ -985,6 +996,7 @@ enum parse_rv parse_assetCall_data(struct EVM_assetCall_state *const state, pars
         if(ADD_ACCUM_PROMPT("Deposit", output_assetCall_prompt_to_string))
           return PARSE_RV_PROMPT;
       }
+      fallthrough;
 
     case ASSETCALL_DONE:
       return PARSE_RV_DONE;
