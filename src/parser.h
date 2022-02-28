@@ -393,9 +393,16 @@ union transaction_type_id_t {
     enum transaction_c_chain_type_id_t c;
 };
 
+enum chain_role {
+  CHAIN_X = 0,
+  CHAIN_P = 1,
+  CHAIN_C = 2,
+};
+
+// aligns with chain_role
 enum SwapCounterpartChain {
-  SWAPCOUNTERPARTCHAIN_C = 1,
-  SWAPCOUNTERPARTCHAIN_P = 2,
+  SWAPCOUNTERPARTCHAIN_P = CHAIN_P,
+  SWAPCOUNTERPARTCHAIN_C = CHAIN_C,
 };
 
 typedef struct  {
@@ -404,12 +411,6 @@ typedef struct  {
   char const *labels[TRANSACTION_PROMPT_MAX_BATCH_SIZE + 1]; // For NULL at end
   prompt_entry_t entries[TRANSACTION_PROMPT_MAX_BATCH_SIZE];
 } prompt_batch_t;
-
-enum chain_role {
-  CHAIN_P,
-  CHAIN_X,
-  CHAIN_C,
-};
 
 typedef struct {
     parser_input_meta_state_t input;
