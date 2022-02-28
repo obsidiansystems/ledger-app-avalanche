@@ -1304,13 +1304,21 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             if (ADD_PROMPT("Sign", label.label, label.label_size, strcpy_prompt)) break;
         } fallthrough;
         case 3: { // Base transaction
-            if(meta->chain != CHAIN_C) { // C-chain atomic transactions have a different format; skip here.
+            switch (meta->chain) {
+              case CHAIN_X:
+              case CHAIN_P:
                 PRINTF("TRACE pre basic tx subparser break, chain enum: %d\n", meta->chain);
                 CALL_SUBPARSER_BREAK(baseTxState, BaseTransaction);
                 PRINTF("TRACE post basic tx subparser");
-            } else {
+                break;
+              case CHAIN_C:
+                // C-chain atomic transactions have a different format; skip here.
                 PRINTF("SKIPPING BASE TRANSACTION\n");
+                sub_rv = PARSE_RV_DONE;
+                break;
             }
+            BUBBLE_SWITCH_BREAK;
+
             state->state++;
             switch (meta->chain) {
             case CHAIN_X:
