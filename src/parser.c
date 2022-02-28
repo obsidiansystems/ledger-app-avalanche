@@ -1264,7 +1264,6 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             }
             state->state++;
             switch (meta->chain) {
-            case CHAIN_P:
             case CHAIN_X:
               switch (meta->type_id.x) {
               case TRANSACTION_X_CHAIN_TYPE_ID_BASE:
@@ -1275,6 +1274,10 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
               case TRANSACTION_X_CHAIN_TYPE_ID_EXPORT:
                 INIT_SUBPARSER(exportTxState, ExportTransaction);
                 break;
+              };
+              break;
+            case CHAIN_P:
+              switch (meta->type_id.p) {
               case TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR:
               case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR:
                 INIT_SUBPARSER(addValidatorTxState, AddValidatorTransaction);
@@ -1304,7 +1307,6 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
         } fallthrough;
         case 4: {
             switch (meta->chain) {
-            case CHAIN_P:
             case CHAIN_X:
               switch (meta->type_id.x) {
               case TRANSACTION_X_CHAIN_TYPE_ID_BASE:
@@ -1316,6 +1318,10 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
               case TRANSACTION_X_CHAIN_TYPE_ID_EXPORT:
                 CALL_SUBPARSER_BREAK(exportTxState, ExportTransaction);
                 break;
+              }
+              break;
+            case CHAIN_P:
+              switch (meta->type_id.p) {
               case TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR:
               case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR:
                 CALL_SUBPARSER_BREAK(addValidatorTxState, AddValidatorTransaction);
