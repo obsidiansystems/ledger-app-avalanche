@@ -114,10 +114,13 @@ struct Output_state {
     };
 };
 
+DEFINE_FIXED(blockchain_id_t);
+
 struct TransferableOutput_state {
     int state;
     union {
         struct Id32_state id32State;
+        struct blockchain_id_t_state bidState;
         struct Output_state outputState;
     };
 };
@@ -206,7 +209,7 @@ struct BaseTransactionHeaderState {
     union {
         struct uint16_t_state uint16State;
         struct uint32_t_state uint32State;
-        struct Id32_state id32State;
+        struct blockchain_id_t_state bidState;
     };
 };
 
@@ -233,7 +236,7 @@ struct CChainImportTransactionState {
   int state;
   union {
         struct uint32_t_state uint32State;
-        struct Id32_state id32State;
+        struct blockchain_id_t_state bidState;
         struct TransferableInputs_state inputsState;
         struct EVMOutputs_state evmOutputsState;
   };
@@ -243,7 +246,7 @@ struct CChainExportTransactionState {
   int state;
   union {
         struct uint32_t_state uint32State;
-        struct Id32_state id32State;
+        struct blockchain_id_t_state bidState;
         struct TransferableOutputs_state outputsState;
         struct EVMInputs_state inputsState;
   };
@@ -253,7 +256,7 @@ struct ImportTransactionState {
   int state;
   union {
         struct uint32_t_state uint32State;
-        struct Id32_state id32State;
+        struct blockchain_id_t_state bidState;
         struct TransferableInputs_state inputsState;
   };
 };
@@ -262,7 +265,7 @@ struct ExportTransactionState {
   int state;
   union {
         struct uint32_t_state uint32State;
-        struct Id32_state id32State;
+        struct blockchain_id_t_state bidState;
         struct TransferableOutputs_state outputsState;
   };
 };
