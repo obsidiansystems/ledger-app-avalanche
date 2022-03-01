@@ -239,7 +239,7 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                   case CHAIN_X:
                     switch (meta->type_id.x) {
                     case TRANSACTION_X_CHAIN_TYPE_ID_EXPORT:
-                        should_break = meta->swapCounterpartChain == SWAPCOUNTERPARTCHAIN_P
+                        should_break = meta->swapCounterpartChain == CHAIN_P
                           ? ADD_PROMPT("X to P chain", &output_prompt, sizeof(output_prompt), output_prompt_to_string)
                           : ADD_PROMPT("X to C chain", &output_prompt, sizeof(output_prompt), output_prompt_to_string);
                         break;
@@ -252,7 +252,7 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                     switch (meta->type_id.p) {
                     case TRANSACTION_P_CHAIN_TYPE_ID_EXPORT:
                         should_break = ADD_PROMPT(
-                            "P to X chain",
+                            "P chain export",
                             &output_prompt, sizeof(output_prompt),
                             output_prompt_to_string
                             );
@@ -299,7 +299,7 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                     switch (meta->type_id.p) {
                     case TRANSACTION_P_CHAIN_TYPE_ID_IMPORT:
                       should_break = ADD_PROMPT(
-                          "From X chain",
+                          "P chain import",
                           &output_prompt, sizeof(output_prompt),
                           output_prompt_to_string
                           );
@@ -316,7 +316,7 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                     switch (meta->type_id.c) {
                     case TRANSACTION_C_CHAIN_TYPE_ID_EXPORT:
                       should_break = ADD_PROMPT(
-                          "C to X chain",
+                          "C chain export",
                           &output_prompt, sizeof(output_prompt),
                           output_prompt_to_string
                           );
@@ -874,8 +874,8 @@ enum parse_rv parse_ImportTransaction(struct ImportTransactionState *const state
             case CHAIN_X:
               showChainPrompt = true;
               switch (counterpart_chain) {
-              case SWAPCOUNTERPARTCHAIN_P:
-              case SWAPCOUNTERPARTCHAIN_C:
+              case CHAIN_P:
+              case CHAIN_C:
                 meta->swapCounterpartChain = counterpart_chain;
                 break;
               default:
@@ -891,8 +891,8 @@ enum parse_rv parse_ImportTransaction(struct ImportTransactionState *const state
             static char const pChainLabel[]="P-chain";
             if (showChainPrompt) {
               if(ADD_PROMPT("From",
-                            meta->swapCounterpartChain == SWAPCOUNTERPARTCHAIN_C ? cChainLabel : pChainLabel,
-                            meta->swapCounterpartChain == SWAPCOUNTERPARTCHAIN_C ? sizeof(cChainLabel) : sizeof(pChainLabel),
+                            meta->swapCounterpartChain == CHAIN_C ? cChainLabel : pChainLabel,
+                            meta->swapCounterpartChain == CHAIN_C ? sizeof(cChainLabel) : sizeof(pChainLabel),
                             strcpy_prompt))
                 return PARSE_RV_PROMPT;
             }
@@ -932,13 +932,19 @@ enum parse_rv parse_ExportTransaction(struct ExportTransactionState *const state
             case CHAIN_C:
               REJECT("internal error: C Chain not handled here");
             case CHAIN_P:
-              if (counterpart_chain != CHAIN_X)
-                REJECT("Invalid XChain ID");
+              switch (counterpart_chain) {
+              case CHAIN_X:
+              case CHAIN_C:
+                meta->swapCounterpartChain = counterpart_chain;
+                break;
+              default:
+                REJECT("Invalid Chain ID - must be X or C");
+              }
               break;
             case CHAIN_X:
               switch (counterpart_chain) {
-              case SWAPCOUNTERPARTCHAIN_P:
-              case SWAPCOUNTERPARTCHAIN_C:
+              case CHAIN_P:
+              case CHAIN_C:
                 meta->swapCounterpartChain = counterpart_chain;
                 break;
               default:
@@ -1006,7 +1012,7 @@ enum parse_rv parse_EVMOutput(struct EVMOutput_state *const state, parser_meta_s
               sizeof(output_prompt.address));
 
           if(ADD_PROMPT(
-                "From X chain",
+                "Importing",
                 &output_prompt, sizeof(output_prompt),
                 output_prompt_to_string
                 ))
@@ -1066,8 +1072,10 @@ enum parse_rv parse_CChainImportTransaction(struct CChainImportTransactionState 
       switch (state->state) {
         case 0: // sourceChain
             CALL_SUBPARSER(bidState, blockchain_id_t);
-            if(memcmp(&network_info_from_network_id_not_null(meta->network_id)->x_blockchain_id, state->bidState.buf, sizeof(blockchain_id_t)))
-              REJECT("Invalid XChain ID");
+            enum opt_chain_role chain = decode_chain_id(meta->network_id, &state->bidState.val);
+            if (chain == OPT_CHAIN_INVAL) {
+                REJECT("Source Blockchain ID did not match expected value for network ID");
+            }
             state->state++;
             INIT_SUBPARSER(inputsState, TransferableInputs);
             PRINTF("Done with ChainID;\n");
@@ -1102,8 +1110,10 @@ enum parse_rv parse_CChainExportTransaction(struct CChainExportTransactionState 
       switch (state->state) {
         case 0: // destinationChain
             CALL_SUBPARSER(bidState, blockchain_id_t);
-            if(memcmp(&network_info_from_network_id_not_null(meta->network_id)->x_blockchain_id, state->bidState.buf, sizeof(blockchain_id_t)))
-              REJECT("Invalid XChain ID");
+            enum opt_chain_role chain = decode_chain_id(meta->network_id, &state->bidState.val);
+            if (chain == OPT_CHAIN_INVAL) {
+                REJECT("Destination Blockchain ID did not match expected value for network ID");
+            }
             state->state++;
             INIT_SUBPARSER(inputsState, EVMInputs);
             PRINTF("Done with ChainID;\n");
@@ -1309,7 +1319,6 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             PRINTF("Parsed BTH\n");
             meta->type_id = convert_type_id_to_type(meta->raw_type_id, meta->chain);
             state->state++;
-
             INIT_SUBPARSER(baseTxState, BaseTransaction);
             label_t label = type_id_to_label(meta->type_id, meta->chain);
             if (ADD_PROMPT("Sign", label.label, label.label_size, strcpy_prompt)) break;
