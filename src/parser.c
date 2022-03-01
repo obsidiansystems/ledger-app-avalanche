@@ -1,6 +1,6 @@
 #include "exception.h"
 #include "globals.h"
-#include "parser.h"
+#include "parser-impl.h"
 #include "protocol.h"
 #include "to_string.h"
 #include "types.h"
@@ -17,7 +17,9 @@ void set_next_batch_size(prompt_batch_t *const prompt, size_t size) {
 #define REJECT(msg, ...) { PRINTF("Rejecting: " msg "\n", ##__VA_ARGS__); THROW_(EXC_PARSE_ERROR, "Rejected"); }
 
 #define ADD_PROMPT(label_, data_, size_, to_string_) ({ \
-        if (meta->prompt.count >= NUM_ELEMENTS(meta->prompt.entries)) THROW_(EXC_MEMORY_ERROR, "Tried to add a prompt to full queue"); \
+        if (meta->prompt.count >= NUM_ELEMENTS(meta->prompt.entries)) { \
+            THROW_(EXC_MEMORY_ERROR, "Tried to add a prompt to full queue"); \
+        } \
         sub_rv = PARSE_RV_PROMPT; \
         meta->prompt.labels[meta->prompt.count] = PROMPT(label_); \
         meta->prompt.entries[meta->prompt.count].to_string = to_string_; \
@@ -56,24 +58,72 @@ void initFixed(struct FixedState *const state, size_t const len) {
     memset(state, 0, len);
 }
 
-enum transaction_type_id_t convert_type_id_to_type(uint32_t type_id, uint8_t is_c_chain) {
+// Do TRANSACTION_X_CHAIN_TYPE_ID_BASE and TRANSACTION_C_CHAIN_TYPE_ID_IMPORT
+// manually because overlap
+
+#define X_TXTS \
+    /* case TRANSACTION_X_CHAIN_TYPE_ID_BASE: */ \
+    /**/ TRANSACTION_X_CHAIN_TYPE_ID_IMPORT: \
+    case TRANSACTION_X_CHAIN_TYPE_ID_EXPORT
+
+#define P_TXTS \
+    /**/ TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR: \
+    case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR: \
+    case TRANSACTION_P_CHAIN_TYPE_ID_IMPORT: \
+    case TRANSACTION_P_CHAIN_TYPE_ID_EXPORT
+
+#define C_TXTS \
+    /* case TRANSACTION_C_CHAIN_TYPE_ID_IMPORT: */ \
+    /**/ TRANSACTION_C_CHAIN_TYPE_ID_EXPORT
+
+union transaction_type_id_t convert_type_id_to_type(uint32_t raw_type_id, enum chain_role chain) {
     static const uint32_t c_chain_bit = 24;
-    if(type_id & 1<<c_chain_bit) {
+    if(raw_type_id & 1<<c_chain_bit) {
         // If this becomes a real type id, just change the 24 for the switch.
-      REJECT("Invalid transaction type_id; Must be base, export, or import; found %d", type_id);
+      REJECT("Invalid transaction type_id; Must be base, export, or import; found %d", raw_type_id);
     }
-  switch (type_id | is_c_chain<<c_chain_bit) {
-      case 0: return TRANSACTION_TYPE_ID_BASE;
-      case 3: return TRANSACTION_TYPE_ID_IMPORT;
-      case 4: return TRANSACTION_TYPE_ID_EXPORT;
-      case 0x11: return TRANSACTION_TYPE_ID_PLATFORM_IMPORT;
-      case 0x12: return TRANSACTION_TYPE_ID_PLATFORM_EXPORT;
-      case 0x0c: return TRANSACTION_TYPE_ID_ADD_VALIDATOR;
-      case 0x0e: return TRANSACTION_TYPE_ID_ADD_DELEGATOR;
-      case 1<<c_chain_bit | 0x00: return TRANSACTION_TYPE_ID_C_CHAIN_IMPORT;
-      case 1<<c_chain_bit | 0x01: return TRANSACTION_TYPE_ID_C_CHAIN_EXPORT;
-      default: REJECT("Invalid transaction type_id; Must be base, export, or import; found %d", type_id);
-  }
+    switch (chain) {
+    case CHAIN_X:
+        switch (raw_type_id) {
+        case TRANSACTION_X_CHAIN_TYPE_ID_BASE: // overlaps with C
+        case X_TXTS:
+          return (union transaction_type_id_t) { .x = raw_type_id };
+        case P_TXTS:
+        case C_TXTS:
+          REJECT("Blockchain ID did not match expected value for network ID");
+        default:
+          ; // error at end
+        }
+        break;
+    case CHAIN_P:
+        switch (raw_type_id) {
+        case P_TXTS:
+          return (union transaction_type_id_t) { .p = raw_type_id };
+        case TRANSACTION_X_CHAIN_TYPE_ID_BASE: // overlaps with C
+        case X_TXTS:
+        case C_TXTS:
+          REJECT("Blockchain ID did not match expected value for network ID");
+        default:
+          ; // error at end
+        }
+        break;
+    case CHAIN_C:
+        switch (raw_type_id) {
+        case TRANSACTION_C_CHAIN_TYPE_ID_IMPORT: // overlaps with X
+        case C_TXTS:
+          return (union transaction_type_id_t) { .c = raw_type_id };
+        // case P_TXTS: // nicer error below
+        case X_TXTS:
+          REJECT("Blockchain ID did not match expected value for network ID");
+        case P_TXTS:
+          // Redundant check just for nicer error. TODO: be more systematic?
+          REJECT("Transaction ID indicates P-chain but blockchain ID is is not 0");
+        default:
+          ; // error at end
+        }
+        break;
+    }
+    REJECT("Invalid transaction type_id; Must be base, export, or import; found %d", raw_type_id);
 }
 
 enum parse_rv parseFixed(struct FixedState *const state, parser_input_meta_state_t *const input, size_t const len) {
@@ -94,19 +144,6 @@ enum parse_rv skipBytes(struct FixedState *const state, parser_input_meta_state_
   input->consumed += to_copy;
   return state->filledTo == len ? PARSE_RV_DONE : PARSE_RV_NEED_MORE;
 }
-
-#define IMPL_FIXED_BE(name) \
-    static inline enum parse_rv parse_ ## name (struct name ## _state *const state, parser_meta_state_t *const meta) { \
-        enum parse_rv sub_rv = PARSE_RV_INVALID; \
-        sub_rv = parseFixed((struct FixedState *const)state, &meta->input, sizeof(name)); \
-        if (sub_rv == PARSE_RV_DONE) { \
-            state->val = READ_UNALIGNED_BIG_ENDIAN(name, state->buf); \
-        } \
-        return sub_rv; \
-    } \
-    static inline void init_ ## name (struct name ## _state *const state) { \
-        return initFixed((struct FixedState *const)state, sizeof(*state)); \
-    }
 
 IMPL_FIXED_BE(uint16_t);
 IMPL_FIXED_BE(uint32_t);
@@ -197,21 +234,30 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                 if (memcmp(state->addressState.buf, global.apdu.u.sign.change_address, sizeof(public_key_hash_t)) == 0) {
                   // skip change address
                 } else if(meta->swap_output) {
-                  switch(meta->type_id) {
-                    case TRANSACTION_TYPE_ID_EXPORT:
-                      should_break = meta->swapCounterpartChain == SWAPCOUNTERPARTCHAIN_P
+                  switch (meta->chain) {
+                  case CHAIN_X:
+                    switch (meta->type_id.x) {
+                    case TRANSACTION_X_CHAIN_TYPE_ID_EXPORT:
+                        should_break = meta->swapCounterpartChain == SWAPCOUNTERPARTCHAIN_P
                           ? ADD_PROMPT("X to P chain", &output_prompt, sizeof(output_prompt), output_prompt_to_string)
                           : ADD_PROMPT("X to C chain", &output_prompt, sizeof(output_prompt), output_prompt_to_string);
                         break;
-                    case TRANSACTION_TYPE_ID_PLATFORM_EXPORT:
+                    default:
+                        // If we throw here, we set swap_output somewhere _wrong_.
+                        THROW(EXC_PARSE_ERROR);
+                    };
+                    break;
+                  case CHAIN_P:
+                    switch (meta->type_id.p) {
+                    case TRANSACTION_P_CHAIN_TYPE_ID_EXPORT:
                         should_break = ADD_PROMPT(
                             "P to X chain",
                             &output_prompt, sizeof(output_prompt),
                             output_prompt_to_string
                             );
                         break;
-                    case TRANSACTION_TYPE_ID_ADD_VALIDATOR:
-                    case TRANSACTION_TYPE_ID_ADD_DELEGATOR:
+                    case TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR:
+                    case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR:
 
                         if (__builtin_uaddll_overflow(meta->staked, meta->last_output_amount, &meta->staked)) THROW_(EXC_MEMORY_ERROR, "Stake total overflowed.");
                         should_break = ADD_PROMPT(
@@ -223,25 +269,51 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                     default:
                         // If we throw here, we set swap_output somewhere _wrong_.
                         THROW(EXC_PARSE_ERROR);
+                    };
+                    break;
+                  case CHAIN_C:
+                    // If we throw here, we set swap_output somewhere _wrong_.
+                    THROW(EXC_PARSE_ERROR);
                   }
                 } else {
-                  const uint8_t c_chain_bit = 24;
-                  switch(meta->is_c_chain << c_chain_bit | meta->type_id) {
-                    case TRANSACTION_TYPE_ID_IMPORT:
+                  switch (meta->chain) {
+                  case CHAIN_X:
+                    switch (meta->type_id.x) {
+                    case TRANSACTION_X_CHAIN_TYPE_ID_IMPORT:
                       should_break = ADD_PROMPT(
                           "Sending",
                           &output_prompt, sizeof(output_prompt),
                           output_prompt_to_string
                           );
                       break;
-                    case TRANSACTION_TYPE_ID_PLATFORM_IMPORT:
+                    default:
+                      should_break = ADD_PROMPT(
+                          "Transfer",
+                          &output_prompt, sizeof(output_prompt),
+                          output_prompt_to_string
+                          );
+                    }
+                    break;
+                  case CHAIN_P:
+                    switch (meta->type_id.p) {
+                    case TRANSACTION_P_CHAIN_TYPE_ID_IMPORT:
                       should_break = ADD_PROMPT(
                           "From X chain",
                           &output_prompt, sizeof(output_prompt),
                           output_prompt_to_string
                           );
                       break;
-                    case 1<<c_chain_bit | TRANSACTION_TYPE_ID_C_CHAIN_EXPORT:
+                    default:
+                      should_break = ADD_PROMPT(
+                          "Transfer",
+                          &output_prompt, sizeof(output_prompt),
+                          output_prompt_to_string
+                          );
+                    }
+                    break;
+                  case CHAIN_C:
+                    switch (meta->type_id.c) {
+                    case TRANSACTION_C_CHAIN_TYPE_ID_EXPORT:
                       should_break = ADD_PROMPT(
                           "C to X chain",
                           &output_prompt, sizeof(output_prompt),
@@ -254,6 +326,8 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                           &output_prompt, sizeof(output_prompt),
                           output_prompt_to_string
                           );
+                    }
+                    break;
                   }
                 }
 
@@ -265,6 +339,7 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
             }
             if (should_break) break;
         }
+        fallthrough; // NOTE
         case 5:
             sub_rv = PARSE_RV_DONE;
             break;
@@ -602,6 +677,7 @@ enum parse_rv parse_TransferableInput(struct TransferableInput_state *const stat
                 state->state++; \
                 if(state->len == 0) break; \
                 init_ ## name(&state->item); \
+                fallthrough; /* NOTE! */ \
             case 1: \
                 while (true) { \
                     PRINTF(#name " %d\n", state->i + 1); \
@@ -652,6 +728,7 @@ void initTransaction(struct TransactionState *const state) {
     state->state = 0;
     init_uint32_t(&state->uint32State);
     cx_sha256_init(&state->hash_state);
+    INIT_SUBPARSER(uint16State, uint16_t);
 }
 
 void update_transaction_hash(cx_sha256_t *const state, uint8_t const *const src, size_t const length) {
@@ -676,18 +753,6 @@ static bool prompt_fee(parser_meta_state_t *const meta) {
     return should_break;
 }
 
-static bool is_pchain_transaction(enum transaction_type_id_t type) {
-  switch(type) {
-    case TRANSACTION_TYPE_ID_ADD_VALIDATOR:
-    case TRANSACTION_TYPE_ID_ADD_DELEGATOR:
-    case TRANSACTION_TYPE_ID_PLATFORM_IMPORT:
-    case TRANSACTION_TYPE_ID_PLATFORM_EXPORT:
-      return true;
-    default:
-      return false;
-  }
-}
-
 void init_BaseTransactionHeader(struct BaseTransactionHeaderState *const state) {
   state->state = BTSH_NetworkId; // We start on Network ID
   INIT_SUBPARSER(uint32State, uint32_t);
@@ -710,10 +775,13 @@ enum parse_rv parse_BaseTransactionHeader(struct BaseTransactionHeaderState *con
             const network_info_t *const net_info = network_info_from_network_id_not_null(meta->network_id);
             const blockchain_id_t *const x_blockchain_id = &net_info->x_blockchain_id;
             const blockchain_id_t *const c_blockchain_id = &net_info->c_blockchain_id;
-            meta->is_p_chain = is_pchain(state->id32State.val.val);
-            meta->is_x_chain = !memcmp(x_blockchain_id, &state->id32State.val, sizeof(state->id32State.val));
-            meta->is_c_chain = !memcmp(c_blockchain_id, &state->id32State.val, sizeof(state->id32State.val));
-            if(!(meta->is_p_chain || meta->is_x_chain || meta->is_c_chain)) {
+            if (is_pchain(state->id32State.val.val)) {
+                meta->chain = CHAIN_P;
+            } else if (!memcmp(x_blockchain_id, &state->id32State.val, sizeof(state->id32State.val))) {
+                meta->chain = CHAIN_X;
+            } else if (!memcmp(c_blockchain_id, &state->id32State.val, sizeof(state->id32State.val))) {
+                meta->chain = CHAIN_C;
+            } else {
                 REJECT("Blockchain ID did not match expected value for network ID");
             }
             state->state++;
@@ -776,10 +844,13 @@ enum parse_rv parse_ImportTransaction(struct ImportTransactionState *const state
       switch (state->state) {
         case 0: // ChainID
             CALL_SUBPARSER(id32State, Id32);
-            if(is_pchain_transaction(meta->type_id)) {
+            switch (meta->chain) {
+            case CHAIN_P:
               if(memcmp(network_info_from_network_id_not_null(meta->network_id)->x_blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
                 REJECT("Invalid XChain ID");
-            } else {
+              break;
+            case CHAIN_X:
+            case CHAIN_C:
               showChainPrompt = true;
               if (is_pchain(state->id32State.buf))
                 meta->swapCounterpartChain = SWAPCOUNTERPARTCHAIN_P;
@@ -829,10 +900,13 @@ enum parse_rv parse_ExportTransaction(struct ExportTransactionState *const state
     switch (state->state) {
         case 0: // ChainID
             CALL_SUBPARSER(id32State, Id32);
-            if(is_pchain_transaction(meta->type_id)) {
+            switch (meta->chain) {
+            case CHAIN_P:
               if(memcmp(network_info_from_network_id_not_null(meta->network_id)->x_blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
                 REJECT("Invalid XChain ID");
-            } else {
+              break;
+            case CHAIN_X:
+            case CHAIN_C:
               if (is_pchain(state->id32State.buf))
                 meta->swapCounterpartChain = SWAPCOUNTERPARTCHAIN_P;
               else if(!memcmp(network_info_from_network_id_not_null(meta->network_id)->c_blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
@@ -1042,25 +1116,31 @@ enum parse_rv parse_Validator(struct Validator_state *const state, parser_meta_s
         INIT_SUBPARSER(uint64State, uint64_t);
         break;
       }
+      fallthrough; // NOTE
     case 1:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
-      if (ADD_PROMPT("Start time", &state->uint64State.val, sizeof(uint64_t), time_to_string)) {
+      if (ADD_PROMPT("Start time", &state->uint64State.val, sizeof(uint64_t), time_to_string_void_ret)) {
         INIT_SUBPARSER(uint64State, uint64_t);
         break;
       }
+      fallthrough; // NOTE
     case 2:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
-      if (ADD_PROMPT("End time", &state->uint64State.val, sizeof(uint64_t), time_to_string)) {
+      if (ADD_PROMPT("End time", &state->uint64State.val, sizeof(uint64_t), time_to_string_void_ret)) {
         INIT_SUBPARSER(uint64State, uint64_t);
         break;
       }
+      fallthrough; // NOTE
     case 3:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
       meta->staking_weight = state->uint64State.val;
-      if (ADD_PROMPT("Total Stake", &state->uint64State.val, sizeof(uint64_t), nano_avax_to_string_indirect64)) break;
+      if (ADD_PROMPT("Total Stake", &state->uint64State.val, sizeof(uint64_t), nano_avax_to_string_indirect64)) {
+        break;
+      }
+      fallthrough; // NOTE
     case 4:
       return PARSE_RV_DONE;
   }
@@ -1098,7 +1178,7 @@ enum parse_rv parse_AddValidatorTransaction(struct AddValidatorTransactionState
         } fallthrough;
         case 3: {
             // Add delegator transactions don't include shares.
-            if(meta->type_id==TRANSACTION_TYPE_ID_ADD_DELEGATOR) {
+            if(meta->type_id.p == TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR) {
               sub_rv = PARSE_RV_DONE;
               state->state++;
               break;
@@ -1124,23 +1204,38 @@ static char const delegateLabel[] = "Add Delegator";
 
 typedef struct { char const* label; size_t label_size; } label_t;
 
-static label_t type_id_to_label(enum transaction_type_id_t type_id, bool is_c_chain) {
-  switch (type_id | is_c_chain<<8) {
-    case TRANSACTION_TYPE_ID_BASE: return (label_t) { .label = transactionLabel, .label_size = sizeof(transactionLabel) };
-    case TRANSACTION_TYPE_ID_IMPORT: return (label_t) { .label = importLabel, .label_size = sizeof(importLabel) };
-    case TRANSACTION_TYPE_ID_EXPORT: return (label_t) { .label = exportLabel, .label_size = sizeof(exportLabel) };
-    case TRANSACTION_TYPE_ID_PLATFORM_IMPORT: return (label_t) { .label = importLabel, .label_size = sizeof(importLabel) };
-    case TRANSACTION_TYPE_ID_PLATFORM_EXPORT: return (label_t) { .label = exportLabel, .label_size = sizeof(exportLabel) };
-    case TRANSACTION_TYPE_ID_ADD_VALIDATOR:
-                                              return (label_t) { .label = validateLabel, .label_size = sizeof(validateLabel) };
-    case TRANSACTION_TYPE_ID_ADD_DELEGATOR:
-                                              return (label_t) { .label = delegateLabel, .label_size = sizeof(delegateLabel) };
-    case 0x0100 | TRANSACTION_TYPE_ID_C_CHAIN_IMPORT: return (label_t) { .label = importLabel, .label_size = sizeof(importLabel) };
-    case 0x0100 | TRANSACTION_TYPE_ID_C_CHAIN_EXPORT: return (label_t) { .label = exportLabel, .label_size = sizeof(exportLabel) };
-    default:
-      THROW(EXC_PARSE_ERROR);
-  }
+#define LABEL(l) (label_t) { .label = l ## Label, .label_size = sizeof(l ## Label) }
+
+static label_t type_id_to_label(union transaction_type_id_t type_id, enum chain_role chain) {
+  switch (chain) {
+  case CHAIN_X:
+    switch (type_id.x) {
+    case TRANSACTION_X_CHAIN_TYPE_ID_BASE: return LABEL(transaction);
+    case TRANSACTION_X_CHAIN_TYPE_ID_IMPORT: return LABEL(import);
+    case TRANSACTION_X_CHAIN_TYPE_ID_EXPORT: return LABEL(export);
+    default:; // throws below
+    };
+    break;
+  case CHAIN_P:
+    switch (type_id.p) {
+    case TRANSACTION_P_CHAIN_TYPE_ID_IMPORT: return LABEL(import);
+    case TRANSACTION_P_CHAIN_TYPE_ID_EXPORT: return LABEL(export);
+    case TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR: return LABEL(validate);
+    case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR: return LABEL(delegate);
+    default:; // throws below
+    };
+    break;
+  case CHAIN_C:
+    switch (type_id.c) {
+    case TRANSACTION_C_CHAIN_TYPE_ID_IMPORT: return LABEL(import);
+    case TRANSACTION_C_CHAIN_TYPE_ID_EXPORT: return LABEL(export);
+    default:; // throws below
+    };
+  };
+  THROW(EXC_PARSE_ERROR);
 }
+
+#undef LABEL
 
 // Call the subparser and use break on end-of-chunk;
 // this allows doing chunkwise computation on the result, e.g. for hashing it.
@@ -1181,88 +1276,114 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
         case 2: { // Base transaction header
             CALL_SUBPARSER_BREAK(baseTxHdrState, BaseTransactionHeader);
             PRINTF("Parsed BTH\n");
-            meta->type_id = convert_type_id_to_type(meta->raw_type_id, meta->is_c_chain);
+            meta->type_id = convert_type_id_to_type(meta->raw_type_id, meta->chain);
             state->state++;
 
-            label_t label = type_id_to_label(meta->type_id, meta->is_c_chain);
-            if (is_pchain_transaction(meta->type_id)) {
-              if (!meta->is_p_chain)
-                REJECT("Transaction ID indicates P-chain but blockchain ID is is not 0");
-            } else {
-              if (!(meta->is_x_chain || meta->is_c_chain))
-                REJECT("Blockchain ID did not match expected value for network ID");
-            }
-
             INIT_SUBPARSER(baseTxState, BaseTransaction);
+            label_t label = type_id_to_label(meta->type_id, meta->chain);
             if (ADD_PROMPT("Sign", label.label, label.label_size, strcpy_prompt)) break;
         } fallthrough;
         case 3: { // Base transaction
-            if(! meta->is_c_chain) { // C-chain atomic transactions have a different format; skip here.
-                PRINTF("TRACE\n");
+            switch (meta->chain) {
+              case CHAIN_X:
+              case CHAIN_P:
+                PRINTF("TRACE pre basic tx subparser break, chain enum: %d\n", meta->chain);
                 CALL_SUBPARSER_BREAK(baseTxState, BaseTransaction);
-                PRINTF("TRACE\n");
-            } else {
-                PRINTF("SKIPPING BASE TRANSACTION\n");
-            }
-            state->state++;
-            switch(meta->type_id | meta->is_c_chain << 8) {
-              case TRANSACTION_TYPE_ID_BASE:
+                PRINTF("TRACE post basic tx subparser");
                 break;
-              case TRANSACTION_TYPE_ID_IMPORT:
+              case CHAIN_C:
+                // C-chain atomic transactions have a different format; skip here.
+                PRINTF("SKIPPING BASE TRANSACTION\n");
+                sub_rv = PARSE_RV_DONE;
+                break;
+            }
+            BUBBLE_SWITCH_BREAK;
+
+            state->state++;
+            switch (meta->chain) {
+            case CHAIN_X:
+              switch (meta->type_id.x) {
+              case TRANSACTION_X_CHAIN_TYPE_ID_BASE:
+                break;
+              case TRANSACTION_X_CHAIN_TYPE_ID_IMPORT:
                 INIT_SUBPARSER(importTxState, ImportTransaction);
                 break;
-              case TRANSACTION_TYPE_ID_EXPORT:
+              case TRANSACTION_X_CHAIN_TYPE_ID_EXPORT:
                 INIT_SUBPARSER(exportTxState, ExportTransaction);
                 break;
-              case TRANSACTION_TYPE_ID_ADD_VALIDATOR:
-              case TRANSACTION_TYPE_ID_ADD_DELEGATOR:
+              };
+              break;
+            case CHAIN_P:
+              switch (meta->type_id.p) {
+              case TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR:
+              case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR:
                 INIT_SUBPARSER(addValidatorTxState, AddValidatorTransaction);
                 break;
-              case TRANSACTION_TYPE_ID_PLATFORM_IMPORT:
+              case TRANSACTION_P_CHAIN_TYPE_ID_IMPORT:
                 INIT_SUBPARSER(importTxState, ImportTransaction);
                 break;
-              case TRANSACTION_TYPE_ID_PLATFORM_EXPORT:
+              case TRANSACTION_P_CHAIN_TYPE_ID_EXPORT:
                 INIT_SUBPARSER(exportTxState, ExportTransaction);
                 break;
-              case 0x0100 | TRANSACTION_TYPE_ID_C_CHAIN_IMPORT:
+              default:
+                REJECT("Only base, export, and import transactions are supported");
+              };
+              break;
+            case CHAIN_C:
+              switch (meta->type_id.c) {
+              case TRANSACTION_C_CHAIN_TYPE_ID_IMPORT:
                 INIT_SUBPARSER(cChainImportState, CChainImportTransaction);
                 break;
-              case 0x0100 | TRANSACTION_TYPE_ID_C_CHAIN_EXPORT:
+              case TRANSACTION_C_CHAIN_TYPE_ID_EXPORT:
                 INIT_SUBPARSER(cChainExportState, CChainExportTransaction);
                 break;
               default:
                 REJECT("Only base, export, and import transactions are supported");
-            }
+              };
+            };
         } fallthrough;
         case 4: {
-            switch (meta->type_id | meta->is_c_chain << 8) {
-              case TRANSACTION_TYPE_ID_BASE:
+            switch (meta->chain) {
+            case CHAIN_X:
+              switch (meta->type_id.x) {
+              case TRANSACTION_X_CHAIN_TYPE_ID_BASE:
                 sub_rv = PARSE_RV_DONE;
                 break;
-              case TRANSACTION_TYPE_ID_IMPORT:
+              case TRANSACTION_X_CHAIN_TYPE_ID_IMPORT:
                 CALL_SUBPARSER_BREAK(importTxState, ImportTransaction);
                 break;
-              case TRANSACTION_TYPE_ID_EXPORT:
+              case TRANSACTION_X_CHAIN_TYPE_ID_EXPORT:
                 CALL_SUBPARSER_BREAK(exportTxState, ExportTransaction);
                 break;
-              case TRANSACTION_TYPE_ID_ADD_VALIDATOR:
-              case TRANSACTION_TYPE_ID_ADD_DELEGATOR:
+              }
+              break;
+            case CHAIN_P:
+              switch (meta->type_id.p) {
+              case TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR:
+              case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR:
                 CALL_SUBPARSER_BREAK(addValidatorTxState, AddValidatorTransaction);
                 break;
-              case TRANSACTION_TYPE_ID_PLATFORM_IMPORT:
+              case TRANSACTION_P_CHAIN_TYPE_ID_IMPORT:
                 CALL_SUBPARSER_BREAK(importTxState, ImportTransaction);
                 break;
-              case TRANSACTION_TYPE_ID_PLATFORM_EXPORT:
+              case TRANSACTION_P_CHAIN_TYPE_ID_EXPORT:
                 CALL_SUBPARSER_BREAK(exportTxState, ExportTransaction);
                 break;
-              case 0x0100 | TRANSACTION_TYPE_ID_C_CHAIN_IMPORT:
+              default:
+                REJECT("Only base, export, and import transactions are supported");
+              }
+              break;
+            case CHAIN_C:
+              switch (meta->type_id.c) {
+              case TRANSACTION_C_CHAIN_TYPE_ID_IMPORT:
                 CALL_SUBPARSER_BREAK(cChainImportState, CChainImportTransaction);
                 break;
-              case 0x0100 | TRANSACTION_TYPE_ID_C_CHAIN_EXPORT:
+              case TRANSACTION_C_CHAIN_TYPE_ID_EXPORT:
                 CALL_SUBPARSER_BREAK(cChainExportState, CChainExportTransaction);
                 break;
               default:
                 REJECT("Only base, export, and import transactions are supported");
+              }
             }
             BUBBLE_SWITCH_BREAK;
             state->state++;

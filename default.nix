@@ -97,16 +97,16 @@ let
         '';
         nativeBuildInputs = [
           (pkgs.python3.withPackages (ps: [ps.pillow ps.ledgerblue]))
-          pkgs.bats
-          pkgs.entr
-          pkgs.gdb
-          pkgs.jq
-          pkgs.libusb
-          pkgs.nodejs-12_x
-          pkgs.openssl
-          pkgs.pkg-config
-          pkgs.xxd
-          pkgs.yarn
+          ledgerPkgs.buildPackages.bats
+          ledgerPkgs.buildPackages.entr
+          ledgerPkgs.buildPackages.gdb
+          ledgerPkgs.buildPackages.jq
+          ledgerPkgs.buildPackages.libusb
+          ledgerPkgs.buildPackages.nodejs-12_x
+          ledgerPkgs.buildPackages.openssl
+          ledgerPkgs.buildPackages.pkg-config
+          ledgerPkgs.buildPackages.xxd
+          ledgerPkgs.buildPackages.yarn
           speculos.speculos
           tests
           # usbtool
