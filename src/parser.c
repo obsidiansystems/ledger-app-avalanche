@@ -1099,7 +1099,7 @@ enum parse_rv parse_CChainExportTransaction(struct CChainExportTransactionState 
     enum parse_rv sub_rv = PARSE_RV_INVALID;
       switch (state->state) {
         case 0: // destinationChain
-            CALL_SUBPARSER(id32State, Id32);
+            CALL_SUBPARSER(bidState, blockchain_id_t);
             state->state++;
             INIT_SUBPARSER(inputsState, EVMInputs);
             PRINTF("Done with ChainID;\n");
