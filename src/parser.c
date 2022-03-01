@@ -932,8 +932,14 @@ enum parse_rv parse_ExportTransaction(struct ExportTransactionState *const state
             case CHAIN_C:
               REJECT("internal error: C Chain not handled here");
             case CHAIN_P:
-              if (counterpart_chain != CHAIN_X)
-                REJECT("Invalid XChain ID");
+              switch (counterpart_chain) {
+              case SWAPCOUNTERPARTCHAIN_X:
+              case SWAPCOUNTERPARTCHAIN_C:
+                meta->swapCounterpartChain = counterpart_chain;
+                break;
+              default:
+                REJECT("Invalid Chain ID - must be X or C");
+              }
               break;
             case CHAIN_X:
               switch (counterpart_chain) {

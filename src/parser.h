@@ -401,6 +401,7 @@ enum chain_role {
 
 // aligns with chain_role
 enum SwapCounterpartChain {
+  SWAPCOUNTERPARTCHAIN_X = CHAIN_X,
   SWAPCOUNTERPARTCHAIN_P = CHAIN_P,
   SWAPCOUNTERPARTCHAIN_C = CHAIN_C,
 };
