@@ -239,7 +239,7 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                   case CHAIN_X:
                     switch (meta->type_id.x) {
                     case TRANSACTION_X_CHAIN_TYPE_ID_EXPORT:
-                        should_break = meta->swapCounterpartChain == SWAPCOUNTERPARTCHAIN_P
+                        should_break = meta->swapCounterpartChain == CHAIN_P
                           ? ADD_PROMPT("X to P chain", &output_prompt, sizeof(output_prompt), output_prompt_to_string)
                           : ADD_PROMPT("X to C chain", &output_prompt, sizeof(output_prompt), output_prompt_to_string);
                         break;
@@ -874,8 +874,8 @@ enum parse_rv parse_ImportTransaction(struct ImportTransactionState *const state
             case CHAIN_X:
               showChainPrompt = true;
               switch (counterpart_chain) {
-              case SWAPCOUNTERPARTCHAIN_P:
-              case SWAPCOUNTERPARTCHAIN_C:
+              case CHAIN_P:
+              case CHAIN_C:
                 meta->swapCounterpartChain = counterpart_chain;
                 break;
               default:
@@ -891,8 +891,8 @@ enum parse_rv parse_ImportTransaction(struct ImportTransactionState *const state
             static char const pChainLabel[]="P-chain";
             if (showChainPrompt) {
               if(ADD_PROMPT("From",
-                            meta->swapCounterpartChain == SWAPCOUNTERPARTCHAIN_C ? cChainLabel : pChainLabel,
-                            meta->swapCounterpartChain == SWAPCOUNTERPARTCHAIN_C ? sizeof(cChainLabel) : sizeof(pChainLabel),
+                            meta->swapCounterpartChain == CHAIN_C ? cChainLabel : pChainLabel,
+                            meta->swapCounterpartChain == CHAIN_C ? sizeof(cChainLabel) : sizeof(pChainLabel),
                             strcpy_prompt))
                 return PARSE_RV_PROMPT;
             }
@@ -933,8 +933,8 @@ enum parse_rv parse_ExportTransaction(struct ExportTransactionState *const state
               REJECT("internal error: C Chain not handled here");
             case CHAIN_P:
               switch (counterpart_chain) {
-              case SWAPCOUNTERPARTCHAIN_X:
-              case SWAPCOUNTERPARTCHAIN_C:
+              case CHAIN_X:
+              case CHAIN_C:
                 meta->swapCounterpartChain = counterpart_chain;
                 break;
               default:
@@ -943,8 +943,8 @@ enum parse_rv parse_ExportTransaction(struct ExportTransactionState *const state
               break;
             case CHAIN_X:
               switch (counterpart_chain) {
-              case SWAPCOUNTERPARTCHAIN_P:
-              case SWAPCOUNTERPARTCHAIN_C:
+              case CHAIN_P:
+              case CHAIN_C:
                 meta->swapCounterpartChain = counterpart_chain;
                 break;
               default:

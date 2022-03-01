@@ -399,13 +399,6 @@ enum chain_role {
   CHAIN_C = 2,
 };
 
-// aligns with chain_role
-enum SwapCounterpartChain {
-  SWAPCOUNTERPARTCHAIN_X = CHAIN_X,
-  SWAPCOUNTERPARTCHAIN_P = CHAIN_P,
-  SWAPCOUNTERPARTCHAIN_C = CHAIN_C,
-};
-
 typedef struct  {
   size_t count;
   size_t flushIndex;
@@ -419,7 +412,7 @@ typedef struct {
     uint32_t raw_type_id;
     union transaction_type_id_t type_id;
     enum chain_role chain;
-    enum SwapCounterpartChain swapCounterpartChain;
+    enum chain_role swapCounterpartChain;
     bool swap_output;
     uint64_t last_output_amount;
     network_id_t network_id;
