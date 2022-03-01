@@ -845,14 +845,12 @@ enum parse_rv parse_ExportTransaction(struct ExportTransactionState *const state
     switch (state->state) {
         case 0: // ChainID
             CALL_SUBPARSER(id32State, Id32);
-            if(!is_pchain_transaction(meta->type_id)) {
-              if (is_pchain(state->id32State.buf))
-                meta->swapCounterpartChain = SWAPCOUNTERPARTCHAIN_P;
-              else if(!memcmp(network_info_from_network_id_not_null(meta->network_id)->c_blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
-                meta->swapCounterpartChain = SWAPCOUNTERPARTCHAIN_C;
-              else
-                REJECT("Invalid Chain ID - must be P or C");
-            }
+            if (is_pchain(state->id32State.buf))
+              meta->swapCounterpartChain = SWAPCOUNTERPARTCHAIN_P;
+            else if(!memcmp(network_info_from_network_id_not_null(meta->network_id)->c_blockchain_id, state->id32State.buf, sizeof(blockchain_id_t)))
+              meta->swapCounterpartChain = SWAPCOUNTERPARTCHAIN_C;
+            else
+              REJECT("Invalid Chain ID - must be P or C");
             state->state++;
             INIT_SUBPARSER(outputsState, TransferableOutputs);
             PRINTF("Done with ChainID;\n");
