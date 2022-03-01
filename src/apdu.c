@@ -46,7 +46,10 @@ size_t provide_evm_address(uint8_t *const io_buffer, extended_public_key_t const
 
     // And the address, in hex
     io_buffer[tx++] = sizeof(*pubkey_hash)*2; // times 2 because it'll be in hex.
-    bin_to_hex_lc((char *) io_buffer + tx, IO_APDU_BUFFER_SIZE-tx, pubkey_hash, sizeof(*pubkey_hash));
+    bin_to_hex_lc(
+        (char *) io_buffer + tx, IO_APDU_BUFFER_SIZE-tx,
+        // [0] aids in array pointer decay
+        &(*pubkey_hash)[0], sizeof(*pubkey_hash));
     tx+=sizeof(*pubkey_hash)*2;
 
     // and the chain code, if requested.
@@ -215,7 +218,7 @@ __attribute__((noreturn)) void main_loop(struct app_handlers const *const app_ha
                 switch (sw) {
                     default:
                         sw = 0x6800 | (e & 0x7FF);
-                        // FALL THROUGH
+                        fallthrough; // NOTE!
                     case 0x6000 ... 0x6FFF:
                     case 0x9000 ... 0x9FFF: {
                         PRINTF("Line number: %d\n", sw & 0x0FFF);

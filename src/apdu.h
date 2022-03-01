@@ -22,7 +22,7 @@
 #define OFFSET_CDATA 5 // payload
 
 struct handlers {
-    apdu_handler *handlers;
+    apdu_handler const (* handlers)[];
     uint8_t handlers_size;
 };
 
