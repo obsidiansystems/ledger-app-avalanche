@@ -126,7 +126,7 @@ describe("P-chain import and export tests", () => {
     const ui = await flowMultiPrompt(this.speculos, [
       [{header:"Sign",body:"Export"}],
       [{header:"Transfer",body:'0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3'}],
-      [{header:"export from P",body:'0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx'}],
+      [{header:"P chain export",body:'0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx'}],
       [{header:"Fee",body:"0.123432099 AVAX"}],
       [{header:"Finalize",body:"Transaction"}],
     ]);
