@@ -44,7 +44,7 @@ static void apdu_pubkey_state_to_string
   }
 }
 
-__attribute__((noreturn)) size_t handle_apdu_get_public_key_impl(bool const prompt_ext) {
+void handle_apdu_get_public_key_impl(bool const prompt_ext) {
     const uint8_t *const buffer = G_io_apdu_buffer;
 
     const uint8_t p1 = buffer[OFFSET_P1];
