@@ -1066,6 +1066,10 @@ enum parse_rv parse_CChainImportTransaction(struct CChainImportTransactionState 
       switch (state->state) {
         case 0: // sourceChain
             CALL_SUBPARSER(bidState, blockchain_id_t);
+            enum opt_chain_role chain = decode_chain_id(meta->network_id, &state->bidState.val);
+            if (chain == OPT_CHAIN_INVAL) {
+                REJECT("Source Blockchain ID did not match expected value for network ID");
+            }
             state->state++;
             INIT_SUBPARSER(inputsState, TransferableInputs);
             PRINTF("Done with ChainID;\n");
