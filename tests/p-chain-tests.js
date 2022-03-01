@@ -146,7 +146,7 @@ describe("P-chain import and export tests", () => {
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
       [{header:"Sign",body:"Export"}],
-      [{header:"export from P",body:'29999999 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'}],
+      [{header:"P chain export",body:'29999999 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'}],
       [{header:"Fee",body:"1 AVAX"}],
       [{header:"Finalize",body:"Transaction"}],
     ]);
