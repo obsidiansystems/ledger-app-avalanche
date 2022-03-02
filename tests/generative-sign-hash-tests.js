@@ -31,7 +31,6 @@ describe("Sign Hash tests", () => {
           for (ks of sv) {
             const [keySuffix, sig] = ks;
 
-            //await flowAccept(this.speculos);
             const key = await this.ava.getWalletExtendedPublicKey(account.toString() + "/" + keySuffix);
 
             const recovered = secp256k1.recover(Buffer.from(hash, "hex"), sig.slice(0, 64), sig[64], false);
