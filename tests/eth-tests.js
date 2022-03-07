@@ -73,7 +73,7 @@ const contractCallPrompts = (method, argumentPrompts) => {
        .concat([[finalizePrompt]]);
 };
 
-const contractDeployPrompts = (bytes, amount, fee, gas) => {
+const contractDeployPrompts = (amount, fee, gas) => {
   const creationPrompt = {header: "Contract",          body: "Creation"};
   const gasPrompt      = {header: "Gas Limit",         body: gas};
   const fundingPrompt  = {header: "Funding Contract",  body: amount};
@@ -122,7 +122,7 @@ const testDeploy = (chainId, withAmount) => async function () {
     this.timeout(8000);
     const [amountPrompt, amountHex] = withAmount ? ['0.000000001 nAVAX', '01'] : [null, '80'];
     await testLegacySigning(this, chainId,
-      contractDeployPrompts(erc20presetMinterPauser.bytecodeHex, amountPrompt, '1428785900 GWEI', '3039970'),
+      contractDeployPrompts(amountPrompt, '1428785900 GWEI', '3039970'),
       ('f93873' + '03' + '856d6e2edc00' + '832e62e2' + '80' + amountHex
        + ('b9385e' + erc20presetMinterPauser.bytecodeHex)
        + '82a868' + '80' + '80'
