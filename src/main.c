@@ -2,12 +2,12 @@
 #include "globals.h"
 #include "memory.h"
 static const apdu_handler avm_handlers[] = {
-    (apdu_handler)handle_apdu_version,             // 0x00
-    (apdu_handler)handle_apdu_get_wallet_id,       // 0x01
-    (apdu_handler)handle_apdu_get_public_key,      // 0x02
-    (apdu_handler)handle_apdu_get_public_key_ext,  // 0x03
-    (apdu_handler)handle_apdu_sign_hash,           // 0x04
-    (apdu_handler)handle_apdu_sign_transaction,    // 0x05
+    handle_apdu_version,             // 0x00
+    handle_apdu_get_wallet_id,       // 0x01
+    handle_apdu_get_public_key,      // 0x02
+    handle_apdu_get_public_key_ext,  // 0x03
+    handle_apdu_sign_hash,           // 0x04
+    handle_apdu_sign_transaction,    // 0x05
 };
 
 static const apdu_handler evm_handlers[] = {
