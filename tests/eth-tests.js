@@ -89,7 +89,6 @@ const contractDeployPrompts = (amount, fee, gas) => {
 async function testLegacySigning(self, chainId, prompts, hexTx) {
   const ethTx = Buffer.from(hexTx, 'hex');
   const flow = await flowMultiPrompt(self.speculos, prompts);
-  const chainParams = { common: Common.forCustomChain('mainnet', { networkId: 1, chainId }, 'istanbul')};
 
   const dat = await self.eth.signTransaction("44'/60'/0'/0/0", ethTx);
   chain = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId });
@@ -103,7 +102,6 @@ async function testLegacySigning(self, chainId, prompts, hexTx) {
 async function testEIP1559Signing(self, chainId, prompts, hexTx) {
   const ethTx = Buffer.from(hexTx, 'hex');
   const flow = await flowMultiPrompt(self.speculos, prompts);
-  const chainParams = { common: Common.forCustomChain('mainnet', { networkId: 1, chainId }, 'istanbul')};
 
   const dat = await self.eth.signTransaction("44'/60'/0'/0/0", ethTx);
   chain = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId }, 'london')
