@@ -13,38 +13,20 @@
 
 #define G global.apdu.u.pubkey
 
-static bool address_ok(void) {
+static size_t address_ok(void) {
     switch(G.type) {
       case PUBKEY_STATE_AVM:
-        provide_address(G_io_apdu_buffer, &G.pkh);
-        break;
+        return provide_address(G_io_apdu_buffer, &G.pkh);
       case PUBKEY_STATE_EVM:
-        provide_evm_address(G_io_apdu_buffer, &G.ext_public_key, &G.pkh, true);
-        break;
+        return provide_evm_address(G_io_apdu_buffer, &G.ext_public_key, &G.pkh, true);
     }
-    return true;
 }
 
-static bool ext_pubkey_ok(void) {
-    provide_ext_pubkey(G_io_apdu_buffer, &G.ext_public_key);
-    return true;
+static size_t ext_pubkey_ok(void) {
+    return provide_ext_pubkey(G_io_apdu_buffer, &G.ext_public_key);
 }
 
-static void apdu_pubkey_state_to_string
-   (char *out, size_t out_size,
-    const apdu_pubkey_state_t *const payload) {
-  switch (payload->type) {
-    case PUBKEY_STATE_AVM:
-      pkh_to_string(out, out_size, payload->hrp, payload->hrp_len, &payload->pkh);
-      break;
-    case PUBKEY_STATE_EVM:
-      // [0] aids in array pointer decay
-      bin_to_hex_lc(out, out_size, &payload->pkh[0], 20);
-      break;
-  }
-}
-
-void handle_apdu_get_public_key_impl(bool const prompt_ext) {
+size_t handle_apdu_get_public_key_impl(bool const prompt_ext) {
     const uint8_t *const buffer = G_io_apdu_buffer;
 
     const uint8_t p1 = buffer[OFFSET_P1];
@@ -77,19 +59,18 @@ void handle_apdu_get_public_key_impl(bool const prompt_ext) {
 
     if (prompt_ext) {
         check_bip32(&G.bip32_path, false);
-        ext_pubkey_ok();
+        return ext_pubkey_ok();
     } else {
         check_bip32(&G.bip32_path, true);
-        address_ok();
+        return address_ok();
     }
 }
 
-
-__attribute__((noreturn)) size_t handle_apdu_get_public_key(void) {
-    handle_apdu_get_public_key_impl(false);
+size_t handle_apdu_get_public_key(void) {
+    return handle_apdu_get_public_key_impl(false);
 }
 
-__attribute__((noreturn)) size_t handle_apdu_evm_get_address(void) {
+size_t handle_apdu_evm_get_address(void) {
     const uint8_t *const buffer = G_io_apdu_buffer;
 
     const uint8_t p1 = buffer[OFFSET_P1];
@@ -108,9 +89,9 @@ __attribute__((noreturn)) size_t handle_apdu_evm_get_address(void) {
     G.type = PUBKEY_STATE_EVM;
 
     check_bip32(&G.bip32_path, false);
-    address_ok();
+    return address_ok();
 }
 
-__attribute__((noreturn)) size_t handle_apdu_get_public_key_ext(void) {
-    handle_apdu_get_public_key_impl(true);
+size_t handle_apdu_get_public_key_ext(void) {
+    return handle_apdu_get_public_key_impl(true);
 }
