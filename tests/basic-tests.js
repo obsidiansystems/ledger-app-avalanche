@@ -153,10 +153,10 @@ describe("Basic Tests", () => {
       const pathPrefix = "44'/9000'/0'";
       const pathSuffixes = ["0/0", "0/1", "1/100"];
       const ui = await flowMultiPrompt(this.speculos, [
-        [{header:"Sign",body:"Transaction"}],
-        [{header:"Transfer",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"}],
-        [{header:"Fee",body:"0.123444444 AVAX"}],
-        [{header:"Finalize",body:"Transaction"}],
+        {header:"Sign",body:"Transaction"},
+        {header:"Transfer",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"},
+        {header:"Fee",body:"0.123444444 AVAX"},
+        {header:"Finalize",body:"Transaction"},
       ]);
       const sigPromise = signTransaction(this.ava, pathPrefix, pathSuffixes);
       await ui.promptsPromise;
@@ -167,10 +167,10 @@ describe("Basic Tests", () => {
       const pathPrefix = "44'/9000'/0'";
       const pathSuffixes = ["0/0", "0/1", "1/100"];
       const ui = await flowMultiPrompt(this.speculos, [
-        [{header:"Sign",body:"Transaction"}],
-        [{header:"Transfer",body:"0.123456789 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"}],
-        [{header:"Fee",body:"0.876543211 AVAX"}],
-        [{header:"Finalize",body:"Transaction"}],
+        {header:"Sign",body:"Transaction"},
+        {header:"Transfer",body:"0.123456789 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"},
+        {header:"Fee",body:"0.876543211 AVAX"},
+        {header:"Finalize",body:"Transaction"},
       ]);
       const sigPromise = signTransaction(this.ava, pathPrefix, pathSuffixes, {
         "outputAmount": Buffer.from([0x00, 0x00, 0x00, 0x00, 0x07, 0x5b, 0xcd, 0x15]),
@@ -184,10 +184,10 @@ describe("Basic Tests", () => {
       const pathPrefix = "44'/9000'/0'";
       const pathSuffixes = ["0/0", "0/1", "1/100"];
       const ui = await flowMultiPrompt(this.speculos, [
-        [{header:"Sign",body:"Transaction"}],
-        [{header:"Transfer",body:"1 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"}],
-        [{header:"Fee",body:"1 AVAX"}],
-        [{header:"Finalize",body:"Transaction"}],
+        {header:"Sign",body:"Transaction"},
+        {header:"Transfer",body:"1 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"},
+        {header:"Fee",body:"1 AVAX"},
+        {header:"Finalize",body:"Transaction"},
       ]);
       const sigPromise = signTransaction(this.ava, pathPrefix, pathSuffixes, {
         "outputAmount": Buffer.from([0x00, 0x00, 0x00, 0x00, 0x3b, 0x9a, 0xca, 0x00]),
@@ -277,11 +277,11 @@ describe("Basic Tests", () => {
       const pathPrefix = "44'/9000'/0'";
       const pathSuffixes = ["0/0", "0/1", "1/100"];
       const ui = await flowMultiPrompt(this.speculos, [
-        [{header:"Sign",body:"Transaction"}],
-        [{header:"Transfer",body:"0.000001 AVAX to fuji10an3cucdfqru984pnvv6y0rspvvclz634xwwhs"}],
-        [{header:"Transfer",body:"0.006999 AVAX to fuji15jh6hlessx2jtxvs48jnr0vzxrg34x32vuc7jc"}],
-        [{header:"Fee",body:"0.001 AVAX"}],
-        [{header:"Finalize",body:"Transaction"}],
+        {header:"Sign",body:"Transaction"},
+        {header:"Transfer",body:"0.000001 AVAX to fuji10an3cucdfqru984pnvv6y0rspvvclz634xwwhs"},
+        {header:"Transfer",body:"0.006999 AVAX to fuji15jh6hlessx2jtxvs48jnr0vzxrg34x32vuc7jc"},
+        {header:"Fee",body:"0.001 AVAX"},
+        {header:"Finalize",body:"Transaction"},
       ]);
       const sigPromise = this.ava.signTransaction(
         BIPPath.fromString(pathPrefix),
@@ -372,11 +372,11 @@ describe("Basic Tests", () => {
       const pathPrefix = "44'/9000'/0'";
       const pathSuffixes = ["0/0", "0/1", "1/100"];
       const ui = await flowMultiPrompt(this.speculos, [
-        [{header:"Sign",body:"Transaction"}],
-        [{header:"Transfer",body:"0.000001 AVAX to fuji10an3cucdfqru984pnvv6y0rspvvclz634xwwhs"}],
-        [{header:"Transfer",body:"0.006999 AVAX to fuji179xfr036ym3uuv8ewrv8y4la97ealwmlfg8yrr"}],
-        [{header:"Fee",body:"0.001 AVAX"}],
-        [{header:"Finalize",body:"Transaction"}],
+        {header:"Sign",body:"Transaction"},
+        {header:"Transfer",body:"0.000001 AVAX to fuji10an3cucdfqru984pnvv6y0rspvvclz634xwwhs"},
+        {header:"Transfer",body:"0.006999 AVAX to fuji179xfr036ym3uuv8ewrv8y4la97ealwmlfg8yrr"},
+        {header:"Fee",body:"0.001 AVAX"},
+        {header:"Finalize",body:"Transaction"},
       ]);
       const sigPromise = this.ava.signTransaction(
         BIPPath.fromString(pathPrefix),
@@ -391,9 +391,9 @@ describe("Basic Tests", () => {
     it('rejects a transaction that has extra data', async function () {
       try {
         const ui = await flowMultiPrompt(this.speculos, [
-          [{header:"Sign",body:"Transaction"}],
-          [{header:"Transfer",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"}],
-          [{header:"Fee",body:"0.123444444 AVAX"}],
+          {header:"Sign",body:"Transaction"},
+          {header:"Transfer",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"},
+          {header:"Fee",body:"0.123444444 AVAX"},
         ], "Next", "Next");
         await signTransaction(this.ava, "44'/9000'/0'", ["0/0"], {
           extraEndBytes: Buffer.from([0x00])
@@ -446,7 +446,7 @@ describe("Basic Tests", () => {
         this.speculos,
         this.ava,
         { outputTypeId: Buffer.from([0x00, 0x00, 0xf0, 0x00]) },
-        [[{header:"Sign",body:"Transaction"}]],
+        [{header:"Sign",body:"Transaction"}],
       );
     });
 
@@ -456,8 +456,8 @@ describe("Basic Tests", () => {
         this.ava,
         { inputTypeId: Buffer.from([0x01, 0x00, 0x00, 0x00]) },
         [
-          [{header:"Sign",body:"Transaction"}],
-          [{header:"Transfer",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"}],
+          {header:"Sign",body:"Transaction"},
+          {header:"Transfer",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"},
         ],
       );
     });
@@ -478,7 +478,7 @@ describe("Basic Tests", () => {
           outputAssetId: assetId
         },
         [
-          [{header:"Sign",body:"Transaction"}],
+          {header:"Sign",body:"Transaction"},
         ],
       );
     });
@@ -499,7 +499,7 @@ describe("Basic Tests", () => {
          outputAssetId: assetId
        },
        [
-         [{header:"Sign",body:"Transaction"}],
+         {header:"Sign",body:"Transaction"},
        ],
      );
    });
@@ -523,7 +523,7 @@ describe("Basic Tests", () => {
        this.ava,
        { transferrableOutput: output },
        [
-         [{header:"Sign",body:"Transaction"}],
+         {header:"Sign",body:"Transaction"},
        ],
      );
     });
@@ -600,11 +600,11 @@ describe("Basic Tests", () => {
 
     it("Can sign a P->X Import transaction", async function() {
       const ui = await flowMultiPrompt(this.speculos, [
-        [{header:"Sign",body:"Import"}],
-        [{header:"Sending",body: "0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3"}],
-        [{header:"From",body: "P-chain"}],
-        [{header:"Fee",body:"0.246901233 AVAX"}],
-        [{header:"Finalize",body:"Transaction"}],
+        {header:"Sign",body:"Import"},
+        {header:"Sending",body: "0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3"},
+        {header:"From",body: "P-chain"},
+        {header:"Fee",body:"0.246901233 AVAX"},
+        {header:"Finalize",body:"Transaction"},
       ]);
       const sigPromise = this.ava.signTransaction(
         BIPPath.fromString(pathPrefix),
@@ -617,11 +617,11 @@ describe("Basic Tests", () => {
 
     it("Can sign a C->X Import transaction", async function() {
         const ui = await flowMultiPrompt(this.speculos, [
-          [{header:"Sign",body:"Import"}],
-          [{header:"Sending",body: "0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3"}],
-          [{header:"From",body: "C-chain"}],
-          [{header:"Fee",body:"0.246901233 AVAX"}],
-          [{header:"Finalize",body:"Transaction"}],
+          {header:"Sign",body:"Import"},
+          {header:"Sending",body: "0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3"},
+          {header:"From",body: "C-chain"},
+          {header:"Fee",body:"0.246901233 AVAX"},
+          {header:"Finalize",body:"Transaction"},
         ]);
         const sigPromise = this.ava.signTransaction(
           BIPPath.fromString(pathPrefix),
@@ -682,11 +682,11 @@ describe("Basic Tests", () => {
 
     it("Can sign a X->P Export transaction", async function() {
       const ui = await flowMultiPrompt(this.speculos, [
-        [{header:"Sign",body:"Export"}],
-        [{header:"Transfer",body: "0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3"}],
-        [{header:"X to P chain",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"}],
-        [{header:"Fee",body:"0.123432099 AVAX"}],
-        [{header:"Finalize",body:"Transaction"}],
+        {header:"Sign",body:"Export"},
+        {header:"Transfer",body: "0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3"},
+        {header:"X to P chain",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"},
+        {header:"Fee",body:"0.123432099 AVAX"},
+        {header:"Finalize",body:"Transaction"},
       ]);
       const sigPromise = this.ava.signTransaction(
         BIPPath.fromString(pathPrefix),
@@ -699,11 +699,11 @@ describe("Basic Tests", () => {
 
     it("Can sign a X->C Export transaction", async function() {
       const ui = await flowMultiPrompt(this.speculos, [
-        [{header:"Sign",body:"Export"}],
-        [{header:"Transfer",body: "0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3"}],
-        [{header:"X to C chain",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"}],
-        [{header:"Fee",body:"0.123432099 AVAX"}],
-        [{header:"Finalize",body:"Transaction"}],
+        {header:"Sign",body:"Export"},
+        {header:"Transfer",body: "0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3"},
+        {header:"X to C chain",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"},
+        {header:"Fee",body:"0.123432099 AVAX"},
+        {header:"Finalize",body:"Transaction"},
       ]);
       const sigPromise = this.ava.signTransaction(
         BIPPath.fromString(pathPrefix),
