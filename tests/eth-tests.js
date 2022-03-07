@@ -65,7 +65,7 @@ const chunkPrompts = (prompts) => {
   return chunked;
 }
 
-const contractCallPrompts = (address, method, argumentPrompts) => {
+const contractCallPrompts = (method, argumentPrompts) => {
     const methodPrompt   = {header: "Contract Call", body: method};
     const maxFeePrompt   = {header: "Maximum Fee",   body: "10229175 GWEI"};
 
@@ -172,7 +172,7 @@ const testCall = (chainId, data, method, args) => async function () {
         data: '0x' + data,
     });
 
-    await testLegacySigning(this, chainId, contractCallPrompts('0x' + address, method, args), tx);
+    await testLegacySigning(this, chainId, contractCallPrompts(method, args), tx);
 };
 
 
@@ -384,7 +384,6 @@ describe("Eth app compatibility tests", async function () {
 
   it('accepts apdu ending in the middle of parsing length of calldata', async function () {
     const prompts = contractCallPrompts(
-      '0x' + 'df073477da421520cf03af261b782282c304ad66',
       'transferFrom',
       [
         { header: "sender",    body: '0x' + testData.address.prompt },
