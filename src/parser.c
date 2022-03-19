@@ -478,7 +478,7 @@ enum parse_rv parse_StakeableLockOutput(struct StakeableLockOutput_state *const 
         promptData.until=state->locktime;
         state->state++;
         ADD_PROMPT("Funds locked", &promptData, sizeof(locked_prompt_t), lockedFundsPrompt)
-        BREAK_IF_NOT_DONE;
+        RET_IF_PROMPT_FLUSH;
         fallthrough;
       case 3:
         sub_rv=PARSE_RV_DONE;
@@ -918,7 +918,7 @@ enum parse_rv parse_ImportTransaction(struct ImportTransactionState *const state
                             meta->swapCounterpartChain == CHAIN_C ? cChainLabel : pChainLabel,
                             meta->swapCounterpartChain == CHAIN_C ? sizeof(cChainLabel) : sizeof(pChainLabel),
                             strcpy_prompt);
-              BREAK_IF_NOT_DONE;
+              RET_IF_PROMPT_FLUSH;
             }
             fallthrough;
 
@@ -1040,7 +1040,7 @@ enum parse_rv parse_EVMOutput(struct EVMOutput_state *const state, parser_meta_s
                 &output_prompt, sizeof(output_prompt),
                 output_prompt_to_string
                 );
-          BREAK_IF_NOT_DONE;
+          BREAK_IF_PROMPT_FLUSH;
       } fallthrough;
       case 4:
         sub_rv=PARSE_RV_DONE;
@@ -1179,28 +1179,28 @@ enum parse_rv parse_Validator(struct Validator_state *const state, parser_meta_s
       memcpy(&pkh_prompt.address, &state->addressState.val, sizeof(pkh_prompt.address));
       ADD_PROMPT("Validator", &pkh_prompt, sizeof(address_prompt_t), validator_to_string);
       INIT_SUBPARSER(uint64State, uint64_t);
-      BREAK_IF_NOT_DONE;
+      RET_IF_PROMPT_FLUSH;
       fallthrough; // NOTE
     case 1:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
       ADD_PROMPT("Start time", &state->uint64State.val, sizeof(uint64_t), time_to_string_void_ret);
       INIT_SUBPARSER(uint64State, uint64_t);
-      BREAK_IF_NOT_DONE;
+      RET_IF_PROMPT_FLUSH;
       fallthrough; // NOTE
     case 2:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
       ADD_PROMPT("End time", &state->uint64State.val, sizeof(uint64_t), time_to_string_void_ret);
       INIT_SUBPARSER(uint64State, uint64_t);
-      BREAK_IF_NOT_DONE;
+      RET_IF_PROMPT_FLUSH;
       fallthrough; // NOTE
     case 3:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
       meta->staking_weight = state->uint64State.val;
       ADD_PROMPT("Total Stake", &state->uint64State.val, sizeof(uint64_t), nano_avax_to_string_indirect64);
-      BREAK_IF_NOT_DONE;
+      RET_IF_PROMPT_FLUSH;
       fallthrough; // NOTE
     case 4:
       return PARSE_RV_DONE;
@@ -1247,7 +1247,7 @@ enum parse_rv parse_AddValidatorTransaction(struct AddValidatorTransactionState
             CALL_SUBPARSER(uint32State, uint32_t);
             state->state++;
             ADD_PROMPT("Delegation Fee", &state->uint32State.val, sizeof(uint32_t), delegation_fee_to_string);
-            BREAK_IF_NOT_DONE;
+            BREAK_IF_PROMPT_FLUSH;
         } fallthrough;
         case 4:
              // This is bc we call the parser recursively, and, at the end, it gets called with
@@ -1343,7 +1343,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             INIT_SUBPARSER(baseTxState, BaseTransaction);
             label_t label = type_id_to_label(meta->type_id, meta->chain);
             ADD_PROMPT("Sign", label.label, label.label_size, strcpy_prompt);
-            BREAK_IF_NOT_DONE;
+            BREAK_IF_PROMPT_FLUSH;
         } fallthrough;
         case 3: { // Base transaction
             switch (meta->chain) {
@@ -1456,7 +1456,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
                       sub_rv = PARSE_RV_PROMPT;
                   state->state++;
                   PRINTF("Prompted for fee\n");
-                  BREAK_IF_NOT_DONE;
+                  BREAK_IF_PROMPT_FLUSH;
         } fallthrough;
         case 6:
                 return PARSE_RV_DONE;
