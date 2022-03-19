@@ -16,17 +16,17 @@ void set_next_batch_size(prompt_batch_t *const prompt, size_t size) {
 
 #define REJECT(msg, ...) { PRINTF("Rejecting: " msg "\n", ##__VA_ARGS__); THROW_(EXC_PARSE_ERROR, "Rejected"); }
 
-#define ADD_PROMPT(label_, data_, size_, to_string_) ({ \
+#define ADD_PROMPT(label_, data_, size_, to_string_) { \
         if (meta->prompt.count >= NUM_ELEMENTS(meta->prompt.entries)) { \
             THROW_(EXC_MEMORY_ERROR, "Tried to add a prompt to full queue"); \
         } \
-        sub_rv = PARSE_RV_PROMPT; \
         meta->prompt.labels[meta->prompt.count] = PROMPT(label_); \
         meta->prompt.entries[meta->prompt.count].to_string = to_string_; \
         memcpy(&meta->prompt.entries[meta->prompt.count].data, data_, size_); \
         meta->prompt.count++; \
-        should_flush(&meta->prompt); \
-    })
+        if (should_flush(&meta->prompt)) \
+            sub_rv = PARSE_RV_PROMPT; \
+    }
 
 #define CALL_SUBPARSER(subFieldName, subParser) { \
         sub_rv = parse_ ## subParser(&state->subFieldName, meta); \
@@ -219,8 +219,7 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
             INIT_SUBPARSER(addressState, Address);
             fallthrough;
         case 4: {
-            bool should_break = false;
-            while (state->state == 4 && !should_break) {
+            while (state->state == 4) {
                 CALL_SUBPARSER(addressState, Address);
                 state->address_i++;
                 PRINTF("Output address %d: %.*h\n", state->address_i, sizeof(state->addressState.buf), state->addressState.buf);
@@ -239,9 +238,11 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                   case CHAIN_X:
                     switch (meta->type_id.x) {
                     case TRANSACTION_X_CHAIN_TYPE_ID_EXPORT:
-                        should_break = meta->swapCounterpartChain == CHAIN_P
-                          ? ADD_PROMPT("X to P chain", &output_prompt, sizeof(output_prompt), output_prompt_to_string)
-                          : ADD_PROMPT("X to C chain", &output_prompt, sizeof(output_prompt), output_prompt_to_string);
+                        if (meta->swapCounterpartChain == CHAIN_P) {
+                            ADD_PROMPT("X to P chain", &output_prompt, sizeof(output_prompt), output_prompt_to_string)
+                        } else {
+                            ADD_PROMPT("X to C chain", &output_prompt, sizeof(output_prompt), output_prompt_to_string);
+                        }
                         break;
                     default:
                         // If we throw here, we set swap_output somewhere _wrong_.
@@ -251,7 +252,7 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                   case CHAIN_P:
                     switch (meta->type_id.p) {
                     case TRANSACTION_P_CHAIN_TYPE_ID_EXPORT:
-                        should_break = ADD_PROMPT(
+                        ADD_PROMPT(
                             "P chain export",
                             &output_prompt, sizeof(output_prompt),
                             output_prompt_to_string
@@ -261,7 +262,7 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR:
 
                         if (__builtin_uaddll_overflow(meta->staked, meta->last_output_amount, &meta->staked)) THROW_(EXC_MEMORY_ERROR, "Stake total overflowed.");
-                        should_break = ADD_PROMPT(
+                        ADD_PROMPT(
                             "Stake",
                             &output_prompt, sizeof(output_prompt),
                             output_prompt_to_string
@@ -281,14 +282,14 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                   case CHAIN_X:
                     switch (meta->type_id.x) {
                     case TRANSACTION_X_CHAIN_TYPE_ID_IMPORT:
-                      should_break = ADD_PROMPT(
+                      ADD_PROMPT(
                           "Sending",
                           &output_prompt, sizeof(output_prompt),
                           output_prompt_to_string
                           );
                       break;
                     default:
-                      should_break = ADD_PROMPT(
+                      ADD_PROMPT(
                           "Transfer",
                           &output_prompt, sizeof(output_prompt),
                           output_prompt_to_string
@@ -298,14 +299,14 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                   case CHAIN_P:
                     switch (meta->type_id.p) {
                     case TRANSACTION_P_CHAIN_TYPE_ID_IMPORT:
-                      should_break = ADD_PROMPT(
+                      ADD_PROMPT(
                           "P chain import",
                           &output_prompt, sizeof(output_prompt),
                           output_prompt_to_string
                           );
                       break;
                     default:
-                      should_break = ADD_PROMPT(
+                      ADD_PROMPT(
                           "Transfer",
                           &output_prompt, sizeof(output_prompt),
                           output_prompt_to_string
@@ -315,14 +316,14 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                   case CHAIN_C:
                     switch (meta->type_id.c) {
                     case TRANSACTION_C_CHAIN_TYPE_ID_EXPORT:
-                      should_break = ADD_PROMPT(
+                      ADD_PROMPT(
                           "C chain export",
                           &output_prompt, sizeof(output_prompt),
                           output_prompt_to_string
                           );
                       break;
                     default:
-                      should_break = ADD_PROMPT(
+                      ADD_PROMPT(
                           "Transfer",
                           &output_prompt, sizeof(output_prompt),
                           output_prompt_to_string
@@ -337,8 +338,10 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                 } else {
                     INIT_SUBPARSER(addressState, Address);
                 }
+
+                BUBBLE_SWITCH_BREAK;
             }
-            if (should_break) break;
+            BUBBLE_SWITCH_BREAK;
         }
         fallthrough; // NOTE
         case 5:
@@ -387,8 +390,7 @@ enum parse_rv parse_SECP256K1OutputOwners(struct SECP256K1OutputOwners_state *co
             INIT_SUBPARSER(addressState, Address);
             fallthrough;
         case 4: {
-            bool should_break = false;
-            while (state->state == 4 && !should_break) {
+            while (state->state == 4) {
                 CALL_SUBPARSER(addressState, Address);
                 state->address_i++;
 
@@ -397,14 +399,15 @@ enum parse_rv parse_SECP256K1OutputOwners(struct SECP256K1OutputOwners_state *co
                 address_prompt.network_id = meta->network_id;
                 memcpy(&address_prompt.address, &state->addressState.val, sizeof(address_prompt.address));
                 // TODO: We can get rid of this if we add back the P/X- in front of an address
-                should_break = ADD_PROMPT("Rewards To", &address_prompt, sizeof(address_prompt_t), output_address_to_string);
+                ADD_PROMPT("Rewards To", &address_prompt, sizeof(address_prompt_t), output_address_to_string);
                 if (state->address_i == state->address_n) {
                     state->state++;
                 } else {
                     INIT_SUBPARSER(addressState, Address);
                 }
+                BUBBLE_SWITCH_BREAK;
             }
-            if (should_break) break;
+            BUBBLE_SWITCH_BREAK;
         } fallthrough;
         case 5:
             sub_rv = PARSE_RV_DONE;
@@ -451,9 +454,8 @@ enum parse_rv parse_StakeableLockOutput(struct StakeableLockOutput_state *const 
         promptData.amount=meta->last_output_amount;
         promptData.until=state->locktime;
         state->state++;
-        if( ADD_PROMPT("Funds locked", &promptData, sizeof(locked_prompt_t), lockedFundsPrompt) ) {
-          break;
-        }
+        ADD_PROMPT("Funds locked", &promptData, sizeof(locked_prompt_t), lockedFundsPrompt)
+        BUBBLE_SWITCH_BREAK;
         fallthrough;
       case 3:
         sub_rv=PARSE_RV_DONE;
@@ -750,8 +752,7 @@ static bool prompt_fee(parser_meta_state_t *const meta) {
     meta->prompt.entries[meta->prompt.count].to_string = nano_avax_to_string_indirect64;
     memcpy(&meta->prompt.entries[meta->prompt.count].data, &fee, sizeof(fee));
     meta->prompt.count++;
-    bool should_break = should_flush(&meta->prompt);
-    return should_break;
+    return should_flush(&meta->prompt);
 }
 
 void init_BaseTransactionHeader(struct BaseTransactionHeaderState *const state) {
@@ -890,11 +891,11 @@ enum parse_rv parse_ImportTransaction(struct ImportTransactionState *const state
             static char const cChainLabel[]="C-chain";
             static char const pChainLabel[]="P-chain";
             if (showChainPrompt) {
-              if(ADD_PROMPT("From",
+              ADD_PROMPT("From",
                             meta->swapCounterpartChain == CHAIN_C ? cChainLabel : pChainLabel,
                             meta->swapCounterpartChain == CHAIN_C ? sizeof(cChainLabel) : sizeof(pChainLabel),
-                            strcpy_prompt))
-                return PARSE_RV_PROMPT;
+                            strcpy_prompt);
+              BUBBLE_SWITCH_BREAK;
             }
             fallthrough;
 
@@ -1011,12 +1012,12 @@ enum parse_rv parse_EVMOutput(struct EVMOutput_state *const state, parser_meta_s
           memcpy(&output_prompt.address, &state->addressState.val,
               sizeof(output_prompt.address));
 
-          if(ADD_PROMPT(
+          ADD_PROMPT(
                 "Importing",
                 &output_prompt, sizeof(output_prompt),
                 output_prompt_to_string
-                ))
-              break;
+                );
+          BUBBLE_SWITCH_BREAK;
       } fallthrough;
       case 4:
         sub_rv=PARSE_RV_DONE;
@@ -1153,34 +1154,30 @@ enum parse_rv parse_Validator(struct Validator_state *const state, parser_meta_s
       address_prompt_t pkh_prompt;
       pkh_prompt.network_id = meta->network_id;
       memcpy(&pkh_prompt.address, &state->addressState.val, sizeof(pkh_prompt.address));
-      if (ADD_PROMPT("Validator", &pkh_prompt, sizeof(address_prompt_t), validator_to_string)) {
-        INIT_SUBPARSER(uint64State, uint64_t);
-        break;
-      }
+      ADD_PROMPT("Validator", &pkh_prompt, sizeof(address_prompt_t), validator_to_string);
+      INIT_SUBPARSER(uint64State, uint64_t);
+      BUBBLE_SWITCH_BREAK;
       fallthrough; // NOTE
     case 1:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
-      if (ADD_PROMPT("Start time", &state->uint64State.val, sizeof(uint64_t), time_to_string_void_ret)) {
-        INIT_SUBPARSER(uint64State, uint64_t);
-        break;
-      }
+      ADD_PROMPT("Start time", &state->uint64State.val, sizeof(uint64_t), time_to_string_void_ret);
+      INIT_SUBPARSER(uint64State, uint64_t);
+      BUBBLE_SWITCH_BREAK;
       fallthrough; // NOTE
     case 2:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
-      if (ADD_PROMPT("End time", &state->uint64State.val, sizeof(uint64_t), time_to_string_void_ret)) {
-        INIT_SUBPARSER(uint64State, uint64_t);
-        break;
-      }
+      ADD_PROMPT("End time", &state->uint64State.val, sizeof(uint64_t), time_to_string_void_ret);
+      INIT_SUBPARSER(uint64State, uint64_t);
+      BUBBLE_SWITCH_BREAK;
       fallthrough; // NOTE
     case 3:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
       meta->staking_weight = state->uint64State.val;
-      if (ADD_PROMPT("Total Stake", &state->uint64State.val, sizeof(uint64_t), nano_avax_to_string_indirect64)) {
-        break;
-      }
+      ADD_PROMPT("Total Stake", &state->uint64State.val, sizeof(uint64_t), nano_avax_to_string_indirect64);
+      BUBBLE_SWITCH_BREAK;
       fallthrough; // NOTE
     case 4:
       return PARSE_RV_DONE;
@@ -1226,7 +1223,8 @@ enum parse_rv parse_AddValidatorTransaction(struct AddValidatorTransactionState
             }
             CALL_SUBPARSER(uint32State, uint32_t);
             state->state++;
-            if(ADD_PROMPT("Delegation Fee", &state->uint32State.val, sizeof(uint32_t), delegation_fee_to_string)) break;
+            ADD_PROMPT("Delegation Fee", &state->uint32State.val, sizeof(uint32_t), delegation_fee_to_string);
+            BUBBLE_SWITCH_BREAK;
         } fallthrough;
         case 4:
              // This is bc we call the parser recursively, and, at the end, it gets called with
@@ -1321,7 +1319,8 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             state->state++;
             INIT_SUBPARSER(baseTxState, BaseTransaction);
             label_t label = type_id_to_label(meta->type_id, meta->chain);
-            if (ADD_PROMPT("Sign", label.label, label.label_size, strcpy_prompt)) break;
+            ADD_PROMPT("Sign", label.label, label.label_size, strcpy_prompt);
+            BUBBLE_SWITCH_BREAK;
         } fallthrough;
         case 3: { // Base transaction
             switch (meta->chain) {
@@ -1430,11 +1429,11 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
         } fallthrough;
         case 5: {
                   PRINTF("Prompting for fee\n");
-                  bool should_break = prompt_fee(meta);
-                  sub_rv = PARSE_RV_PROMPT;
+                  if (prompt_fee(meta))
+                      sub_rv = PARSE_RV_PROMPT;
                   state->state++;
                   PRINTF("Prompted for fee\n");
-                  if (should_break) break;
+                  BUBBLE_SWITCH_BREAK;
         } fallthrough;
         case 6:
                 return PARSE_RV_DONE;
