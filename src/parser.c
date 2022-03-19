@@ -30,10 +30,8 @@ void set_next_batch_size(prompt_batch_t *const prompt, size_t size) {
 
 #define CALL_SUBPARSER(subFieldName, subParser) { \
         sub_rv = parse_ ## subParser(&state->subFieldName, meta); \
-        if (sub_rv != PARSE_RV_DONE) return sub_rv; \
+        RET_IF_NOT_DONE; \
     }
-
-#define BUBBLE_SWITCH_BREAK if (sub_rv != PARSE_RV_DONE) break
 
 #define INIT_SUBPARSER(subFieldName, subParser) \
     init_ ## subParser(&state->subFieldName);
@@ -339,9 +337,9 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                     INIT_SUBPARSER(addressState, Address);
                 }
 
-                BUBBLE_SWITCH_BREAK;
+                BREAK_IF_NOT_DONE;
             }
-            BUBBLE_SWITCH_BREAK;
+            BREAK_IF_NOT_DONE;
         }
         fallthrough; // NOTE
         case 5:
@@ -405,9 +403,9 @@ enum parse_rv parse_SECP256K1OutputOwners(struct SECP256K1OutputOwners_state *co
                 } else {
                     INIT_SUBPARSER(addressState, Address);
                 }
-                BUBBLE_SWITCH_BREAK;
+                BREAK_IF_NOT_DONE;
             }
-            BUBBLE_SWITCH_BREAK;
+            BREAK_IF_NOT_DONE;
         } fallthrough;
         case 5:
             sub_rv = PARSE_RV_DONE;
@@ -455,7 +453,7 @@ enum parse_rv parse_StakeableLockOutput(struct StakeableLockOutput_state *const 
         promptData.until=state->locktime;
         state->state++;
         ADD_PROMPT("Funds locked", &promptData, sizeof(locked_prompt_t), lockedFundsPrompt)
-        BUBBLE_SWITCH_BREAK;
+        BREAK_IF_NOT_DONE;
         fallthrough;
       case 3:
         sub_rv=PARSE_RV_DONE;
@@ -895,7 +893,7 @@ enum parse_rv parse_ImportTransaction(struct ImportTransactionState *const state
                             meta->swapCounterpartChain == CHAIN_C ? cChainLabel : pChainLabel,
                             meta->swapCounterpartChain == CHAIN_C ? sizeof(cChainLabel) : sizeof(pChainLabel),
                             strcpy_prompt);
-              BUBBLE_SWITCH_BREAK;
+              BREAK_IF_NOT_DONE;
             }
             fallthrough;
 
@@ -1017,7 +1015,7 @@ enum parse_rv parse_EVMOutput(struct EVMOutput_state *const state, parser_meta_s
                 &output_prompt, sizeof(output_prompt),
                 output_prompt_to_string
                 );
-          BUBBLE_SWITCH_BREAK;
+          BREAK_IF_NOT_DONE;
       } fallthrough;
       case 4:
         sub_rv=PARSE_RV_DONE;
@@ -1156,28 +1154,28 @@ enum parse_rv parse_Validator(struct Validator_state *const state, parser_meta_s
       memcpy(&pkh_prompt.address, &state->addressState.val, sizeof(pkh_prompt.address));
       ADD_PROMPT("Validator", &pkh_prompt, sizeof(address_prompt_t), validator_to_string);
       INIT_SUBPARSER(uint64State, uint64_t);
-      BUBBLE_SWITCH_BREAK;
+      BREAK_IF_NOT_DONE;
       fallthrough; // NOTE
     case 1:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
       ADD_PROMPT("Start time", &state->uint64State.val, sizeof(uint64_t), time_to_string_void_ret);
       INIT_SUBPARSER(uint64State, uint64_t);
-      BUBBLE_SWITCH_BREAK;
+      BREAK_IF_NOT_DONE;
       fallthrough; // NOTE
     case 2:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
       ADD_PROMPT("End time", &state->uint64State.val, sizeof(uint64_t), time_to_string_void_ret);
       INIT_SUBPARSER(uint64State, uint64_t);
-      BUBBLE_SWITCH_BREAK;
+      BREAK_IF_NOT_DONE;
       fallthrough; // NOTE
     case 3:
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
       meta->staking_weight = state->uint64State.val;
       ADD_PROMPT("Total Stake", &state->uint64State.val, sizeof(uint64_t), nano_avax_to_string_indirect64);
-      BUBBLE_SWITCH_BREAK;
+      BREAK_IF_NOT_DONE;
       fallthrough; // NOTE
     case 4:
       return PARSE_RV_DONE;
@@ -1224,7 +1222,7 @@ enum parse_rv parse_AddValidatorTransaction(struct AddValidatorTransactionState
             CALL_SUBPARSER(uint32State, uint32_t);
             state->state++;
             ADD_PROMPT("Delegation Fee", &state->uint32State.val, sizeof(uint32_t), delegation_fee_to_string);
-            BUBBLE_SWITCH_BREAK;
+            BREAK_IF_NOT_DONE;
         } fallthrough;
         case 4:
              // This is bc we call the parser recursively, and, at the end, it gets called with
@@ -1282,7 +1280,7 @@ static label_t type_id_to_label(union transaction_type_id_t type_id, enum chain_
 #define CALL_SUBPARSER_BREAK(subFieldName, subParser) { \
         sub_rv = parse_ ## subParser(&state->subFieldName, meta); \
         PRINTF(#subParser " RV: %d\n", sub_rv); \
-        if (sub_rv != PARSE_RV_DONE) break; \
+        BREAK_IF_NOT_DONE; \
     }
 
 enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta_state_t *const meta) {
@@ -1320,7 +1318,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
             INIT_SUBPARSER(baseTxState, BaseTransaction);
             label_t label = type_id_to_label(meta->type_id, meta->chain);
             ADD_PROMPT("Sign", label.label, label.label_size, strcpy_prompt);
-            BUBBLE_SWITCH_BREAK;
+            BREAK_IF_NOT_DONE;
         } fallthrough;
         case 3: { // Base transaction
             switch (meta->chain) {
@@ -1336,7 +1334,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
                 sub_rv = PARSE_RV_DONE;
                 break;
             }
-            BUBBLE_SWITCH_BREAK;
+            BREAK_IF_NOT_DONE;
 
             state->state++;
             switch (meta->chain) {
@@ -1424,7 +1422,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
                 REJECT("Only base, export, and import transactions are supported");
               }
             }
-            BUBBLE_SWITCH_BREAK;
+            BREAK_IF_NOT_DONE;
             state->state++;
         } fallthrough;
         case 5: {
@@ -1433,7 +1431,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
                       sub_rv = PARSE_RV_PROMPT;
                   state->state++;
                   PRINTF("Prompted for fee\n");
-                  BUBBLE_SWITCH_BREAK;
+                  BREAK_IF_NOT_DONE;
         } fallthrough;
         case 6:
                 return PARSE_RV_DONE;

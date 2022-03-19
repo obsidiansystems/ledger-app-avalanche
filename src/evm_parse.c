@@ -257,9 +257,7 @@ enum parse_rv parse_evm_txn(struct EVM_txn_state *const state, evm_parser_meta_s
     switch (state->state) {
       case 0: {
         sub_rv = parse_core_uint8_t(&state->transaction_envelope_type, &meta->input);
-        if (sub_rv != PARSE_RV_DONE){
-          return sub_rv;
-        }
+        RET_IF_NOT_DONE;
         if (state->transaction_envelope_type.val == EIP1559_TYPE_VALUE) {
           state->type = EIP1559;
           init_rlp_list(&state->txn_state); // could technically be a different init in each case, so we repeat ourselves
@@ -278,12 +276,12 @@ enum parse_rv parse_evm_txn(struct EVM_txn_state *const state, evm_parser_meta_s
         switch (state->type) {
           case EIP1559: {
             sub_rv = parse_eip1559_rlp_txn(&state->txn_state, meta);
-            if (sub_rv != PARSE_RV_DONE) return sub_rv;
+            RET_IF_NOT_DONE;
             break;
           }
           case LEGACY: {
             sub_rv = parse_legacy_rlp_txn(&state->txn_state, meta);
-            if (sub_rv != PARSE_RV_DONE) return sub_rv;
+            RET_IF_NOT_DONE;
             break;
           }
         } // end switch state->type
@@ -312,7 +310,7 @@ void init_evm_txn(struct EVM_txn_state *const state) {
             } (void)0
 
 #define FINISH_ITEM_CHUNK() \
-            if(sub_rv != PARSE_RV_DONE) return sub_rv;                  \
+            RET_IF_NOT_DONE;                  \
             state->item_index++;                                        \
             init_rlp_item(&state->rlpItem_state);
 
@@ -355,7 +353,7 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
         if(state->state==1) {
             // Max length we could get for this value is 8 bytes so uint64_state is appropriate.
             sub_rv = parseFixed(fs(&state->uint64_state), &meta->input, state->len_len);
-            if(sub_rv != PARSE_RV_DONE) return sub_rv;
+            RET_IF_NOT_DONE;
             for(size_t i = 0; i < state->len_len; i++) {
                 ((uint8_t*)(&state->remaining))[i] = state->uint64_state.buf[state->len_len-i-1];
             }
@@ -488,7 +486,7 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
             }
 
             // Can't use the macro here because we need to do a prompt in the middle of it.
-            if(sub_rv != PARSE_RV_DONE) return sub_rv;
+            RET_IF_NOT_DONE;
             parse_calldata_preview(state, meta);
 
             if(!state->hasTo) {
@@ -564,7 +562,7 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
         if(state->state==1) {
             // Max length we could get for this value is 8 bytes so uint64_state is appropriate.
             sub_rv = parseFixed(fs(&state->uint64_state), &meta->input, state->len_len);
-            if(sub_rv != PARSE_RV_DONE) return sub_rv;
+            RET_IF_NOT_DONE;
             for(size_t i = 0; i < state->len_len; i++) {
                 ((uint8_t*)(&state->remaining))[i] = state->uint64_state.buf[state->len_len-i-1];
             }
@@ -714,7 +712,7 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
             } // end path where state has To
 
             // Can't use the FINISH_ITEM_ macro here because we need to do a prompt in the middle of it.
-            if(sub_rv != PARSE_RV_DONE) return sub_rv;
+            RET_IF_NOT_DONE;
             parse_calldata_preview(state, meta);
             
             if(!state->hasTo) {
@@ -886,7 +884,7 @@ enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
   switch(state->state) {
   case ABISTATE_SELECTOR: {
     sub_rv = parseFixed(fs(&state->selector_state), input, ETHEREUM_SELECTOR_SIZE);
-    if(sub_rv != PARSE_RV_DONE) return sub_rv;
+    RET_IF_NOT_DONE;
     for(size_t i = 0; i < NUM_ELEMENTS(known_endpoints); i++) {
       if(!memcmp(&known_endpoints[i].selector, state->selector_state.buf, ETHEREUM_SELECTOR_SIZE)) {
         meta->known_endpoint = &known_endpoints[i];
@@ -912,7 +910,7 @@ enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
     if(state->argument_index >= meta->known_endpoint->parameters_count)
       return PARSE_RV_DONE;
     sub_rv = parseFixed(fs(&state->argument_state), input, ETHEREUM_WORD_SIZE); // TODO: non-word size values
-    if(sub_rv != PARSE_RV_DONE) return sub_rv;
+    RET_IF_NOT_DONE;
     const struct contract_endpoint_param parameter = meta->known_endpoint->parameters[state->argument_index++];
     char *argument_name = PIC(parameter.name);
     setup_prompt_fun_t setup_prompt = PIC(parameter.setup_prompt);
@@ -926,7 +924,7 @@ enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
   // Probably we have to allow this, as the metamask constraint means _this_ endpoint will be getting stuff it doesn't understand a lot.
   case ABISTATE_UNRECOGNIZED: {
     sub_rv = skipBytes(fs(&state->argument_state), input, state->data_length);
-    if(sub_rv != PARSE_RV_DONE) return sub_rv;
+    RET_IF_NOT_DONE;
     state->state = ABISTATE_DONE;
     static char const isPresentLabel[]="Is Present (unsafe)";
     ADD_PROMPT("Contract Data", isPresentLabel, sizeof(isPresentLabel), strcpy_prompt);
@@ -948,7 +946,7 @@ enum parse_rv parse_assetCall_data(struct EVM_assetCall_state *const state, pars
     switch(state->state) {
     case ASSETCALL_ADDRESS:
       sub_rv = parseFixed(fs(&state->address_state), input, ETHEREUM_ADDRESS_SIZE);
-      if(sub_rv != PARSE_RV_DONE) return sub_rv;
+      RET_IF_NOT_DONE;
       SET_PROMPT_VALUE(memcpy(entry->data.output_prompt.address.val, state->address_state.buf, ETHEREUM_ADDRESS_SIZE));
       PRINTF("Address: %.*h\n", ETHEREUM_ADDRESS_SIZE, state->address_state.buf);
       state->state++;
@@ -956,7 +954,7 @@ enum parse_rv parse_assetCall_data(struct EVM_assetCall_state *const state, pars
       fallthrough;
     case ASSETCALL_ASSETID:
       sub_rv = parseFixed(fs(&state->id32_state), input, sizeof(Id32));
-      if(sub_rv != PARSE_RV_DONE) return sub_rv;
+      RET_IF_NOT_DONE;
       SET_PROMPT_VALUE(memcpy(&entry->data.output_prompt.assetCall.assetID, state->id32_state.buf, sizeof(uint256_t)));
       PRINTF("Asset: %.*h\n", 32, state->id32_state.buf);
       state->state++;
@@ -964,7 +962,7 @@ enum parse_rv parse_assetCall_data(struct EVM_assetCall_state *const state, pars
       fallthrough;
     case ASSETCALL_AMOUNT:
       sub_rv = parseFixed(fs(&state->uint256_state), input, sizeof(uint256_t));
-      if(sub_rv != PARSE_RV_DONE) return sub_rv;
+      RET_IF_NOT_DONE;
       SET_PROMPT_VALUE(readu256BE(state->uint256_state.buf, &entry->data.output_prompt.assetCall.amount));
       PRINTF("Amount: %.*h\n", 32, state->uint256_state.buf);
       state->state++;
@@ -983,7 +981,7 @@ enum parse_rv parse_assetCall_data(struct EVM_assetCall_state *const state, pars
       fallthrough;
     case ASSETCALL_DATA:
       sub_rv = parseFixed(fs(&state->selector_state), input, 4);
-      if(sub_rv != PARSE_RV_DONE) return sub_rv;
+      RET_IF_NOT_DONE;
 
       static const uint8_t depositSelectorBytes [4] = { 0xd0, 0xe3, 0x0d, 0xb0 };
       if(memcmp(PIC(&depositSelectorBytes), state->selector_state.buf, 4))
