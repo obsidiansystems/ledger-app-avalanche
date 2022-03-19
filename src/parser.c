@@ -217,10 +217,20 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
             INIT_SUBPARSER(addressState, Address);
             fallthrough;
         case 4: {
-            while (state->state == 4) {
+            if (state->address_i == state->address_n) {
+                state->state++;
+                break;
+            }
+            do {
+                // loop invariant
+                if (state->address_i == state->address_n) {
+                   THROW(EXC_MEMORY_ERROR);
+                }
+
                 CALL_SUBPARSER(addressState, Address);
-                state->address_i++;
-                PRINTF("Output address %d: %.*h\n", state->address_i, sizeof(state->addressState.buf), state->addressState.buf);
+                PRINTF("Output address %d: %.*h\n",
+                    state->address_i + 1,
+                    sizeof(state->addressState.buf), state->addressState.buf);
 
                 output_prompt_t output_prompt;
                 memset(&output_prompt, 0, sizeof(output_prompt));
@@ -331,15 +341,17 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                   }
                 }
 
-                if (state->address_i == state->address_n) {
-                    state->state++;
-                } else {
+                state->address_i++;
+                if (state->address_i < state->address_n) {
                     INIT_SUBPARSER(addressState, Address);
+                    RET_IF_PROMPT_FLUSH;
+                    continue;
+                } else {
+                    state->state++;
+                    RET_IF_PROMPT_FLUSH;
+                    break;
                 }
-
-                BREAK_IF_NOT_DONE;
-            }
-            BREAK_IF_NOT_DONE;
+            } while (false);
         }
         fallthrough; // NOTE
         case 5:
@@ -388,9 +400,17 @@ enum parse_rv parse_SECP256K1OutputOwners(struct SECP256K1OutputOwners_state *co
             INIT_SUBPARSER(addressState, Address);
             fallthrough;
         case 4: {
-            while (state->state == 4) {
+            if (state->address_i == state->address_n) {
+                state->state++;
+                break;
+            }
+            do {
+                // loop invariant
+                if (state->address_i == state->address_n) {
+                   THROW(EXC_MEMORY_ERROR);
+                }
+
                 CALL_SUBPARSER(addressState, Address);
-                state->address_i++;
 
                 address_prompt_t address_prompt;
                 memset(&address_prompt, 0, sizeof(address_prompt));
@@ -398,15 +418,20 @@ enum parse_rv parse_SECP256K1OutputOwners(struct SECP256K1OutputOwners_state *co
                 memcpy(&address_prompt.address, &state->addressState.val, sizeof(address_prompt.address));
                 // TODO: We can get rid of this if we add back the P/X- in front of an address
                 ADD_PROMPT("Rewards To", &address_prompt, sizeof(address_prompt_t), output_address_to_string);
-                if (state->address_i == state->address_n) {
-                    state->state++;
-                } else {
+
+                state->address_i++;
+                if (state->address_i < state->address_n) {
                     INIT_SUBPARSER(addressState, Address);
+                    RET_IF_PROMPT_FLUSH;
+                    continue;
+                } else {
+                    state->state++;
+                    RET_IF_PROMPT_FLUSH;
+                    break;
                 }
-                BREAK_IF_NOT_DONE;
-            }
-            BREAK_IF_NOT_DONE;
-        } fallthrough;
+            } while (false);
+        }
+        fallthrough;
         case 5:
             sub_rv = PARSE_RV_DONE;
             break;
