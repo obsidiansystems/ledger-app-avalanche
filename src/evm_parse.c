@@ -31,7 +31,9 @@ void init_rlp_item(struct EVM_RLP_item_state *const state) {
       meta->prompt.labels[meta->prompt.count] = label_;                 \
       meta->prompt.entries[meta->prompt.count].to_string = to_string_;  \
       meta->prompt.count++;                                             \
-      should_flush(&meta->prompt);                                       \
+      if (should_flush(&meta->prompt)) {                                \
+        sub_rv = PARSE_RV_PROMPT;                                       \
+      }                                                                 \
     })
 
 #define ADD_ACCUM_PROMPT(label_, to_string_) \
@@ -420,12 +422,11 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
               FINISH_ITEM_CHUNK();
               static char const label []="Creation";
               set_next_batch_size(&meta->prompt, 2);
-              if(({
-                  ADD_PROMPT("Contract", label, sizeof(label), strcpy_prompt);
-                  SET_PROMPT_VALUE(entry->data.output_prompt.start_gas = state->gasLimit);
-                  ADD_ACCUM_PROMPT("Gas Limit", output_evm_gas_limit_to_string);
-                }))
-                return PARSE_RV_PROMPT;
+              ADD_PROMPT("Contract", label, sizeof(label), strcpy_prompt);
+              SET_PROMPT_VALUE(entry->data.output_prompt.start_gas = state->gasLimit);
+              RET_IF_PROMPT_FLUSH;
+              ADD_ACCUM_PROMPT("Gas Limit", output_evm_gas_limit_to_string);
+              RET_IF_PROMPT_FLUSH;
             }
 
             PARSE_ITEM(EVM_LEGACY_TXN_VALUE, _to_buffer);
@@ -440,8 +441,10 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
                   REJECT("Transactions sent to precompiled contracts must have an amount of 0 WEI");
               }
             } else {
-              if(!zero256(&state->value))
-                if(ADD_ACCUM_PROMPT("Funding Contract", output_evm_fund_to_string)) return PARSE_RV_PROMPT;
+              if (!zero256(&state->value)) {
+                ADD_ACCUM_PROMPT("Funding Contract", output_evm_fund_to_string);
+                RET_IF_NOT_DONE;
+              }
             }
 
             PARSE_ITEM(EVM_LEGACY_TXN_DATA, _data);
@@ -474,7 +477,7 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
                   state->item_index++;
                   init_rlp_item(&state->rlpItem_state);
                   ADD_ACCUM_PROMPT("Transfer", output_evm_prompt_to_string);
-                  return PARSE_RV_PROMPT;
+                  RET_IF_NOT_DONE;
                 }
                 else {
                   sub_rv = parse_abi_call_data(abi_state,
@@ -490,8 +493,8 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
             parse_calldata_preview(state, meta);
 
             if(!state->hasTo) {
-              if(ADD_ACCUM_PROMPT("Data", output_evm_calldata_preview_to_string))
-                return PARSE_RV_PROMPT;
+              ADD_ACCUM_PROMPT("Data", output_evm_calldata_preview_to_string);
+              RET_IF_NOT_DONE;
             }
             PARSE_ITEM(EVM_LEGACY_TXN_CHAINID, _to_buffer);
 
@@ -508,12 +511,12 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
 
             SET_PROMPT_VALUE(entry->data.output_prompt.fee = state->priorityFeePerGas * state->gasLimit);
             if(state->hasData) {
-              if(ADD_ACCUM_PROMPT("Maximum Fee", output_evm_fee_to_string))
-                return PARSE_RV_PROMPT;
+              ADD_ACCUM_PROMPT("Maximum Fee", output_evm_fee_to_string);
+              RET_IF_NOT_DONE;
             }
             else {
-              if(ADD_ACCUM_PROMPT("Fee", output_evm_fee_to_string))
-                return PARSE_RV_PROMPT;
+              ADD_ACCUM_PROMPT("Fee", output_evm_fee_to_string);
+              RET_IF_NOT_DONE;
             }
 
             PARSE_ITEM(EVM_LEGACY_TXN_SIG_R, _to_buffer);
@@ -644,12 +647,11 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
               FINISH_ITEM_CHUNK();
               static char const label []="Creation";
               set_next_batch_size(&meta->prompt, 2);
-              if(({
-                  ADD_PROMPT("Contract", label, sizeof(label), strcpy_prompt);
-                  SET_PROMPT_VALUE(entry->data.output_prompt.start_gas = state->gasLimit);
-                  ADD_ACCUM_PROMPT("Gas Limit", output_evm_gas_limit_to_string);
-                }))
-                return PARSE_RV_PROMPT;
+              ADD_PROMPT("Contract", label, sizeof(label), strcpy_prompt);
+              SET_PROMPT_VALUE(entry->data.output_prompt.start_gas = state->gasLimit);
+              RET_IF_PROMPT_FLUSH;
+              ADD_ACCUM_PROMPT("Gas Limit", output_evm_gas_limit_to_string);
+              RET_IF_PROMPT_FLUSH;
             }
 
             PARSE_ITEM(EVM_EIP1559_TXN_VALUE, _to_buffer);
@@ -666,8 +668,10 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
                   REJECT("Transactions sent to precompiled contracts must have an amount of 0 WEI");
               }
             } else {
-              if(!zero256(&state->value))
-                if(ADD_ACCUM_PROMPT("Funding Contract", output_evm_fund_to_string)) return PARSE_RV_PROMPT;
+              if (!zero256(&state->value)) {
+                ADD_ACCUM_PROMPT("Funding Contract", output_evm_fund_to_string);
+                RET_IF_NOT_DONE;
+              }
             }
 
             PARSE_ITEM(EVM_EIP1559_TXN_DATA, _data);
@@ -700,7 +704,7 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
                   state->item_index++;
                   init_rlp_item(&state->rlpItem_state);
                   ADD_ACCUM_PROMPT("Transfer", output_evm_prompt_to_string);
-                  return PARSE_RV_PROMPT;
+                  RET_IF_NOT_DONE;
                 }
                 else {
                   sub_rv = parse_abi_call_data(abi_state,
@@ -716,19 +720,19 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
             parse_calldata_preview(state, meta);
             
             if(!state->hasTo) {
-              if(ADD_ACCUM_PROMPT("Data", output_evm_calldata_preview_to_string))
-                return PARSE_RV_PROMPT;
+              ADD_ACCUM_PROMPT("Data", output_evm_calldata_preview_to_string);
+              RET_IF_NOT_DONE;
             }
 
             __builtin_mul_overflow(state->priorityFeePerGas + state->baseFeePerGas, state->gasLimit, &feeDummy);
             SET_PROMPT_VALUE(entry->data.output_prompt.fee = feeDummy);
             if(state->hasData) {
-              if(ADD_ACCUM_PROMPT("Maximum Fee", output_evm_fee_to_string))
-                return PARSE_RV_PROMPT;
+              ADD_ACCUM_PROMPT("Maximum Fee", output_evm_fee_to_string);
+              RET_IF_NOT_DONE;
             }
             else {
-              if(ADD_ACCUM_PROMPT("Fee", output_evm_fee_to_string))
-                return PARSE_RV_PROMPT;
+              ADD_ACCUM_PROMPT("Fee", output_evm_fee_to_string);
+              RET_IF_NOT_DONE;
             }
             
 
@@ -903,8 +907,9 @@ enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
       ADD_ACCUM_PROMPT("Transfer", output_evm_prompt_to_string);
     }
 
-    return PARSE_RV_PROMPT;
+    RET_IF_NOT_DONE;
   }
+  fallthrough;
 
   case ABISTATE_ARGUMENTS: {
     if(state->argument_index >= meta->known_endpoint->parameters_count)
@@ -918,8 +923,9 @@ enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
                                   &entry->data.output_prompt));
     initFixed(fs(&state->argument_state), sizeof(state->argument_state));
     ADD_ACCUM_PROMPT_ABI(argument_name, PIC(parameter.output_prompt));
-    return PARSE_RV_PROMPT;
+    RET_IF_NOT_DONE;
   }
+  fallthrough;
 
   // Probably we have to allow this, as the metamask constraint means _this_ endpoint will be getting stuff it doesn't understand a lot.
   case ABISTATE_UNRECOGNIZED: {
@@ -928,8 +934,9 @@ enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
     state->state = ABISTATE_DONE;
     static char const isPresentLabel[]="Is Present (unsafe)";
     ADD_PROMPT("Contract Data", isPresentLabel, sizeof(isPresentLabel), strcpy_prompt);
-    return PARSE_RV_PROMPT;
+    RET_IF_NOT_DONE;
   }
+  fallthrough;
 
   case ABISTATE_DONE:
     return PARSE_RV_DONE;
@@ -970,8 +977,8 @@ enum parse_rv parse_assetCall_data(struct EVM_assetCall_state *const state, pars
       if(state->data_length==0) {
         PRINTF("Plain non-avax transfer\n");
         state->state = ASSETCALL_DONE;
-        if(ADD_ACCUM_PROMPT("Transfer", output_assetCall_prompt_to_string))
-          return PARSE_RV_PROMPT;
+        ADD_ACCUM_PROMPT("Transfer", output_assetCall_prompt_to_string);
+        RET_IF_NOT_DONE;
         return PARSE_RV_DONE;
       }
       if (state->data_length != 4) {
@@ -991,8 +998,8 @@ enum parse_rv parse_assetCall_data(struct EVM_assetCall_state *const state, pars
 
       state->state++;
       if (expectingDeposit) {
-        if(ADD_ACCUM_PROMPT("Deposit", output_assetCall_prompt_to_string))
-          return PARSE_RV_PROMPT;
+        ADD_ACCUM_PROMPT("Deposit", output_assetCall_prompt_to_string);
+        RET_IF_NOT_DONE;
       }
       fallthrough;
 

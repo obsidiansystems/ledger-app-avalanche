@@ -73,3 +73,9 @@ IMPL_FIXED(uint8_t);
 
 #define BREAK_IF_NOT_DONE \
     if (sub_rv != PARSE_RV_DONE) break
+
+#define RET_IF_PROMPT_FLUSH \
+    if (sub_rv == PARSE_RV_PROMPT) return sub_rv
+
+#define BREAK_IF_PRIMPT_FLUSH \
+    if (sub_rv == PARSE_RV_PROMPT) break
