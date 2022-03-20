@@ -1351,7 +1351,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
               case CHAIN_P:
                 PRINTF("TRACE pre basic tx subparser break, chain enum: %d\n", meta->chain);
                 CALL_SUBPARSER_BREAK(baseTxState, BaseTransaction);
-                PRINTF("TRACE post basic tx subparser");
+                PRINTF("TRACE post basic tx subparser\n");
                 break;
               case CHAIN_C:
                 // C-chain atomic transactions have a different format; skip here.
@@ -1459,9 +1459,14 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
                   BREAK_IF_PROMPT_FLUSH;
         } fallthrough;
         case 6:
-                return PARSE_RV_DONE;
+                sub_rv = PARSE_RV_DONE;
+                break;
+    }
+    if (meta->input.consumed > start_consumed) {
+        size_t consume_next = meta->input.consumed - start_consumed;
+        PRINTF("Hash %d bytes of input\n", consume_next);
+        update_transaction_hash(&state->hash_state, &meta->input.src[start_consumed], consume_next);
     }
     PRINTF("Consumed %d bytes of input so far\n", meta->input.consumed);
-    update_transaction_hash(&state->hash_state, &meta->input.src[start_consumed], meta->input.consumed - start_consumed);
     return sub_rv;
 }
