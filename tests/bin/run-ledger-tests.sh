@@ -10,7 +10,8 @@ shift
 
 if [[ ! ($suite == /nix/*) && -f $suite/hw-app-avalanche/src/Avalanche.js ]]; then
   pushd $suite
-  nix-shell -A 'passthru.deps."hw-app-avalanche@0.1.0"' --run "pushd hw-app-avalanche; node \$nodeModules/.bin/babel --source-maps -d lib src; popd"
+  nix-shell -A 'passthru.deps."hw-app-avalanche@0.1.0"' \
+    --run "pushd hw-app-avalanche; node \$nodeModules/.bin/babel --source-maps -d lib src; popd"
   popd
 fi
 

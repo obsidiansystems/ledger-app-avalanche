@@ -178,12 +178,12 @@ dep/%.d: %.c Makefile
 .PHONY: test test-no-nix watch
 
 watch:
-	ls src/*.c src/*.h tests/*.js tests/hw-app-avalanche/src/*.js | entr -cr make test
+	ls src/*.c src/*.h tests/*.ts tests/deps/hw-app-avalanche/src/*.ts | entr -cr make test
 
-test: tests/*.js tests/package.json bin/app.elf
+test: tests/*.ts tests/package.json bin/app.elf
 	LEDGER_APP=bin/app.elf run-ledger-tests.sh tests/
 
-test-no-nix: tests/node_packages tests/*.js tests/package.json bin/app.elf
+test-no-nix: tests/node_packages tests/*.ts tests/package.json bin/app.elf
 	(cd tests; yarn test)
 
 tests/node_packages: tests/package.json
