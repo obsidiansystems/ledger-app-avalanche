@@ -16,4 +16,7 @@ if [[ ! ($suite == /nix/*) && -f $suite/hw-app-avalanche/src/Avalanche.js ]]; th
 fi
 
 export NODE_PATH=$suite:$MY_NODE_MODULES:$NODE_PATH
-$MY_NODE_MODULES/.bin/mocha $suite --exit --require $suite/hooks --config tests/.mocharc.js "$@"
+$MY_NODE_MODULES/.bin/mocha $suite/*.ts --exit \
+  -r ts-node/register \
+  --config tests/.mocharc.js \
+  "$@"
