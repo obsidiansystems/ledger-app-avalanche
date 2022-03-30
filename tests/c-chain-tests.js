@@ -68,10 +68,10 @@ describe("C-chain import and export tests", () => {
     const pathPrefix = "44'/60'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
-      {header:"Sign", body:"Import"},
-      {header:"Importing",body:"0.268435456 AVAX to local1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqljssag"},
-      {header:"Fee", body:"0 AVAX"},
-      {header:"Finalize",body:"Transaction"},
+      [{header:"Sign", body:"Import"},
+       {header:"Importing",body:"0.268435456 AVAX to local1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqljssag"},
+       {header:"Fee", body:"0 AVAX"}],
+      [{header:"Finalize",body:"Transaction"}],
     ]);
     const sigPromise = this.ava.signTransaction(
       BIPPath.fromString(pathPrefix),
@@ -129,10 +129,10 @@ describe("C-chain import and export tests", () => {
     const pathPrefix = "44'/60'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
-      {header:"Sign",body:"Export"},
-      {header:"C chain export",body:'0.001 AVAX to local1vmusmdsn0fu0w6ekj0ml90zs09td4etrp5d6p7'},
-      {header:"Fee",body:"0.001 AVAX"},
-      {header:"Finalize",body:"Transaction"},
+      [{header:"Sign",body:"Export"},
+       {header:"C chain export",body:'0.001 AVAX to local1vmusmdsn0fu0w6ekj0ml90zs09td4etrp5d6p7'},
+       {header:"Fee",body:"0.001 AVAX"}],
+      [{header:"Finalize",body:"Transaction"}],
     ]);
     const sigPromise = this.ava.signTransaction(
       BIPPath.fromString(pathPrefix),
@@ -149,10 +149,10 @@ describe("C-chain import and export tests", () => {
     const pathPrefix = "44'/60'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
-      {header:"Sign",body:"Export"},
-      {header:"C chain export",body:'47473250 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'},
-      {header:"Fee",body:"2526750 AVAX"},
-      {header:"Finalize",body:"Transaction"},
+      [{header:"Sign",body:"Export"},
+       {header:"C chain export",body:'47473250 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'},
+       {header:"Fee",body:"2526750 AVAX"}],
+      [{header:"Finalize",body:"Transaction"}],
     ]);
     const sigPromise = this.ava.signTransaction(
       BIPPath.fromString(pathPrefix),
@@ -169,10 +169,10 @@ describe("C-chain import and export tests", () => {
     const pathPrefix = "44'/60'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
-      {header:"Sign", body:"Import"},
-      {header:"Importing",body:"27473249 AVAX to local13kuhcl8vufyu9wvtmspzdnzv9ftm75hunmtqe9"},
-      {header:"Fee", body:"2526750 AVAX"},
-      {header:"Finalize",body:"Transaction"},
+      [{header:"Sign", body:"Import"},
+       {header:"Importing",body:"27473249 AVAX to local13kuhcl8vufyu9wvtmspzdnzv9ftm75hunmtqe9"},
+       {header:"Fee", body:"2526750 AVAX"}],
+      [{header:"Finalize",body:"Transaction"}],
     ]);
     const sigPromise = this.ava.signTransaction(
       BIPPath.fromString(pathPrefix),

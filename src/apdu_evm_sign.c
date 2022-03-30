@@ -128,8 +128,27 @@ static void empty_prompt_queue(void) {
 
 static size_t next_parse(bool const is_reentry) {
     PRINTF("Next parse\n");
-    enum parse_rv const rv = parse_evm_txn(&G.state, &G.meta_state);
-    empty_prompt_queue();
+    enum parse_rv rv = PARSE_RV_INVALID;
+    BEGIN_TRY {
+      TRY {
+        set_next_batch_size(&G.meta_state.prompt, TRANSACTION_PROMPT_MAX_BATCH_SIZE);
+        rv = parse_evm_txn(&G.state, &G.meta_state);
+      }
+      FINALLY {
+        switch (rv) {
+        case PARSE_RV_NEED_MORE:
+          break;
+        case PARSE_RV_INVALID:
+          //peek_prompt_queue_reject();
+          //break;
+        case PARSE_RV_PROMPT:
+        case PARSE_RV_DONE:
+          empty_prompt_queue();
+          break;
+        }
+      }
+    }
+    END_TRY;
 
     if (rv == PARSE_RV_DONE || rv == PARSE_RV_NEED_MORE) {
         if (G.meta_state.input.consumed != G.meta_state.input.length) {
