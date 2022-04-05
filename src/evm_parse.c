@@ -339,6 +339,7 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
     enum parse_rv sub_rv = PARSE_RV_INVALID;
     switch(state->state) {
       case 0: {
+          // cautionary, shouldn't reach greater than
           if(meta->input.consumed >= meta->input.length) return PARSE_RV_NEED_MORE;
           uint8_t first = meta->input.src[meta->input.consumed++];
           if(first < 0xc0) REJECT("Transaction not an RLP list");
@@ -885,6 +886,7 @@ enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
   if(state->data_length < ETHEREUM_SELECTOR_SIZE) REJECT("When present, calldata must have at least %u bytes", ETHEREUM_SELECTOR_SIZE);
 
   enum parse_rv sub_rv;
+rebranch:
   switch(state->state) {
   case ABISTATE_SELECTOR: {
     sub_rv = parseFixed(fs(&state->selector_state), input, ETHEREUM_SELECTOR_SIZE);
@@ -909,7 +911,7 @@ enum parse_rv parse_abi_call_data(struct EVM_ABI_state *const state,
 
     RET_IF_NOT_DONE;
   }
-  fallthrough;
+  goto rebranch;
 
   case ABISTATE_ARGUMENTS: {
     if(state->argument_index >= meta->known_endpoint->parameters_count)
