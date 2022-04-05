@@ -59,10 +59,10 @@ describe("P-chain import and export tests", () => {
     const pathPrefix = "44'/9000'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
-      {header:"Sign",body:"Import"},
-      {header:"P chain import",body:"19999.999 AVAX to fuji18jma8ppw3nhx5r4ap8clazz0dps7rv5u6wmu4t"},
-      {header:"Fee",body:"15188.373088832 AVAX"},
-      {header:"Finalize",body:"Transaction"},
+      [{header:"Sign",body:"Import"},
+       {header:"P chain import",body:"19999.999 AVAX to fuji18jma8ppw3nhx5r4ap8clazz0dps7rv5u6wmu4t"},
+       {header:"Fee",body:"15188.373088832 AVAX"}],
+      [{header:"Finalize",body:"Transaction"}],
     ]);
     const sigPromise = this.ava.signTransaction(
       BIPPath.fromString(pathPrefix),
@@ -124,11 +124,11 @@ describe("P-chain import and export tests", () => {
     const pathPrefix = "44'/9000'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
-      {header:"Sign",body:"Export"},
-      {header:"Transfer",body:'0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3'},
-      {header:"P chain export",body:'0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx'},
-      {header:"Fee",body:"0.123432099 AVAX"},
-      {header:"Finalize",body:"Transaction"},
+      [{header:"Sign",body:"Export"},
+       {header:"Transfer",body:'0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3'},
+       {header:"P chain export",body:'0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx'},
+       {header:"Fee",body:"0.123432099 AVAX"}],
+      [{header:"Finalize",body:"Transaction"}],
     ]);
     const sigPromise = this.ava.signTransaction(
       BIPPath.fromString(pathPrefix),
@@ -145,10 +145,10 @@ describe("P-chain import and export tests", () => {
     const pathPrefix = "44'/9000'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
-      {header:"Sign",body:"Export"},
-      {header:"P chain export",body:'29999999 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'},
-      {header:"Fee",body:"1 AVAX"},
-      {header:"Finalize",body:"Transaction"},
+      [{header:"Sign",body:"Export"},
+       {header:"P chain export",body:'29999999 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'},
+       {header:"Fee",body:"1 AVAX"}],
+      [{header:"Finalize",body:"Transaction"}],
     ]);
     const sigPromise = this.ava.signTransaction(
       BIPPath.fromString(pathPrefix),
@@ -165,10 +165,10 @@ describe("P-chain import and export tests", () => {
     const pathPrefix = "44'/9000'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
-      {header:"Sign",body:"Import"},
-      {header:"Importing",body:'27473249 AVAX to local13kuhcl8vufyu9wvtmspzdnzv9ftm75hunmtqe9'},
-      {header:"Fee",body:"2526750 AVAX"},
-      {header:"Finalize",body:"Transaction"},
+      [{header:"Sign",body:"Import"},
+       {header:"Importing",body:'27473249 AVAX to local13kuhcl8vufyu9wvtmspzdnzv9ftm75hunmtqe9'},
+       {header:"Fee",body:"2526750 AVAX"}],
+      [{header:"Finalize",body:"Transaction"}],
     ]);
     const sigPromise = this.ava.signTransaction(
       BIPPath.fromString(pathPrefix),
@@ -255,17 +255,17 @@ describe('Staking tests', async function () {
     const pathPrefix = "44'/9000'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
-      {header: 'Sign', body: 'Add Validator'},
-      {header: 'Transfer', body: '3.999 AVAX to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'},
-      {header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' },
-      {header: 'Start time', body: '2020-07-29 22:07:25 UTC' },
-      {header: 'End time', body: '2020-08-28 21:57:26 UTC' },
-      {header: 'Total Stake', body: '2000 AVAX' },
-      {header: 'Stake',body: '2000 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'},
-      {header: 'Rewards To', body: 'local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n' },
-      {header: 'Delegation Fee', body: '0.01%' },
-      {header: 'Fee',body: '0.001 AVAX'},
-      {header: 'Finalize',body: 'Transaction'},
+      [{header: 'Sign', body: 'Add Validator'},
+       {header: 'Transfer', body: '3.999 AVAX to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'},
+       {header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' },
+       {header: 'Start time', body: '2020-07-29 22:07:25 UTC' }],
+      [{header: 'End time', body: '2020-08-28 21:57:26 UTC' },
+       {header: 'Total Stake', body: '2000 AVAX' },
+       {header: 'Stake',body: '2000 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'},
+       {header: 'Rewards To', body: 'local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n' }],
+      [{header: 'Delegation Fee', body: '0.01%' },
+       {header: 'Fee',body: '0.001 AVAX'}],
+      [{header: 'Finalize',body: 'Transaction'}],
     ]);
     const sigPromise = this.ava.signTransaction(
       BIPPath.fromString(pathPrefix),
@@ -350,13 +350,13 @@ describe('Staking tests', async function () {
       const pathPrefix = "44'/9000'/0'";
       const pathSuffixes = ["0/0", "0/1", "100/100"];
       const ui = await flowMultiPrompt(this.speculos, [
-        {header: 'Sign', body: 'Add Validator'},
-        {header: 'Transfer', body: '3.999 AVAX to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'},
-        {header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' },
-        {header: 'Start time', body: '2020-07-29 22:07:25 UTC' },
-        {header: 'End time', body: '2020-08-28 21:57:26 UTC' },
-        {header: 'Total Stake', body: '0.000054321 AVAX' },
-        {header: 'Stake',body: '2000 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'},
+        [{header: 'Sign', body: 'Add Validator'},
+         {header: 'Transfer', body: '3.999 AVAX to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'},
+         {header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' },
+         {header: 'Start time', body: '2020-07-29 22:07:25 UTC' }],
+        [{header: 'End time', body: '2020-08-28 21:57:26 UTC' },
+         {header: 'Total Stake', body: '0.000054321 AVAX' },
+         {header: 'Stake',body: '2000 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'}],
       ], "Next", "Next");
       const sigPromise = this.ava.signTransaction(
         BIPPath.fromString(pathPrefix),
@@ -433,16 +433,16 @@ describe('Staking tests', async function () {
     const pathPrefix = "44'/9000'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
-      {header: 'Sign', body: 'Add Delegator'},
-      {header: 'Transfer', body: '3.999 AVAX to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'},
-      {header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' },
-      {header: 'Start time', body: '2020-07-29 22:07:25 UTC' },
-      {header: 'End time', body: '2020-08-28 21:57:26 UTC' },
-      {header: 'Total Stake', body: '2000 AVAX' },
-      {header: 'Stake', body: '2000 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'},
-      {header: 'Rewards To', body: 'local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n' },
-      {header: 'Fee', body: '0.001 AVAX'},
-      {header: 'Finalize', body: 'Transaction'},
+      [{header: 'Sign', body: 'Add Delegator'},
+       {header: 'Transfer', body: '3.999 AVAX to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'},
+       {header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' },
+       {header: 'Start time', body: '2020-07-29 22:07:25 UTC' }],
+      [{header: 'End time', body: '2020-08-28 21:57:26 UTC' },
+       {header: 'Total Stake', body: '2000 AVAX' },
+       {header: 'Stake', body: '2000 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'},
+       {header: 'Rewards To', body: 'local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n' }],
+      [{header: 'Fee', body: '0.001 AVAX'}],
+      [{header: 'Finalize', body: 'Transaction'}],
     ]);
     const sigPromise = this.ava.signTransaction(
       BIPPath.fromString(pathPrefix),
@@ -516,13 +516,13 @@ describe('Staking tests', async function () {
       const pathPrefix = "44'/9000'/0'";
       const pathSuffixes = ["0/0", "0/1", "100/100"];
       const ui = await flowMultiPrompt(this.speculos, [
-        {header: 'Sign', body: 'Add Delegator'},
-        {header: 'Transfer', body: '3.999 AVAX to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'},
-        {header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' },
-        {header: 'Start time', body: '2020-07-29 22:07:25 UTC' },
-        {header: 'End time', body: '2020-08-28 21:57:26 UTC' },
-        {header: 'Total Stake', body: '0.000054321 AVAX' },
-        {header: 'Stake', body: '2000 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'},
+        [{header: 'Sign', body: 'Add Delegator'},
+         {header: 'Transfer', body: '3.999 AVAX to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'},
+         {header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' },
+         {header: 'Start time', body: '2020-07-29 22:07:25 UTC' }],
+        [{header: 'End time', body: '2020-08-28 21:57:26 UTC' },
+         {header: 'Total Stake', body: '0.000054321 AVAX' },
+         {header: 'Stake', body: '2000 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'}],
       ], "Next", "Next");
       const sigPromise = this.ava.signTransaction(
         BIPPath.fromString(pathPrefix),
@@ -619,18 +619,18 @@ describe('Staking tests', async function () {
     const pathPrefix = "44'/9000'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
-      {header: 'Sign', body: 'Add Validator'},
-      {header: 'Transfer', body: '3.999 AVAX to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'},
-      {header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' },
-      {header: 'Start time', body: '2020-07-29 22:07:25 UTC' },
-      {header: 'End time', body: '2020-08-28 21:57:26 UTC' },
-      {header: 'Total Stake', body: '2000 AVAX' },
-      {header: 'Stake',body: '2000 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'},
-      {header: 'Funds locked', body: '2000 AVAX until 2021-03-12 13:53:34 UTC'},
-      {header: 'Rewards To', body: 'local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n' },
-      {header: 'Delegation Fee', body: '0.01%' },
-      {header: 'Fee',body: '0.001 AVAX'},
-      {header: 'Finalize',body: 'Transaction'},
+      [{header: 'Sign', body: 'Add Validator'},
+       {header: 'Transfer', body: '3.999 AVAX to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'},
+       {header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' },
+       {header: 'Start time', body: '2020-07-29 22:07:25 UTC' }],
+      [{header: 'End time', body: '2020-08-28 21:57:26 UTC' },
+       {header: 'Total Stake', body: '2000 AVAX' },
+       {header: 'Stake',body: '2000 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'},
+       {header: 'Funds locked', body: '2000 AVAX until 2021-03-12 13:53:34 UTC'}],
+      [{header: 'Rewards To', body: 'local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n' },
+       {header: 'Delegation Fee', body: '0.01%' },
+       {header: 'Fee',body: '0.001 AVAX'}],
+      [{header: 'Finalize',body: 'Transaction'}],
     ]);
     const sigPromise = this.ava.signTransaction(
       BIPPath.fromString(pathPrefix),
@@ -732,19 +732,19 @@ describe('Staking tests', async function () {
     const pathPrefix = "44'/9000'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     const ui = await flowMultiPrompt(this.speculos, [
-      {header: 'Sign', body: 'Add Validator'},
-      {header: 'Transfer', body: '0.5 AVAX to fuji1asxdpfsmah8wqr6m8ymfwse5e4pa9fwnvudmpn'},
-      {header: 'Funds locked', body: '0.5 AVAX until 2021-05-31 21:28:00 UTC'},
-      {header: 'Validator', body: 'NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ'},
-      {header: 'Start time', body: '2021-03-15 20:05:27 UTC'},
-      {header: 'End time', body: '2022-03-15 19:55:27 UTC'},
-      {header: 'Total Stake', body: '1 AVAX'},
-      {header: 'Stake', body: '1 AVAX to fuji1asxdpfsmah8wqr6m8ymfwse5e4pa9fwnvudmpn'},
-      {header: 'Funds locked', body: '1 AVAX until 2021-05-31 21:28:00 UTC'},
-      {header: 'Rewards To', body: 'fuji1kekq6vfg56qj5vxfhlwzmgyejfxsczqld3kdup'},
-      {header: 'Delegation Fee', body: '2%'},
-      {header: 'Fee', body: '0 AVAX'},
-      {header: 'Finalize', body: 'Transaction'},
+      [{header: 'Sign', body: 'Add Validator'},
+       {header: 'Transfer', body: '0.5 AVAX to fuji1asxdpfsmah8wqr6m8ymfwse5e4pa9fwnvudmpn'},
+       {header: 'Funds locked', body: '0.5 AVAX until 2021-05-31 21:28:00 UTC'},
+       {header: 'Validator', body: 'NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ'}],
+      [{header: 'Start time', body: '2021-03-15 20:05:27 UTC'},
+       {header: 'End time', body: '2022-03-15 19:55:27 UTC'},
+       {header: 'Total Stake', body: '1 AVAX'},
+       {header: 'Stake', body: '1 AVAX to fuji1asxdpfsmah8wqr6m8ymfwse5e4pa9fwnvudmpn'}],
+      [{header: 'Funds locked', body: '1 AVAX until 2021-05-31 21:28:00 UTC'},
+       {header: 'Rewards To', body: 'fuji1kekq6vfg56qj5vxfhlwzmgyejfxsczqld3kdup'},
+       {header: 'Delegation Fee', body: '2%'},
+       {header: 'Fee', body: '0 AVAX'}],
+      [{header: 'Finalize', body: 'Transaction'}],
     ]);
     const sigPromise = this.ava.signTransaction(
       BIPPath.fromString(pathPrefix),
