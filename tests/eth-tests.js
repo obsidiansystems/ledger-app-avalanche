@@ -61,7 +61,7 @@ const contractCallPrompts = (address, method, args) => {
     const maxFeePrompt   = {header: "Maximum Fee",   body: "10229175 GWEI"};
     const argumentPrompts = args.map(([header,body]) => [{ header, body }]);
 
-    return [methodPrompt, argumentPrompts, maxFeePrompt, finalizePrompt];
+    return [[methodPrompt, ...argumentPrompts, maxFeePrompt], [finalizePrompt]];
 };
 
 const contractDeployPrompts = (bytes, amount, fee, gas) => {
