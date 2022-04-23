@@ -11,6 +11,17 @@ localAssetId = [
   0x5d, 0xa0, 0xdc, 0x12, 0xba, 0x53, 0xf2, 0xdb,
 ];
 
+const chunkPrompts = (prompts) => {
+  const chunkSize = 4;
+  let chunked = [];
+  for (let i = 0; i < prompts.length; i += chunkSize) {
+    chunked.push(prompts.slice(i, i + chunkSize));
+  }
+  return chunked;
+}
+
+const finalizePrompt = {header: "Finalize", body: "Transaction"};
+
 describe("C-chain import and export tests", () => {
   it('can sign an X-chain to C-chain import transaction', async function () {
     address = [ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -128,12 +139,12 @@ describe("C-chain import and export tests", () => {
     ]);
     const pathPrefix = "44'/60'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
-    const ui = await flowMultiPrompt(this.speculos, [
-      [{header:"Sign",body:"Export"},
-       {header:"C chain export",body:'0.001 AVAX to local1vmusmdsn0fu0w6ekj0ml90zs09td4etrp5d6p7'},
-       {header:"Fee",body:"0.001 AVAX"}],
-      [{header:"Finalize",body:"Transaction"}],
-    ]);
+    const signPrompt = {header:"Sign",body:"Export"};
+    const exportPrompt = {header:"C chain export",body:'0.001 AVAX to local1vmusmdsn0fu0w6ekj0ml90zs09td4etrp5d6p7'};
+    const feePrompt = {header:"Fee",body:"0.001 AVAX"};
+    const prompts = chunkPrompts([signPrompt, exportPrompt, feePrompt])
+      .concat([[finalizePrompt]]);
+    const ui = await flowMultiPrompt(this.speculos, [prompts]);
     const sigPromise = this.ava.signTransaction(
       BIPPath.fromString(pathPrefix),
       pathSuffixes.map(x => BIPPath.fromString(x, false)),
@@ -148,12 +159,12 @@ describe("C-chain import and export tests", () => {
     const txn = Buffer.from('000000000001000030399d0775f450604bd2fbc49ce0c5c1c6dfeb2dc2acb8c92c26eeae6e6df4502b190000000000000000000000000000000000000000000000000000000000000000000000018db97c7cece249c2b98bdc0226cc4c2a57bf52fc00b1a2bc2ec50000dbcf890f77f49b96857648b72b77f9f82937f28a68704af05da0dc12ba53f2db000000000000000000000001dbcf890f77f49b96857648b72b77f9f82937f28a68704af05da0dc12ba53f2db0000000700a8a8ab5a955400000000000000000000000001000000013cb7d3842e8cee6a0ebd09f1fe884f6861e1b29c', 'hex');
     const pathPrefix = "44'/60'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
-    const ui = await flowMultiPrompt(this.speculos, [
-      [{header:"Sign",body:"Export"},
-       {header:"C chain export",body:'47473250 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'},
-       {header:"Fee",body:"2526750 AVAX"}],
-      [{header:"Finalize",body:"Transaction"}],
-    ]);
+    const signPrompt = {header:"Sign",body:"Export"};
+    const exportPrompt = {header:"C chain export",body:'47473250 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'};
+    const feePrompt = {header:"Fee",body:"2526750 AVAX"};
+    const prompts = chunkPrompts([signPrompt, exportPrompt, feePrompt])
+      .concat([[finalizePrompt]]);
+    const ui = await flowMultiPrompt(this.speculos, [prompts]);
     const sigPromise = this.ava.signTransaction(
       BIPPath.fromString(pathPrefix),
       pathSuffixes.map(x => BIPPath.fromString(x, false)),
@@ -168,12 +179,12 @@ describe("C-chain import and export tests", () => {
     const txn = Buffer.from('000000000000000030399d0775f450604bd2fbc49ce0c5c1c6dfeb2dc2acb8c92c26eeae6e6df4502b190000000000000000000000000000000000000000000000000000000000000000000000011d77d94aaefd25c0c2544acaff85290690737d7f0234d3fc754276b40f98d5d900000000dbcf890f77f49b96857648b72b77f9f82937f28a68704af05da0dc12ba53f2db00000005006a94d713a836000000000100000000000000018db97c7cece249c2b98bdc0226cc4c2a57bf52fc00619ac63f788a00dbcf890f77f49b96857648b72b77f9f82937f28a68704af05da0dc12ba53f2db', 'hex');
     const pathPrefix = "44'/60'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
-    const ui = await flowMultiPrompt(this.speculos, [
-      [{header:"Sign", body:"Import"},
-       {header:"Importing",body:"27473249 AVAX to local13kuhcl8vufyu9wvtmspzdnzv9ftm75hunmtqe9"},
-       {header:"Fee", body:"2526750 AVAX"}],
-      [{header:"Finalize",body:"Transaction"}],
-    ]);
+    const signPrompt = {header:"Sign",body:"Import"};
+    const importPrompt = {header:"Importing",body:"27473249 AVAX to local13kuhcl8vufyu9wvtmspzdnzv9ftm75hunmtqe9"};
+    const feePrompt = {header:"Fee",body:"2526750 AVAX"};
+    const prompts = chunkPrompts([signPrompt, importPrompt, feePrompt])
+      .concat([[finalizePrompt]]);
+    const ui = await flowMultiPrompt(this.speculos, [prompts]);
     const sigPromise = this.ava.signTransaction(
       BIPPath.fromString(pathPrefix),
       pathSuffixes.map(x => BIPPath.fromString(x, false)),
