@@ -1,5 +1,6 @@
 { pkgs ? import (import ../nix/dep/ledger-platform/thunk.nix + "/dep/nixpkgs") {} }:
 let
+  inherit (pkgs) lib;
   yarn2nix = import deps/yarn2nix { inherit pkgs; };
   getThunkSrc = (import ./deps/reflex-platform { }).hackGet;
   npmDepsNix = pkgs.runCommand "npm-deps.nix" {} ''
@@ -27,7 +28,7 @@ let
             sha1 = "d2d7d8a808b5efeb09fe529034a30bd772902d84";
           };
           buildPhase = ''
-            ${pkgs.nodePackages.node-gyp}/bin/node-gyp rebuild --nodedir=${pkgs.lib.getDev pkgs.nodejs} # /include/node
+            ${pkgs.nodePackages.node-gyp}/bin/node-gyp rebuild --nodedir=${lib.getDev pkgs.nodejs} # /include/node
           '';
          nativeBuildInputs = [ pkgs.python3 ];
           nodeBuildInputs = [
@@ -39,11 +40,13 @@ let
         "usb@1.6.3" = {
           key = super."usb@1.6.3".key;
           drv = super."usb@1.6.3".drv.overrideAttrs (attrs: {
-            nativeBuildInputs = [ pkgs.python3 pkgs.systemd pkgs.v8_5_x pkgs.nodejs pkgs.libusb1 ];
+            nativeBuildInputs = [
+              pkgs.python3 pkgs.v8_5_x pkgs.nodejs pkgs.libusb1
+            ] ++ lib.optional pkgs.hostPlatform.isLinux pkgs.systemd;
             dontBuild = false;
             buildPhase = ''
               ln -s ${nixLib.linkNodeDeps { name=attrs.name; dependencies=attrs.passthru.nodeBuildInputs; }} node_modules
-              ${pkgs.nodePackages.node-gyp}/bin/node-gyp rebuild --nodedir=${pkgs.lib.getDev pkgs.nodejs} # /include/node
+              ${pkgs.nodePackages.node-gyp}/bin/node-gyp rebuild --nodedir=${lib.getDev pkgs.nodejs} # /include/node
             '';
           });
         };
@@ -51,11 +54,13 @@ let
         "node-hid@1.3.0" = {
           key = super."node-hid@1.3.0".key;
           drv = super."node-hid@1.3.0".drv.overrideAttrs (attrs: {
-            nativeBuildInputs = [ pkgs.python3 pkgs.systemd pkgs.v8_5_x pkgs.nodejs pkgs.libusb1 pkgs.pkg-config ];
+            nativeBuildInputs = [
+              pkgs.python3 pkgs.v8_5_x pkgs.nodejs pkgs.libusb1 pkgs.pkg-config
+            ] ++ lib.optional pkgs.hostPlatform.isLinux pkgs.systemd;
             dontBuild = false;
             buildPhase = ''
               ln -s ${nixLib.linkNodeDeps { name=attrs.name; dependencies=attrs.passthru.nodeBuildInputs; }} node_modules
-              ${pkgs.nodePackages.node-gyp}/bin/node-gyp rebuild --nodedir=${pkgs.lib.getDev pkgs.nodejs} # /include/node
+              ${pkgs.nodePackages.node-gyp}/bin/node-gyp rebuild --nodedir=${lib.getDev pkgs.nodejs} # /include/node
             '';
           });
         };
@@ -91,9 +96,9 @@ let
           ];
         };
       };
-  deps = nixLib.buildNodeDeps (pkgs.lib.composeExtensions (pkgs.callPackage npmDepsNix {fetchgit=builtins.fetchGit;}) localOverrides);
+  deps = nixLib.buildNodeDeps (lib.composeExtensions (pkgs.callPackage npmDepsNix {fetchgit=builtins.fetchGit;}) localOverrides);
 in
   nixLib.buildNodePackage
     ( { src = nixLib.removePrefixes [ "node_modules" ] ./.; passthru = { inherit deps npmDepsNix npmPackageNix getThunkSrc;}; } //
       nixLib.callTemplate npmPackageNix
-      (nixLib.buildNodeDeps (pkgs.lib.composeExtensions (pkgs.callPackage npmDepsNix {fetchgit=builtins.fetchGit;}) localOverrides)))
+      (nixLib.buildNodeDeps (lib.composeExtensions (pkgs.callPackage npmDepsNix {fetchgit=builtins.fetchGit;}) localOverrides)))

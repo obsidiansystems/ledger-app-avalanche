@@ -6,7 +6,10 @@ This breaks tests on release. So, to allow release to run, skip tests for now.
 Reenable ASAP.
 */
 let
-  ledger-app = import ./. { inherit runTest gitDescribe; };
+  ledger-app = import ./. {
+    localSystem = { system = "x86_64-linux"; };
+    inherit runTest gitDescribe;
+  };
 in rec {
   analysis-nanos = ledger-app.clangAnalysis.s.wallet;
   release-nanos = ledger-app.nano.s.release.all;

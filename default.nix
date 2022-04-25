@@ -1,7 +1,9 @@
-{ ledger-platform ? import ./nix/dep/ledger-platform {}
+{ localSystem ? { system = builtins.currentSystem; }
+, ledger-platform ? import ./nix/dep/ledger-platform { inherit localSystem; }
 , gitDescribe ? "TEST-dirty"
 , debug ? false
 , runTest ? true
+, buildTestDeps ? true # So we at least CI them
 }:
 let
   inherit (ledger-platform)
@@ -77,6 +79,7 @@ let
 
   build = bolos:
     let
+      doCheck = if runTest then bolos.test else false;
       app = ledgerPkgs.lldClangStdenv.mkDerivation {
         name = "ledger-app-avalanche-nano-${bolos.name}";
         inherit src;
@@ -86,11 +89,12 @@ let
         postConfigure = ''
           patchShebangs test.sh
           # hack to get around no tests for cross logic
-          doCheck=${toString (if runTest then bolos.test else false)};
+          doCheck=${toString doCheck};
           export USE_NIX=1
         '';
         nativeBuildInputs = [
           (pkgs.python3.withPackages (ps: [ps.pillow ps.ledgerblue]))
+        ] ++ lib.optionals buildTestDeps [
           ledgerPkgs.buildPackages.bats
           ledgerPkgs.buildPackages.entr
           ledgerPkgs.buildPackages.gdb
