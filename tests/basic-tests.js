@@ -400,8 +400,7 @@ describe("Basic Tests", () => {
         const signPrompt = {header:"Sign",body:"Transaction"};
         const transferPrompt = {header:"Transfer",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"};
         const feePrompt = {header:"Fee",body:"0.123444444 AVAX"};
-        const prompts = chunkPrompts([signPrompt, transferPrompt, feePrompt])
-          .concat([[finalizePrompt]]);
+        const prompts = chunkPrompts([signPrompt, transferPrompt, feePrompt]);
         const ui = await flowMultiPrompt(this.speculos, prompts, "Next", "Next");
         await signTransaction(this.ava, "44'/9000'/0'", ["0/0"], {
           extraEndBytes: Buffer.from([0x00])
