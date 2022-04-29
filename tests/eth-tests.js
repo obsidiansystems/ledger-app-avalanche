@@ -21,7 +21,7 @@ const rawUnsignedLegacyTransaction = (chainId, unsignedTxParams) => {
         bnToRlp(new BN(chainId)),
         Buffer.from([]),
         Buffer.from([]),
-    ]); 
+    ]);
 
 };
 
@@ -29,7 +29,7 @@ const rawUnsignedEIP1559Transaction = (chainId, unsignedTxParams) => {
   const common = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId }, 'london');
 
   const unsignedTx = EIP1559Transaction.fromTxData({...unsignedTxParams}, { common });
- 
+
 
   // https://github.com/ethereumjs/ethereumjs-monorepo/issues/1188
   return unsignedTx.getMessageToSign(false);
@@ -56,10 +56,9 @@ const assetCallDepositPrompts = (assetID, address, amount) => [
     [finalizePrompt]
 ];
 
-const contractCallPrompts = (address, method, args) => {
+const contractCallPrompts = (address, method, argumentPrompts) => {
     const methodPrompt   = {header: "Contract Call", body: method};
     const maxFeePrompt   = {header: "Maximum Fee",   body: "10229175 GWEI"};
-    const argumentPrompts = args.map(([header,body]) => [{ header, body }]);
 
     return [].concat(
         [[methodPrompt]],
@@ -102,7 +101,7 @@ async function testEIP1559Signing(self, chainId, prompts, hexTx) {
   const ethTx = Buffer.from(hexTx, 'hex');
   const flow = await flowMultiPrompt(self.speculos, prompts);
   const chainParams = { common: Common.forCustomChain('mainnet', { networkId: 1, chainId }, 'istanbul')};
-  
+
   const dat = await self.eth.signTransaction("44'/60'/0'/0/0", ethTx);
   chain = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId }, 'london')
   // remove the first byte from the start of the ethtx, the transactionType that's indicating it's an eip1559 transaction
@@ -120,12 +119,12 @@ const testDeploy = (chainId, withAmount) => async function () {
     this.timeout(8000);
     const [amountPrompt, amountHex] = withAmount ? ['0.000000001 nAVAX', '01'] : [null, '80'];
     await testLegacySigning(this, chainId,
-                      contractDeployPrompts(erc20presetMinterPauser.bytecodeHex, amountPrompt, '1428785900 GWEI', '3039970'),
-                      ('f93873' + '03' + '856d6e2edc00' + '832e62e2' + '80' + amountHex
-                       + ('b9385e' + erc20presetMinterPauser.bytecodeHex)
-                       + '82a868' + '80' + '80'
-                      )
-                     );
+      contractDeployPrompts(erc20presetMinterPauser.bytecodeHex, amountPrompt, '1428785900 GWEI', '3039970'),
+      ('f93873' + '03' + '856d6e2edc00' + '832e62e2' + '80' + amountHex
+       + ('b9385e' + erc20presetMinterPauser.bytecodeHex)
+       + '82a868' + '80' + '80'
+      )
+    );
 };
 
 const testUnrecognizedCalldataTx = (chainId, gasPrice, gasLimit, amountPrompt, amountHex, address, fee, calldata) => async function () {
@@ -179,27 +178,27 @@ const testData = {
   address: {
     hex: '0000000000000000000000000101020203030404050506060707080809090a0a',
         prompt: '0101020203030404050506060707080809090a0a',
-      },
-      amount: {
-        hex: '00000000000000000000000000000000000000000000000000000000000000aa',
-        prompt: '0.00000017 GWEI',
-      },
-      bytes32: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-      
-      signatures: {
-        transferFrom: 'f6153e09b51baa0e7564fd43034a9a540576d2aa869521c41a8247bc1ead5c9b570ae94343fcb0b5f1bce8d7b00f502544d3b723d799971d4a2b1b1a534d1e9c699000'
-      }
-    };
-    
-    describe("Eth app compatibility tests", async function () {
-      this.timeout(3000);
+  },
+  amount: {
+    hex: '00000000000000000000000000000000000000000000000000000000000000aa',
+    prompt: '0.00000017 GWEI',
+  },
+  bytes32: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+
+  signatures: {
+    transferFrom: 'f6153e09b51baa0e7564fd43034a9a540576d2aa869521c41a8247bc1ead5c9b570ae94343fcb0b5f1bce8d7b00f502544d3b723d799971d4a2b1b1a534d1e9c699000'
+  }
+};
+
+describe("Eth app compatibility tests", async function () {
+  this.timeout(3000);
   it('can get a key from the app with the ethereum ledgerjs module', async function() {
     const dat = await this.eth.getAddress("44'/60'/0'/0/0", false, true);
     expect(dat.publicKey).to.equal("04ef5b152e3f15eb0c50c9916161c2309e54bd87b9adce722d69716bcdef85f547678e15ab40a78919c7284e67a17ee9a96e8b9886b60f767d93023bac8dbc16e4");
     expect(dat.address).to.equal("0xdad77910dbdfde764fc21fcd4e74d71bbaca6d8d");
     expect(dat.chainCode).to.equal("428489ee70680fa137392bc8399c4da9e39e92f058eb9e790f736142bba7e9d6");
   });
-  
+
   it('can sign a transaction via the ethereum ledgerjs module', async function() {
     await testLegacySigning(this, 43114,
       transferPrompts('0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
@@ -209,7 +208,7 @@ const testData = {
       'ed01856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080'
       );
     });
-    
+
     it('can sign a larger transaction via the ethereum ledgerjs module', async function() {
       await testLegacySigning(this, 43114,
         transferPrompts('0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
@@ -218,7 +217,7 @@ const testData = {
         'f83801856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c79529202bd072a24087400000f0fff0f0fff0f0fff8082a86a8080'
         );
       });
-      
+
     it('can sign an EIP1559 transaction via the ethereum ledgerjs module with call data', async function() {
       const chainId = 43112;
       const tx = rawUnsignedEIP1559Transaction(chainId, {
@@ -278,9 +277,10 @@ const testData = {
     const tx = Buffer.from('02f9018a82a868808506fc23ac008506fc23ac008316e3608080b90170608060405234801561001057600080fd5b50610150806100206000396000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c80632e64cec11461003b5780636057361d14610059575b600080fd5b610043610075565b60405161005091906100d9565b60405180910390f35b610073600480360381019061006e919061009d565b61007e565b005b60008054905090565b8060008190555050565b60008135905061009781610103565b92915050565b6000602082840312156100b3576100b26100fe565b5b60006100c184828501610088565b91505092915050565b6100d3816100f4565b82525050565b60006020820190506100ee60008301846100ca565b92915050565b6000819050919050565b600080fd5b61010c816100f4565b811461011757600080fd5b5056fea2646970667358221220404e37f487a89a932dca5e77faaf6ca2de3b991f93d230604b1b8daaef64766264736f6c63430008070033c0', 'hex');
 
     const prompts = [
-        [{ header: 'Contract', body: 'Creation' }, { header: 'Gas Limit', body: '1500000' }],
-      [ { header: 'Data', body: '0x608060405234801561001057600080fd5b506101...' } ],
-        [finalizePrompt]
+        [{ header: 'Contract', body: 'Creation' },
+         { header: 'Gas Limit', body: '1500000' }],
+        [{ header: 'Data', body: '0x608060405234801561001057600080fd5b506101...' }],
+        [finalizePrompt],
       ];
     await testEIP1559Signing(this, chainId, prompts, tx);
   });
@@ -326,22 +326,22 @@ const testData = {
   it('can sign a ERC20PresetMinterPauser pause contract call', testCall(43113, '8456cb59', 'pause', []));
   it('can sign a ERC20PresetMinterPauser unpause contract call', testCall(43113, '3f4ba83a', 'unpause', []));
   it('can sign a ERC20PresetMinterPauser burn contract call', testCall(43113, '42966c68' + testData.amount.hex, 'burn', [
-      ["amount", testData.amount.prompt]
+    [{ header: "amount", body: testData.amount.prompt }],
   ]));
   it('can sign a ERC20PresetMinterPauser mint contract call', testCall(43113, '40c10f19' + testData.address.hex + testData.amount.hex, 'mint', [
-    ["to", '0x' + testData.address.prompt],
-    ["amount", testData.amount.prompt]
+    [{ header: "to",      body: '0x' + testData.address.prompt }],
+    [{ header: "amount", body: testData.amount.prompt }],
   ]));
 
   it('can sign a ERC20PresetMinterPauser transferFrom contract call', testCall(43113, '23b872dd' + testData.address.hex + testData.address.hex + testData.amount.hex, 'transferFrom', [
-    ["sender", '0x' + testData.address.prompt],
-    ["recipient", '0x' + testData.address.prompt],
-    ["amount", testData.amount.prompt]
+    [{ header: "sender",    body: '0x' + testData.address.prompt }],
+    [{ header: "recipient", body: '0x' + testData.address.prompt }],
+    [{ header: "amount",    body: testData.amount.prompt }],
   ]));
 
   it('can sign a ERC20PresetMinterPauser grantRole contract call', testCall(43113, '2f2ff15d' + testData.bytes32 + testData.address.hex, 'grantRole', [
-      ["role", '0x' + testData.bytes32],
-      ["account", '0x' + testData.address.prompt]
+    [{ header: "role",    body: '0x' + testData.bytes32 }],
+    [{ header: "account", body: '0x' + testData.address.prompt }],
   ]));
 
   it('can sign a transaction deploying erc20 contract without funding', testDeploy(43112, false));
@@ -378,13 +378,14 @@ const testData = {
   });
 
   it('accepts apdu ending in the middle of parsing length of calldata', async function () {
-    const prompts = contractCallPrompts('0x' + 'df073477da421520cf03af261b782282c304ad66',
-                                        'transferFrom',
-                                        [
-                                            ["sender", '0x' + testData.address.prompt],
-                                            ["recipient", '0x' + testData.address.prompt],
-                                            ["amount", testData.amount.prompt]
-                                        ]);
+    const prompts = contractCallPrompts(
+      '0x' + 'df073477da421520cf03af261b782282c304ad66',
+      'transferFrom',
+      [
+        [{ header: "sender",    body: '0x' + testData.address.prompt }],
+        [{ header: "recipient", body: '0x' + testData.address.prompt }],
+        [{ header: "amount",    body: testData.amount.prompt }],
+      ]);
     const flow = await flowMultiPrompt(this.speculos, prompts);
     const apdu1 = 'e004000038' + '058000002c8000003c800000000000000000000000' + 'f88b0a8534630b8a0082b19794df073477da421520cf03af261b782282c304ad6680b8';
     const apdu2 = 'e00480006a' + '6423b872dd0000000000000000000000000101020203030404050506060707080809090a0a0000000000000000000000000101020203030404050506060707080809090a0a00000000000000000000000000000000000000000000000000000000000000aa82a8698080';
