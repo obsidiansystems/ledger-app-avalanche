@@ -366,7 +366,7 @@ describe('Staking tests', async function () {
       {header: 'End time', body: '2020-08-28 21:57:26 UTC' },
       {header: 'Total Stake', body: '0.000054321 AVAX' },
       {header: 'Stake',body: '2000 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'}
-      ]).concat([[finalizePrompt]]);
+      ]);
       const ui = await flowMultiPrompt(this.speculos, prompts, "Next", "Next");
       const sigPromise = this.ava.signTransaction(
         BIPPath.fromString(pathPrefix),
@@ -531,7 +531,7 @@ describe('Staking tests', async function () {
       {header: 'End time', body: '2020-08-28 21:57:26 UTC' },
       {header: 'Total Stake', body: '0.000054321 AVAX' },
       {header: 'Stake', body: '2000 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'}
-      ]).concat([[finalizePrompt]]);
+      ]);
       const ui = await flowMultiPrompt(this.speculos, prompts, "Next", "Next");
       const sigPromise = this.ava.signTransaction(
         BIPPath.fromString(pathPrefix),
