@@ -115,6 +115,7 @@ let
         GIT_DESCRIBE = gitDescribe;
         BOLOS_SDK = bolos.sdk;
         # note trailing slash
+        CLANGPATH = "${ledgerPkgs.lldClangStdenv.cc}/bin/";
         GCCPATH = "${ledgerPkgs.stdenv.cc}/bin/";
         DEBUG=if debug then "1" else "0";
 

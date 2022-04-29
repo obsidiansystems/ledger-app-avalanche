@@ -29,7 +29,7 @@ exports.mochaHooks = {
           '--button-port', '' + BUTTON_PORT,
           '--automation-port', '' + AUTOMATION_PORT,
           '--apdu-port', '' + APDU_PORT,
-          '--sdk', '2.0',
+          '--sdk', '2.1',
         ], speculosProcessOptions);
         console.log("Speculos started");
       }
