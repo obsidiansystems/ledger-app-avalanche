@@ -21,16 +21,18 @@ exports.mochaHooks = {
       this.speculos.button = console.log;
       console.log(this.speculos);
     } else {
-      const speculosProcessOptions = process.env.SPECULOS_DEBUG ? {stdio:"inherit"} : {};
-      this.speculosProcess = spawn('speculos', [
-        process.env.LEDGER_APP,
-        '--display', 'headless',
-        '--button-port', '' + BUTTON_PORT,
-        '--automation-port', '' + AUTOMATION_PORT,
-        '--apdu-port', '' + APDU_PORT,
-        '--sdk', '2.0',
-      ], speculosProcessOptions);
-      console.log("Speculos started");
+      if (!process.env.USE_EXISTING_SPECULOS) {
+        const speculosProcessOptions = process.env.SPECULOS_DEBUG ? {stdio:"inherit"} : {};
+        this.speculosProcess = spawn('speculos', [
+          process.env.LEDGER_APP,
+          '--display', 'headless',
+          '--button-port', '' + BUTTON_PORT,
+          '--automation-port', '' + AUTOMATION_PORT,
+          '--apdu-port', '' + APDU_PORT,
+          '--sdk', '2.0',
+        ], speculosProcessOptions);
+        console.log("Speculos started");
+      }
       while (this.speculos === undefined) { // Let the test timeout handle the bad case
         try {
           this.speculos = await SpeculosTransport.open({
@@ -38,7 +40,9 @@ exports.mochaHooks = {
             buttonPort: BUTTON_PORT,
             automationPort: AUTOMATION_PORT,
           });
-          if (process.env.DEBUG_BUTTONS) {
+          if (process.env.MANUAL_BUTTON) {
+            this.speculos.button = console.log;
+          } else if (process.env.DEBUG_BUTTONS) {
             const subButton = this.speculos.button;
             this.speculos.button = btns => {
               console.log("Speculos Buttons: " + btns);
