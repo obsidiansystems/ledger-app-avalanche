@@ -326,7 +326,7 @@ describe("Eth app compatibility tests", async function () {
   it('can sign a ERC20PresetMinterPauser pause contract call', testCall(43113, '8456cb59', 'pause', []));
   it('can sign a ERC20PresetMinterPauser unpause contract call', testCall(43113, '3f4ba83a', 'unpause', []));
   it('can sign a ERC20PresetMinterPauser burn contract call', testCall(43113, '42966c68' + testData.amount.hex, 'burn', [
-      { header: "amount", body: testData.amount.prompt }
+    { header: "amount", body: testData.amount.prompt }
   ]));
   it('can sign a ERC20PresetMinterPauser mint contract call', testCall(43113, '40c10f19' + testData.address.hex + testData.amount.hex, 'mint', [
     { header: "to",      body: '0x' + testData.address.prompt },
