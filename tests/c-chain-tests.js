@@ -11,15 +11,6 @@ localAssetId = [
   0x5d, 0xa0, 0xdc, 0x12, 0xba, 0x53, 0xf2, 0xdb,
 ];
 
-const chunkPrompts = (prompts) => {
-  const chunkSize = 1;
-  let chunked = [];
-  for (let i = 0; i < prompts.length; i += chunkSize) {
-    chunked.push(prompts.slice(i, i + chunkSize));
-  }
-  return chunked;
-}
-
 const finalizePrompt = {header: "Finalize", body: "Transaction"};
 
 describe("C-chain import and export tests", () => {
