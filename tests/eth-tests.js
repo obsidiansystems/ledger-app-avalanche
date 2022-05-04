@@ -38,23 +38,20 @@ const rawUnsignedEIP1559Transaction = (chainId, unsignedTxParams) => {
 
 const finalizePrompt = {header: "Finalize", body: "Transaction"};
 
-const transferPrompts = (address, amount, fee) => [
-    [{header: "Transfer",    body: amount + " to " + address},
-     {header: "Fee",         body: fee}],
-    [finalizePrompt]
-];
+const transferPrompts = (address, amount, fee) => chunkPrompts([
+  {header: "Transfer",    body: amount + " to " + address},
+  {header: "Fee",         body: fee},
+]).concat([[finalizePrompt]]);
 
-const assetCallTransferPrompts = (assetID, address, amount) => [
-    [{header: "Transfer",    body: amount + " of " + assetID + " to " + address},
-     {header: "Maximum Fee", body: "47000000 GWEI"}],
-    [finalizePrompt]
-];
+const assetCallTransferPrompts = (assetID, address, amount) => chunkPrompts([
+  {header: "Transfer",    body: amount + " of " + assetID + " to " + address},
+  {header: "Maximum Fee", body: "47000000 GWEI"},
+]).concat([[finalizePrompt]]);
 
-const assetCallDepositPrompts = (assetID, address, amount) => [
-    [{header: "Deposit",     body: amount + " of " + assetID + " to " + address},
-     {header: "Maximum Fee", body: "47000000 GWEI"}],
-    [finalizePrompt]
-];
+const assetCallDepositPrompts = (assetID, address, amount) => chunkPrompts([
+  {header: "Deposit",     body: amount + " of " + assetID + " to " + address},
+  {header: "Maximum Fee", body: "47000000 GWEI"},
+]).concat([[finalizePrompt]]);
 
 const chunkPrompts = (prompts) => {
   const chunkSize = 4;
@@ -118,7 +115,9 @@ async function testEIP1559Signing(self, chainId, prompts, hexTx) {
 
 const testDeploy = (chainId, withAmount) => async function () {
     this.timeout(8000);
-    const [amountPrompt, amountHex] = withAmount ? ['0.000000001 nAVAX', '01'] : [null, '80'];
+    const [amountPrompt, amountHex] = withAmount
+      ? ['0.000000001 nAVAX', '01']
+      : [null, '80'];
     await testLegacySigning(this, chainId,
       contractDeployPrompts(amountPrompt, '1428785900 GWEI', '3039970'),
       ('f93873' + '03' + '856d6e2edc00' + '832e62e2' + '80' + amountHex
@@ -202,19 +201,20 @@ describe("Eth app compatibility tests", async function () {
 
   it('can sign a transaction via the ethereum ledgerjs module', async function() {
     await testLegacySigning(this, 43114,
-      transferPrompts('0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
-      '0.01234 AVAX',
-      '9870000 GWEI'
-      ),
+      transferPrompts(
+        '0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
+        '0.01234 AVAX',
+        '9870000 GWEI'),
       'ed01856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080'
       );
     });
 
     it('can sign a larger transaction via the ethereum ledgerjs module', async function() {
       await testLegacySigning(this, 43114,
-        transferPrompts('0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
-        '238547462614852887054687.704548455429902335 AVAX',
-        '9870000 GWEI'),
+        transferPrompts(
+          '0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
+          '238547462614852887054687.704548455429902335 AVAX',
+          '9870000 GWEI'),
         'f83801856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c79529202bd072a24087400000f0fff0f0fff0f0fff8082a86a8080'
         );
       });
@@ -348,21 +348,23 @@ describe("Eth app compatibility tests", async function () {
   it('can sign a transaction deploying erc20 contract with funding',    testDeploy(43112, true));
 
   it('can sign a transaction with assetCall via the ethereum ledgerjs module', async function() {
-      await testLegacySigning(this, 43112,
-                        assetCallTransferPrompts('verma4Pa9biWKbjDGNsTXU47cYCyDSNGSU1iBkxucfVSFVXdv',
-                                                 '0x41c9cc6fd27e26e70f951869fb09da685a696f0a',
-                                                 '0x123456789abcdef'),
-                        'f87c01856d6e2edc00830186a094010000000000000000000000000000000000000280b85441c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a00000000000000000000000000000000000000000000000000123456789abcdef82a8688080'
-                       );
+    await testLegacySigning(this, 43112,
+      assetCallTransferPrompts(
+        'verma4Pa9biWKbjDGNsTXU47cYCyDSNGSU1iBkxucfVSFVXdv',
+        '0x41c9cc6fd27e26e70f951869fb09da685a696f0a',
+        '0x123456789abcdef'),
+      'f87c01856d6e2edc00830186a094010000000000000000000000000000000000000280b85441c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a00000000000000000000000000000000000000000000000000123456789abcdef82a8688080'
+    );
   });
 
   it('can sign a transaction with assetCall deposit and funds via the ethereum ledgerjs module', async function() {
-      await testLegacySigning(this, 43112,
-                        assetCallDepositPrompts('verma4Pa9biWKbjDGNsTXU47cYCyDSNGSU1iBkxucfVSFVXdv',
-                                                '0x41c9cc6fd27e26e70f951869fb09da685a696f0a',
-                                                '0x0'),
-                        'f88001856d6e2edc00830186a094010000000000000000000000000000000000000280b85841c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a00000000000000000000000000000000000000000000000000000000000000000d0e30db082a8688080'
-                       );
+    await testLegacySigning(this, 43112,
+      assetCallDepositPrompts(
+        'verma4Pa9biWKbjDGNsTXU47cYCyDSNGSU1iBkxucfVSFVXdv',
+        '0x41c9cc6fd27e26e70f951869fb09da685a696f0a',
+        '0x0'),
+      'f88001856d6e2edc00830186a094010000000000000000000000000000000000000280b85841c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a00000000000000000000000000000000000000000000000000000000000000000d0e30db082a8688080'
+    );
   });
 
   it('can provide an ERC20 Token and sign with the ethereum ledgerjs module', async function() {
@@ -370,11 +372,12 @@ describe("Eth app compatibility tests", async function () {
     const result = await this.eth.provideERC20TokenInformation(zrxInfo);
 
     await testLegacySigning(this, 43114,
-                      transferPrompts('0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
-                                      '0.01234 AVAX',
-                                      '441000 GWEI'),
-                      'ed018504e3b292008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080'
-                     );
+      transferPrompts(
+        '0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
+        '0.01234 AVAX',
+        '441000 GWEI'),
+      'ed018504e3b292008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080'
+    );
   });
 
   it('accepts apdu ending in the middle of parsing length of calldata', async function () {

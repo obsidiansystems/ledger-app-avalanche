@@ -160,8 +160,9 @@ describe("Basic Tests", () => {
       const signPrompt = {header:"Sign",body:"Transaction"};
       const transferPrompt = {header:"Transfer",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"};
       const feePrompt = {header:"Fee",body:"0.123444444 AVAX"};
-      const prompts = [[signPrompt, transferPrompt, feePrompt]].concat([[finalizePrompt]]);
-    
+      const prompts = chunkPrompts([signPrompt, transferPrompt, feePrompt])
+          .concat([[finalizePrompt]]);
+
       const ui = await flowMultiPrompt(this.speculos, prompts);
       const sigPromise = signTransaction(this.ava, pathPrefix, pathSuffixes);
       await ui.promptsPromise;
@@ -462,10 +463,10 @@ describe("Basic Tests", () => {
         this.speculos,
         this.ava,
         { inputTypeId: Buffer.from([0x01, 0x00, 0x00, 0x00]) },
-        [
-          [{header:"Sign",body:"Transaction"},
-           {header:"Transfer",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"}],
-        ],
+        chunkPrompts([
+          {header:"Sign",body:"Transaction"},
+          {header:"Transfer",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"},
+        ]),
       );
     });
 
@@ -610,8 +611,10 @@ describe("Basic Tests", () => {
       const transferPrompt = {header:"Sending",body: "0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3"};
       const sourceChainPrompt = {header:"From",body: "P-chain"};
       const feePrompt = {header:"Fee",body:"0.246901233 AVAX"};
-      const prompts = [[signPrompt, transferPrompt, sourceChainPrompt, feePrompt], [finalizePrompt]];
-  
+      const prompts = chunkPrompts([
+        signPrompt, transferPrompt, sourceChainPrompt, feePrompt
+      ]).concat([[finalizePrompt]]);
+
       const ui = await flowMultiPrompt(this.speculos, prompts);
       const sigPromise = this.ava.signTransaction(
         BIPPath.fromString(pathPrefix),
@@ -627,7 +630,9 @@ describe("Basic Tests", () => {
         const transferPrompt = {header:"Sending",body: "0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3"};
         const sourceChainPrompt = {header:"From",body: "C-chain"};
         const feePrompt = {header:"Fee",body:"0.246901233 AVAX"};
-        const prompts = [[signPrompt, transferPrompt, sourceChainPrompt, feePrompt], [finalizePrompt]];
+        const prompts = chunkPrompts([
+          signPrompt, transferPrompt, sourceChainPrompt, feePrompt
+        ]).concat([[finalizePrompt]]);
 
         const ui = await flowMultiPrompt(this.speculos, prompts);
         const sigPromise = this.ava.signTransaction(
@@ -692,7 +697,9 @@ describe("Basic Tests", () => {
       const transferPrompt = {header:"Transfer",body: "0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3"};
       const exportPrompt = {header:"X to P chain",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"};
       const feePrompt = {header:"Fee",body:"0.123432099 AVAX"};
-      const prompts = [[signPrompt, transferPrompt, exportPrompt, feePrompt], [finalizePrompt]];
+      const prompts = chunkPrompts([
+        signPrompt, transferPrompt, exportPrompt, feePrompt
+      ]).concat([[finalizePrompt]]);
 
       const ui = await flowMultiPrompt(this.speculos, prompts);
       const sigPromise = this.ava.signTransaction(
@@ -709,7 +716,9 @@ describe("Basic Tests", () => {
       const transferPrompt = {header:"Transfer",body: "0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3"};
       const exportPrompt = {header:"X to C chain",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"};
       const feePrompt = {header:"Fee",body:"0.123432099 AVAX"};
-      const prompts = [[signPrompt, transferPrompt, exportPrompt, feePrompt], [finalizePrompt]];
+      const prompts = chunkPrompts([
+        signPrompt, transferPrompt, exportPrompt, feePrompt
+      ]).concat([[finalizePrompt]]);
 
       const ui = await flowMultiPrompt(this.speculos, prompts);
       const sigPromise = this.ava.signTransaction(
