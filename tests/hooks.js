@@ -30,6 +30,7 @@ exports.mochaHooks = {
           '--automation-port', '' + AUTOMATION_PORT,
           '--apdu-port', '' + APDU_PORT,
           '--sdk', '1.6',
+	  '--debug',
         ], speculosProcessOptions);
         console.log("Speculos started");
       }

@@ -289,6 +289,13 @@ struct AddValidatorTransactionState {
   };
 };
 
+struct AddSNValidatorTransactionState {
+  int state;
+  union {
+        struct 	
+  };
+};
+
 struct AddDelegatorTransactionState {
   int state;
   union {
@@ -313,12 +320,6 @@ struct TransactionState {
     struct AddDelegatorTransactionState addDelegatorTxState;
     struct CChainImportTransactionState cChainImportState;
     struct CChainExportTransactionState cChainExportState;
-  };
-};
-
-typedef struct {
-    uint8_t const *src;
-    size_t consumed;
     size_t length;
 } parser_input_meta_state_t;
 
@@ -423,3 +424,10 @@ typedef struct {
 
 
 } parser_meta_state_t;
+#pragma once
+
+#include "types.h"
+#include "uint256.h"
+#include "network_info.h"
+
+// some global definitions
