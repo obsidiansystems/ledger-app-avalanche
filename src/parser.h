@@ -327,7 +327,7 @@ struct TransactionState {
     struct CChainExportTransactionState cChainExportState;
     size_t length;
   };
-} 
+}; 
 
 typedef struct {
     uint8_t const *src;
