@@ -292,7 +292,11 @@ struct AddValidatorTransactionState {
 struct AddSNValidatorTransactionState {
   int state;
   union {
-        struct 	
+        struct uint32_t_state uint32State;
+        struct Id32_state id32State;
+       	struct TransferableOutputs_state outputsState;
+
+        struct Validator_state validatorState;
   };
 };
 
@@ -317,9 +321,17 @@ struct TransactionState {
     struct ImportTransactionState importTxState;
     struct ExportTransactionState exportTxState;
     struct AddValidatorTransactionState addValidatorTxState;
+    struct AddSNValidatorTransactionState addSNValidatorTxState;
     struct AddDelegatorTransactionState addDelegatorTxState;
     struct CChainImportTransactionState cChainImportState;
     struct CChainExportTransactionState cChainExportState;
+    size_t length;
+  };
+} 
+
+typedef struct {
+    uint8_t const *src;
+    size_t consumed;
     size_t length;
 } parser_input_meta_state_t;
 
@@ -377,10 +389,11 @@ enum transaction_x_chain_type_id_t {
 };
 
 enum transaction_p_chain_type_id_t {
-    TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR   = 0x0c,
-    TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR   = 0x0e,
-    TRANSACTION_P_CHAIN_TYPE_ID_IMPORT          = 0x11,
-    TRANSACTION_P_CHAIN_TYPE_ID_EXPORT          = 0x12
+    TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR    = 0x0c,
+    TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR    = 0x0e,
+    TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR = 0x0d,
+    TRANSACTION_P_CHAIN_TYPE_ID_IMPORT           = 0x11,
+    TRANSACTION_P_CHAIN_TYPE_ID_EXPORT           = 0x12
 };
 
 enum transaction_c_chain_type_id_t {
