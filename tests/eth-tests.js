@@ -53,15 +53,6 @@ const assetCallDepositPrompts = (assetID, address, amount) => chunkPrompts([
   {header: "Maximum Fee", body: "47000000 GWEI"},
 ]).concat([[finalizePrompt]]);
 
-const chunkPrompts = (prompts) => {
-  const chunkSize = 4;
-  let chunked = [];
-  for (let i = 0; i < prompts.length; i += chunkSize) {
-    chunked.push(prompts.slice(i, i + chunkSize));
-  }
-  return chunked;
-}
-
 const contractCallPrompts = (method, argumentPrompts) => {
     const methodPrompt   = {header: "Contract Call", body: method};
     const maxFeePrompt   = {header: "Maximum Fee",   body: "10229175 GWEI"};

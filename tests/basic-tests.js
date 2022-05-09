@@ -1,12 +1,3 @@
-const chunkPrompts = (prompts) => {
-  const chunkSize = 4;
-  let chunked = [];
-  for (let i = 0; i < prompts.length; i += chunkSize) {
-    chunked.push(prompts.slice(i, i + chunkSize));
-  }
-  return chunked;
-}
-
 const finalizePrompt = {header: "Finalize", body: "Transaction"};
 
 describe("Basic Tests", () => {
