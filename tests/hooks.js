@@ -289,6 +289,15 @@ async function flowMultiPrompt(speculos, prompts, nextPrompt="Next", finalPrompt
   });
 }
 
+const chunkPrompts = (prompts) => {
+  const chunkSize = 1;
+  let chunked = [];
+  for (let i = 0; i < prompts.length; i += chunkSize) {
+    chunked.push(prompts.slice(i, i + chunkSize));
+  }
+  return chunked;
+}
+
 const fcConfig = {
   interruptAfterTimeLimit: parseInt(process.env.GEN_TIME_LIMIT || 1000),
   markInterruptAsFailure: false,
@@ -313,3 +322,4 @@ global.BIPPath = BIPPath;
 global.recover = recover;
 global.expect = expect;
 global.flowMultiPrompt = flowMultiPrompt;
+global.chunkPrompts = chunkPrompts;
