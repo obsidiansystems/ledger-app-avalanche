@@ -914,20 +914,22 @@ rebranch:
   goto rebranch;
 
   case ABISTATE_ARGUMENTS: {
-    if(state->argument_index >= meta->known_endpoint->parameters_count)
-      return PARSE_RV_DONE;
-    sub_rv = parseFixed(fs(&state->argument_state), input, ETHEREUM_WORD_SIZE); // TODO: non-word size values
-    RET_IF_NOT_DONE;
-    const struct contract_endpoint_param parameter = meta->known_endpoint->parameters[state->argument_index++];
-    char *argument_name = PIC(parameter.name);
-    setup_prompt_fun_t setup_prompt = PIC(parameter.setup_prompt);
-    SET_PROMPT_VALUE(setup_prompt(fs(&state->argument_state)->buffer,
-                                  &entry->data.output_prompt));
-    initFixed(fs(&state->argument_state), sizeof(state->argument_state));
-    ADD_ACCUM_PROMPT_ABI(argument_name, PIC(parameter.output_prompt));
-    RET_IF_NOT_DONE;
+    while (state->argument_index < meta->known_endpoint->parameters_count) {
+      sub_rv = parseFixed(fs(&state->argument_state), input, ETHEREUM_WORD_SIZE); // TODO: non-word size values
+      RET_IF_NOT_DONE;
+      const struct contract_endpoint_param parameter = meta->known_endpoint->parameters[state->argument_index];
+      char *argument_name = PIC(parameter.name);
+      setup_prompt_fun_t setup_prompt = PIC(parameter.setup_prompt);
+      SET_PROMPT_VALUE(setup_prompt(fs(&state->argument_state)->buffer,
+                                    &entry->data.output_prompt));
+      initFixed(fs(&state->argument_state), sizeof(state->argument_state));
+      ADD_ACCUM_PROMPT_ABI(argument_name, PIC(parameter.output_prompt));
+      state->argument_index++;
+      RET_IF_NOT_DONE;
+    }
+    // Done with the function, next case is alternative not continuation.
+    return PARSE_RV_DONE;
   }
-  fallthrough;
 
   // Probably we have to allow this, as the metamask constraint means _this_ endpoint will be getting stuff it doesn't understand a lot.
   case ABISTATE_UNRECOGNIZED: {
