@@ -294,7 +294,7 @@ struct AddSNValidatorTransactionState {
   union {
         struct uint32_t_state uint32State;
         struct Id32_state id32State;
-       	struct TransferableOutputs_state outputsState;
+        struct TransferableOutputs_state outputsState;
 
         struct Validator_state validatorState;
   };
