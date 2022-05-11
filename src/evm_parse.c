@@ -938,9 +938,9 @@ rebranch:
     state->state = ABISTATE_DONE;
     static char const isPresentLabel[]="Is Present (unsafe)";
     ADD_PROMPT("Contract Data", isPresentLabel, sizeof(isPresentLabel), strcpy_prompt);
-    // Done with the function, next case is alternative not continuation.
-    return PARSE_RV_DONE;
+    RET_IF_NOT_DONE;
   }
+  fallthrough;
 
   case ABISTATE_DONE:
     return PARSE_RV_DONE;

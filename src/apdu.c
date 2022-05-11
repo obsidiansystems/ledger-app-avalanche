@@ -210,14 +210,6 @@ __attribute__((noreturn)) void main_loop(struct app_handlers const *const app_ha
             CATCH(EXCEPTION_IO_RESET) {
                 THROW(EXCEPTION_IO_RESET);
             }
-            //CATCH(EXC_PARSE_ERROR) {
-            //    clear_apdu_globals(); // IMPORTANT: Application state must not persist through errors
-            //    THROW(EXCEPTION_IO_RESET);
-            //}
-            //CATCH(EXC_REJECT) {
-            //    clear_apdu_globals(); // IMPORTANT: Application state must not persist through errors
-            //    THROW(EXCEPTION_IO_RESET);
-            //}
             CATCH_OTHER(e) {
                 clear_apdu_globals(); // IMPORTANT: Application state must not persist through errors
 
