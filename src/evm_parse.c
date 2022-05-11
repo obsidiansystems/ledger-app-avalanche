@@ -422,7 +422,7 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
             else {
               FINISH_ITEM_CHUNK();
               static char const label []="Creation";
-              set_next_batch_size(&meta->prompt, 2);
+              //set_next_batch_size(&meta->prompt, 2);
               ADD_PROMPT("Contract", label, sizeof(label), strcpy_prompt);
               SET_PROMPT_VALUE(entry->data.output_prompt.start_gas = state->gasLimit);
               RET_IF_PROMPT_FLUSH;
@@ -647,7 +647,7 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
             else {
               FINISH_ITEM_CHUNK();
               static char const label []="Creation";
-              set_next_batch_size(&meta->prompt, 2);
+              //set_next_batch_size(&meta->prompt, 2);
               ADD_PROMPT("Contract", label, sizeof(label), strcpy_prompt);
               SET_PROMPT_VALUE(entry->data.output_prompt.start_gas = state->gasLimit);
               RET_IF_PROMPT_FLUSH;
