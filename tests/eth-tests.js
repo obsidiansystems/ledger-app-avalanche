@@ -67,12 +67,11 @@ const contractDeployPrompts = (amount, fee, gas) => {
   const fundingPrompt  = {header: "Funding Contract",  body: amount};
   const dataPrompt     = {header: "Data",              body: "0x60806040523480156200001157600080fd5b5060..."};
   const feePrompt      = {header: "Maximum Fee",       body: fee};
-  return [
-    [creationPrompt, gasPrompt]
-  ].concat(chunkPrompts(amount
-    ? [fundingPrompt, dataPrompt, feePrompt]
-    : [dataPrompt, feePrompt]
-  )).concat([[finalizePrompt]]);
+  return chunkPrompts(amount
+    ? [creationPrompt, gasPrompt, fundingPrompt, dataPrompt, feePrompt]
+    : [creationPrompt, gasPrompt, dataPrompt, feePrompt]
+  )
+    .concat([[finalizePrompt]]);
 };
 
 async function testLegacySigning(self, chainId, prompts, hexTx) {
@@ -255,7 +254,8 @@ describe("Eth app compatibility tests", async function () {
       });
 
       const transferPrompt = {header: "Transfer",     body: '0.000004096 nAVAX' + " to " + '0x' + '0102030400000000000000000000000000000002'};
-      const prompts = chunkPrompts([transferPrompt])
+      const feePrompt = {header: "Fee",   body: "0.002293452 GWEI"};
+      const prompts = chunkPrompts([transferPrompt, feePrompt])
         .concat([[finalizePrompt]]);
 
       await testEIP1559Signing(this, chainId, prompts, tx);
@@ -270,11 +270,9 @@ describe("Eth app compatibility tests", async function () {
     const contractCreationPrompt = { header: 'Contract', body: 'Creation' };
     const gasLimitPrompt = { header: 'Gas Limit', body: '1500000' };
     const dataPrompt = { header: 'Data', body: '0x608060405234801561001057600080fd5b506101...' };
-    const prompts = [
-      [contractCreationPrompt, gasLimitPrompt]
-    ].concat(chunkPrompts([
-      dataPrompt
-    ])).concat([[finalizePrompt]]);
+    const maxFeePrompt = { header: 'Maximum Fee', body: '90000000 GWEI' };
+    const prompts = chunkPrompts([contractCreationPrompt, gasLimitPrompt, dataPrompt, maxFeePrompt])
+      .concat([[finalizePrompt]]);
     await testEIP1559Signing(this, chainId, prompts, tx);
   });
 

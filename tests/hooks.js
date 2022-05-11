@@ -290,7 +290,7 @@ async function flowMultiPrompt(speculos, prompts, nextPrompt="Next", finalPrompt
 }
 
 const chunkPrompts = (prompts) => {
-  const chunkSize = 1;
+  const chunkSize = 5;
   let chunked = [];
   for (let i = 0; i < prompts.length; i += chunkSize) {
     chunked.push(prompts.slice(i, i + chunkSize));
