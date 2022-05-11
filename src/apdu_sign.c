@@ -240,37 +240,72 @@ static void empty_prompt_queue(void) {
     }
 }
 
+static void peek_prompt_queue_reject(void) {
+    if (G.parser.meta_state.prompt.count > 0) {
+        PRINTF("Prompting for %d fields\n", G.parser.meta_state.prompt.count);
+
+        if (G.parser.meta_state.prompt.count) {
+            register_ui_callback(
+                0,
+                G.parser.meta_state.prompt.entries[0].to_string,
+                &G.parser.meta_state.prompt.entries[0].data
+            );
+        }
+        ui_prompt_with(ASYNC_EXCEPTION, "FAILED", G.parser.meta_state.prompt.labels, sign_reject, sign_reject);
+    }
+}
+
 static size_t next_parse(bool const is_reentry) {
     PRINTF("Next parse\n");
-    enum parse_rv const rv = parseTransaction(&G.parser.state, &G.parser.meta_state);
-    empty_prompt_queue();
+    enum parse_rv rv = PARSE_RV_INVALID;
+    BEGIN_TRY {
+      TRY {
+        set_next_batch_size(&G.parser.meta_state.prompt, TRANSACTION_PROMPT_MAX_BATCH_SIZE);
+        rv = parseTransaction(&G.parser.state, &G.parser.meta_state);
+      }
+      FINALLY {
+        switch (rv) {
+        case PARSE_RV_NEED_MORE:
+          break;
+        case PARSE_RV_INVALID:
+          //peek_prompt_queue_reject();
+          //break;
+        case PARSE_RV_PROMPT:
+        case PARSE_RV_DONE:
+          empty_prompt_queue();
+          break;
+        }
+      }
+    }
+    END_TRY;
 
-    if (rv == PARSE_RV_DONE || rv == PARSE_RV_NEED_MORE) {
-        if (G.parser.meta_state.input.consumed != G.parser.meta_state.input.length) {
-            PRINTF("Not all input was parsed: %d %d %d\n", rv, G.parser.meta_state.input.consumed, G.parser.meta_state.input.length);
+    if ((rv == PARSE_RV_DONE || rv == PARSE_RV_NEED_MORE) &&
+        G.parser.meta_state.input.consumed != G.parser.meta_state.input.length)
+    {
+        PRINTF("Not all input was parsed: %d %d %d\n", rv, G.parser.meta_state.input.consumed, G.parser.meta_state.input.length);
+        THROW(EXC_PARSE_ERROR);
+    }
+
+    if (rv == PARSE_RV_NEED_MORE) {
+        if (G.parser.is_last_message) {
+            PRINTF("Sender claimed last message and we aren't done\n");
+            THROW(EXC_PARSE_ERROR);
+        }
+        PRINTF("Need more\n");
+        return reply_maybe_delayed(is_reentry, finalize_successful_send(0));
+    }
+
+    if (rv == PARSE_RV_DONE) {
+        if (!G.parser.is_last_message) {
+            PRINTF("Sender claims there is more but we are done\n");
             THROW(EXC_PARSE_ERROR);
         }
 
-        if (rv == PARSE_RV_NEED_MORE) {
-            if (G.parser.is_last_message) {
-                PRINTF("Sender claimed last message and we aren't done\n");
-                THROW(EXC_PARSE_ERROR);
-            }
-            PRINTF("Need more\n");
-            return reply_maybe_delayed(is_reentry, finalize_successful_send(0));
-        }
-
-        if (rv == PARSE_RV_DONE) {
-            if (!G.parser.is_last_message) {
-                PRINTF("Sender claims there is more but we are done\n");
-                THROW(EXC_PARSE_ERROR);
-            }
-
-            PRINTF("Parser signaled done; sending final prompt\n");
-            cx_hash((cx_hash_t *const)&G.parser.state.hash_state, CX_LAST, NULL, 0, G.final_hash, sizeof(G.final_hash));
-            transaction_complete_prompt();
-        }
+        PRINTF("Parser signaled done; sending final prompt\n");
+        cx_hash((cx_hash_t *const)&G.parser.state.hash_state, CX_LAST, NULL, 0, G.final_hash, sizeof(G.final_hash));
+        transaction_complete_prompt();
     }
+
 
     PRINTF("Parse error: %d %d %d\n", rv, G.parser.meta_state.input.consumed, G.parser.meta_state.input.length);
     THROW(EXC_PARSE_ERROR);
