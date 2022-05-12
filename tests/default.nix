@@ -124,6 +124,6 @@ in
       (nixLib.buildNodeDeps
         (pkgs.lib.composeExtensions
           (pkgs.callPackage npmDepsNix {
-            fetchgit=builtins.fetchGit;
+            fetchgit = builtins.fetchGit;
           })
           localOverrides)))
