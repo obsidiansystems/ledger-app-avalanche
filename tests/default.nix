@@ -96,7 +96,16 @@ let
       };
   deps = nixLib.buildNodeDeps (pkgs.lib.composeExtensions (pkgs.callPackage npmDepsNix {fetchgit=builtins.fetchGit;}) localOverrides);
 in
-  nixLib.buildNodePackage
-    ( { src = nixLib.removePrefixes [ "node_modules" ] ./.; passthru = { inherit deps npmDepsNix npmPackageNix getThunkSrc;}; } //
-      nixLib.callTemplate npmPackageNix
-      (nixLib.buildNodeDeps (pkgs.lib.composeExtensions (pkgs.callPackage npmDepsNix {fetchgit=builtins.fetchGit;}) localOverrides)))
+  nixLib.buildNodePackage ({
+    src = nixLib.removePrefixes [ "node_modules" ] ./.;
+    passthru = {
+      inherit deps npmDepsNix npmPackageNix getThunkSrc;
+    };
+  } //
+    nixLib.callTemplate npmPackageNix
+      (nixLib.buildNodeDeps
+        (pkgs.lib.composeExtensions
+          (pkgs.callPackage npmDepsNix {
+            fetchgit = builtins.fetchGit;
+          })
+          localOverrides)))
