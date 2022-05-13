@@ -95,7 +95,13 @@ let
           ];
         };
       };
-  deps = nixLib.buildNodeDeps (lib.composeExtensions (pkgs.callPackage npmDepsNix {fetchgit=builtins.fetchGit;}) localOverrides);
+
+  deps = nixLib.buildNodeDeps
+    (lib.composeExtensions
+      (pkgs.callPackage npmDepsNix {
+        fetchgit = builtins.fetchGit;
+      })
+      localOverrides);
 
   src0 = lib.sources.cleanSourceWith {
     src = ./.;
@@ -114,11 +120,4 @@ in
     passthru = {
       inherit deps npmDepsNix npmPackageNix getThunkSrc;
     };
-  } //
-    nixLib.callTemplate npmPackageNix
-      (nixLib.buildNodeDeps
-        (lib.composeExtensions
-          (pkgs.callPackage npmDepsNix {
-            fetchgit = builtins.fetchGit;
-          })
-          localOverrides)))
+  } // nixLib.callTemplate npmPackageNix deps)
