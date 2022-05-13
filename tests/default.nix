@@ -125,12 +125,22 @@ let
   };
 
   src = lib.sources.sourceFilesBySuffices src0 [
-    ".js" ".json" ".sh"
+    ".js" ".ts" ".json"
   ];
-in
-  nixLib.buildNodePackage ({
+in rec {
+  inherit deps npmDepsNix npmPackageNix getThunkSrc;
+
+  testPackage = nixLib.buildNodePackage ({
     inherit src;
-    passthru = {
-      inherit deps npmDepsNix npmPackageNix getThunkSrc;
-    };
-  } // nixLib.callTemplate npmPackageNix deps)
+  } // nixLib.callTemplate npmPackageNix deps);
+
+  testScript = pkgs.writeShellScriptBin "mocha-wrapper" ''
+    suite="$(readlink -e ''${1:-${testPackage}})"
+    shift
+
+    export NO_UPDATE_NOTIFIER=true
+    export NODE_PATH=${testPackage}/node_modules:$NODE_PATH
+    cd $suite
+    exec ${pkgs.yarn}/bin/yarn --offline exec mocha -- --no-parallel -r ts-node/register --exit --require hooks --config $suite/.mocharc.js $suite/*.ts
+  '';
+}

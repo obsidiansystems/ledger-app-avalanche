@@ -1,10 +1,6 @@
 {
   "name": "avax-ledger-tests",
   "version": "0.1.0",
-  "src": "hw-app-avalanche/src",
-  "scripts": {
-    "test": "mocha --no-parallel -r ts-node/register *.ts *.js --exit --require hooks --config .mocharc.js"
-  },
   "bin": "run-tests.js",
   "dependencies": {
     "@ledgerhq/hw-app-eth": "^6.27.0",

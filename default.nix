@@ -99,13 +99,11 @@ let
           ledgerPkgs.buildPackages.gdb
           ledgerPkgs.buildPackages.jq
           ledgerPkgs.buildPackages.libusb
-          ledgerPkgs.buildPackages.nodejs-14_x
           ledgerPkgs.buildPackages.openssl
           ledgerPkgs.buildPackages.pkg-config
           ledgerPkgs.buildPackages.xxd
-          ledgerPkgs.buildPackages.yarn
           speculos.speculos
-          tests
+          tests.testScript
           # usbtool
         ];
         TARGET = bolos.target;

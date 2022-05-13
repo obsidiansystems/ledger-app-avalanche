@@ -181,7 +181,7 @@ watch:
 	ls src/*.c src/*.h tests/*.ts tests/deps/hw-app-avalanche/src/*.ts | entr -cr make test
 
 test: tests/*.ts tests/package.json bin/app.elf
-	LEDGER_APP=bin/app.elf run-ledger-tests.sh tests/
+	LEDGER_APP=bin/app.elf mocha-wrapper tests
 
 test-no-nix: tests/node_packages tests/*.ts tests/package.json bin/app.elf
 	(cd tests; yarn test)
