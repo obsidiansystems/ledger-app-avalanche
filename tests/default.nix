@@ -3,6 +3,7 @@
 }:
 
 let
+  inherit (pkgs) lib;
   yarn2nix = import deps/yarn2nix { inherit pkgs; };
   getThunkSrc = (import ./deps/reflex-platform { }).hackGet;
   npmDepsNix = pkgs.runCommand "npm-deps.nix" {} ''
@@ -30,7 +31,7 @@ let
             sha1 = "d2d7d8a808b5efeb09fe529034a30bd772902d84";
           };
           buildPhase = ''
-            ${pkgs.nodePackages.node-gyp}/bin/node-gyp rebuild --nodedir=${pkgs.lib.getDev nodejs} # /include/node
+            ${pkgs.nodePackages.node-gyp}/bin/node-gyp rebuild --nodedir=${lib.getDev nodejs} # /include/node
           '';
          nativeBuildInputs = [ pkgs.python3 ];
           nodeBuildInputs = [
@@ -46,7 +47,7 @@ let
             dontBuild = false;
             buildPhase = ''
               ln -s ${nixLib.linkNodeDeps { name=attrs.name; dependencies=attrs.passthru.nodeBuildInputs; }} node_modules
-              ${pkgs.nodePackages.node-gyp}/bin/node-gyp rebuild --nodedir=${pkgs.lib.getDev nodejs} # /include/node
+              ${pkgs.nodePackages.node-gyp}/bin/node-gyp rebuild --nodedir=${lib.getDev nodejs} # /include/node
             '';
           });
         };
@@ -58,7 +59,7 @@ let
             dontBuild = false;
             buildPhase = ''
               ln -s ${nixLib.linkNodeDeps { name=attrs.name; dependencies=attrs.passthru.nodeBuildInputs; }} node_modules
-              ${pkgs.nodePackages.node-gyp}/bin/node-gyp rebuild --nodedir=${pkgs.lib.getDev nodejs} # /include/node
+              ${pkgs.nodePackages.node-gyp}/bin/node-gyp rebuild --nodedir=${lib.getDev nodejs} # /include/node
             '';
           });
         };
@@ -94,17 +95,29 @@ let
           ];
         };
       };
-  deps = nixLib.buildNodeDeps (pkgs.lib.composeExtensions (pkgs.callPackage npmDepsNix {fetchgit=builtins.fetchGit;}) localOverrides);
+  deps = nixLib.buildNodeDeps (lib.composeExtensions (pkgs.callPackage npmDepsNix {fetchgit=builtins.fetchGit;}) localOverrides);
+
+  src0 = lib.sources.cleanSourceWith {
+    src = ./.;
+    filter = p: _: let
+      p' = baseNameOf p;
+      srcStr = builtins.toString ./.;
+    in p' != "node_modules";
+  };
+
+  src = lib.sources.sourceFilesBySuffices src0 [
+    ".js" ".json" ".sh"
+  ];
 in
   nixLib.buildNodePackage ({
-    src = nixLib.removePrefixes [ "node_modules" ] ./.;
+    inherit src;
     passthru = {
       inherit deps npmDepsNix npmPackageNix getThunkSrc;
     };
   } //
     nixLib.callTemplate npmPackageNix
       (nixLib.buildNodeDeps
-        (pkgs.lib.composeExtensions
+        (lib.composeExtensions
           (pkgs.callPackage npmDepsNix {
             fetchgit = builtins.fetchGit;
           })
