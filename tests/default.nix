@@ -110,9 +110,9 @@ let
       };
 
   deps = nixLib.buildNodeDeps
-    (pkgs.lib.composeExtensions
+    (lib.composeExtensions
       (pkgs.callPackage npmDepsNix {
-        fetchgit=builtins.fetchGit;
+        fetchgit = builtins.fetchGit;
       })
       localOverrides);
 
@@ -133,11 +133,4 @@ in
     passthru = {
       inherit deps npmDepsNix npmPackageNix getThunkSrc;
     };
-  } //
-    nixLib.callTemplate npmPackageNix
-      (nixLib.buildNodeDeps
-        (lib.composeExtensions
-          (pkgs.callPackage npmDepsNix {
-            fetchgit = builtins.fetchGit;
-          })
-          localOverrides)))
+  } // nixLib.callTemplate npmPackageNix deps)
