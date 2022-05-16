@@ -876,7 +876,7 @@ async function expectSignFailure(speculos, ava, fields, prompts=undefined) {
   }
 }
 
-async function checkSignTransactionResult(ava, this_, hash, Buffer, sig, pathPrefix, pathSuffixes) {
+async function checkSignTransactionResult(ava, sig, pathPrefix, pathSuffixes) {
   expect(sig).to.have.property('hash');
   expect(sig).to.have.property('signatures');
 
@@ -885,12 +885,6 @@ async function checkSignTransactionResult(ava, this_, hash, Buffer, sig, pathPre
   expect(sig.signatures).to.have.keys(pathSuffixes);
 
   for (const suffix in sig.signatures) {
-    const sigs = await this_.ava.signHash(
-      BIPPath.fromString(pathPrefix),
-      pathSuffixes.map(x => BIPPath.fromString(x, false)),
-      Buffer.from(hash, "hex"),
-    );
-
     const sig = sigs.get(suffix);
     expect(sig).to.have.length(65);
 
