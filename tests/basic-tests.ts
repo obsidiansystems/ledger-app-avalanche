@@ -885,13 +885,13 @@ async function checkSignTransactionResult(ava, sig, pathPrefix, pathSuffixes) {
   expect(sig.signatures).to.have.keys(pathSuffixes);
 
   for (const suffix in sig.signatures) {
-    const sig = sigs.get(suffix);
-    expect(sig).to.have.length(65);
+    const sigs = sig.get(suffix);
+    expect(sigs).to.have.length(65);
 
-    const prompts = flowAccept(this_.speculos);
+    const prompts = flowAccept(ava.this_.speculos);
     const key = (await ava.getWalletExtendedPublicKey(pathPrefix + "/" + suffix)).public_key;
     await prompts;
-    const recovered = recover(Buffer.from(hash, 'hex'), sig.slice(0, 64), sig[64], false);
+    const recovered = recover(Buffer.from(sigs.hash, 'hex'), sigs.slice(0, 64), sigs[64], false);
     expect(recovered).is.equalBytes(key);
   }
 }
