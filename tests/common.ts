@@ -4,14 +4,19 @@ import Avalanche from 'hw-app-avalanche';
 import Eth from '@ledgerhq/hw-app-eth';
 import { spawn } from 'child_process';
 import fc from 'fast-check';
-import chai from 'chai';
-import { expect } from 'chai-bytes';
+import * as chai from 'chai';
+import 'chai-bytes';
+//import { expect } from 'chai-bytes';
 import { recovert } from 'bcrypto/lib/secp256k1';
 import BIPPath from "bip32-path";
 
 const APDU_PORT = 9999;
 const BUTTON_PORT = 8888;
 const AUTOMATION_PORT = 8899;
+
+let stdoutVal: any = "";
+let stderrVal: any = "";
+let promptVal: any;
 
 export const mochaHooks = {
   beforeAll: async function () { // Need 'function' to get 'this'
@@ -22,7 +27,7 @@ export const mochaHooks = {
       console.log(this.speculos);
     } else {
       if (!process.env.USE_EXISTING_SPECULOS) {
-        const speculosProcessOptions = process.env.SPECULOS_DEBUG ? {stdio:"inherit"} : {};
+        const speculosProcessOptions : any = process.env.SPECULOS_DEBUG ? {stdio:"inherit"} : {};
         this.speculosProcess = spawn('speculos', [
           process.env.LEDGER_APP,
           '--display', 'headless',
@@ -141,7 +146,7 @@ export async function automationStart(speculos, interactionFunc) {
   // Make an async iterator we can push stuff into.
   let sendEvent;
   let sendPromise=new Promise(r=>{sendEvent = r;});
-  let asyncEventIter = {
+  let asyncEventIter: any = {
     next: async ()=>{
       promptVal=await sendPromise;
       sendPromise=new Promise(r=>{sendEvent = r;});
@@ -155,13 +160,14 @@ export async function automationStart(speculos, interactionFunc) {
   // Sync up with the ledger; wait until we're on the home screen, and do some
   // clicking back and forth to make sure we see the event.
   // Then pass screens to interactionFunc.
-  let readyPromise = syncWithLedger(speculos, asyncEventIter, interactionFunc);
+  let readyPromise: any = syncWithLedger(speculos, asyncEventIter, interactionFunc);
 
   // Resolve our lock when we're done
   readyPromise.then(r=>r.promptsPromise.then(()=>{promptLockResolve(true);}));
 
   let header;
   let body;
+  let screen: any;
 
   let subscript = speculos.automationEvents.subscribe({
     next: evt => {
@@ -240,7 +246,7 @@ export function acceptPrompts(expectedPrompts, selectPrompt) {
       // should tell the person running the test what to do.
       if (expectedPrompts) {
         console.log("Expected prompts: ");
-        for (p in expectedPrompts) {
+        for (let p in expectedPrompts) {
           console.log("Prompt %d", p);
           console.log(expectedPrompts[p][3]);
           console.log(expectedPrompts[p][17]);
@@ -251,6 +257,7 @@ export function acceptPrompts(expectedPrompts, selectPrompt) {
     } else {
       let promptList = [];
       let done = false;
+      let screen: any;
       while(!done && (screen = await readMultiScreenPrompt(speculos, screens))) {
         if(screen.body != selectPrompt && screen.body != "Reject") {
           promptList.push(screen);
@@ -299,9 +306,9 @@ export const chunkPrompts = (prompts) => {
 }
 
 const fcConfig = {
-  interruptAfterTimeLimit: parseInt(process.env.GEN_TIME_LIMIT || 1000),
+  interruptAfterTimeLimit: parseInt(process.env.GEN_TIME_LIMIT || "1000"),
   markInterruptAsFailure: false,
-  numRuns: parseInt(process.env.GEN_NUM_RUNS || 100)
+  numRuns: parseInt(process.env.GEN_NUM_RUNS || "100")
 };
 
 fc.configureGlobal(fcConfig);
