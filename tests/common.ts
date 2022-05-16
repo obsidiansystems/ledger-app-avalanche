@@ -1,19 +1,19 @@
-const SpeculosTransport = require('@ledgerhq/hw-transport-node-speculos').default;
-const HidTransport = require('@ledgerhq/hw-transport-node-hid').default;
-const Avalanche = require('hw-app-avalanche').default;
-const Eth = require('@ledgerhq/hw-app-eth').default;
-const spawn = require('child_process').spawn;
-const fc = require('fast-check');
-const chai = require('chai');
-const { expect } = chai.use(require('chai-bytes'));
-const { recover } = require('bcrypto/lib/secp256k1');
-const BIPPath = require("bip32-path");
+import SpeculosTransport from '@ledgerhq/hw-transport-node-speculos';
+import HidTransport from '@ledgerhq/hw-transport-node-hid';
+import Avalanche from 'hw-app-avalanche';
+import Eth from '@ledgerhq/hw-app-eth';
+import { spawn } from 'child_process';
+import fc from 'fast-check';
+import chai from 'chai';
+import { expect } from 'chai-bytes';
+import { recovert } from 'bcrypto/lib/secp256k1';
+import BIPPath from "bip32-path";
 
 const APDU_PORT = 9999;
 const BUTTON_PORT = 8888;
 const AUTOMATION_PORT = 8899;
 
-exports.mochaHooks = {
+export const mochaHooks = {
   beforeAll: async function () { // Need 'function' to get 'this'
     this.timeout(10000); // We'll let this wait for up to 10 seconds to get a speculos instance.
     if (process.env.LEDGER_LIVE_HARDWARE) {
@@ -106,7 +106,7 @@ exports.mochaHooks = {
   }
 };
 
-async function flowAccept(speculos, expectedPrompts, acceptPrompt="Accept") {
+export async function flowAccept(speculos, expectedPrompts?, acceptPrompt="Accept") {
   return await automationStart(speculos, acceptPrompts(expectedPrompts, acceptPrompt));
 }
 
@@ -120,7 +120,7 @@ const headerOnlyScreens = {
 };
 
 /* State machine to read screen events and turn them into screens of prompts. */
-async function automationStart(speculos, interactionFunc) {
+export async function automationStart(speculos, interactionFunc) {
   // If this doesn't exist, we're running against a hardware ledger; just call
   // interactionFunc with no events iterator.
   if(!speculos.automationEvents) {
@@ -233,7 +233,7 @@ async function readMultiScreenPrompt(speculos, source) {
   }
 }
 
-function acceptPrompts(expectedPrompts, selectPrompt) {
+export function acceptPrompts(expectedPrompts, selectPrompt) {
   return async (speculos, screens) => {
     if(!screens) {
       // We're running against hardware, so we can't prompt but
@@ -273,13 +273,13 @@ function acceptPrompts(expectedPrompts, selectPrompt) {
   };
 }
 
-async function flowMultiPrompt(speculos, prompts, nextPrompt="Next", finalPrompt="Accept") {
+export async function flowMultiPrompt(speculos, prompts, nextPrompt="Next", finalPrompt="Accept") {
   // We bounce off the home screen sometimes during this process
   const isHomeScreen = p => p.header == "Avalanche" || p.body == "Configuration" || p.body == "Quit";
   const appScreens = ps => ps.filter(p => !isHomeScreen(p));
 
   return await automationStart(speculos, async (speculos, screens) => {
-    for (p of prompts.slice(0,-1)) {
+    for (const p of prompts.slice(0,-1)) {
       const rp = (await acceptPrompts(undefined, nextPrompt)(speculos, screens)).promptList;
       expect(appScreens(rp)).to.deep.equal(p);
     }
@@ -289,7 +289,7 @@ async function flowMultiPrompt(speculos, prompts, nextPrompt="Next", finalPrompt
   });
 }
 
-const chunkPrompts = (prompts) => {
+export const chunkPrompts = (prompts) => {
   const chunkSize = 5;
   let chunked = [];
   for (let i = 0; i < prompts.length; i += chunkSize) {
@@ -306,10 +306,7 @@ const fcConfig = {
 
 fc.configureGlobal(fcConfig);
 
-global.flowAccept = flowAccept;
-global.automationStart = automationStart;
-global.acceptPrompts = acceptPrompts;
-global.signHashPrompts = (hash, pathPrefix) => {
+export const signHashPrompts = (hash, pathPrefix) => {
   return [
     {header:"Sign",body:"Hash"},
     {header:"DANGER!",body:"YOU MUST verify this manually!!!"},
@@ -318,8 +315,6 @@ global.signHashPrompts = (hash, pathPrefix) => {
     {header:"Are you sure?",body:"This is very dangerous!"},
   ];
 };
-global.BIPPath = BIPPath;
-global.recover = recover;
-global.expect = expect;
-global.flowMultiPrompt = flowMultiPrompt;
-global.chunkPrompts = chunkPrompts;
+export const BIPPath = BIPPath;
+export const recover = recover;
+export const expect = expect;
