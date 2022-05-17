@@ -141,6 +141,12 @@ in rec {
     export NO_UPDATE_NOTIFIER=true
     export NODE_PATH=${testPackage}/node_modules
     cd ${testPackage}
-    exec $NODE_PATH/.bin/mocha -- --no-parallel -r ts-node/register --exit --config $suite/.mocharc.js $suite/*.ts
+    exec $NODE_PATH/.bin/mocha -- \
+       --no-parallel \
+       --require ts-node/register \
+       --require $suite/hooks \
+       --exit \
+       --config $suite/.mocharc.js \
+       $suite/*.ts
   '';
 }
