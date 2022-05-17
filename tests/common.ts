@@ -6,9 +6,6 @@ import { spawn } from 'child_process';
 import fc from 'fast-check';
 import * as chai from 'chai';
 import 'chai-bytes';
-//import { expect } from 'chai-bytes';
-import { recovert } from 'bcrypto/lib/secp256k1';
-import BIPPath from "bip32-path";
 
 const APDU_PORT = 9999;
 const BUTTON_PORT = 8888;
@@ -322,6 +319,6 @@ export const signHashPrompts = (hash, pathPrefix) => {
     {header:"Are you sure?",body:"This is very dangerous!"},
   ];
 };
-export const BIPPath = BIPPath;
-export const recover = recover;
-export const expect = expect;
+export const BIPPath = require("bip32-path");
+export const { recover } = require('bcrypto/lib/secp256k1');
+export const { expect } = chai.use(require('chai-bytes'));
