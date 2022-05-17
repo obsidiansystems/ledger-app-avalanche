@@ -178,7 +178,7 @@ dep/%.d: %.c Makefile
 .PHONY: test test-no-nix watch
 
 watch:
-	ls src/*.c src/*.h tests/*.js tests/hw-app-avalanche/src/*.js | entr -cr make test
+	ls src/*.c src/*.h tests/*.js tests/hw-app-avalanche/src/*-tests.js | entr -cr make test
 
 test: tests/*.js tests/package.json bin/app.elf
 	LEDGER_APP=bin/app.elf run-ledger-tests.sh tests/

@@ -14,7 +14,7 @@
 		"babel-preset-react": "^6.24.1",
 		"babel-preset-stage-0": "^6.24.1",
 		"bcrypto": "^5.3.0",
-		"bip32-path": "0.4.2",
+		"bip32-path": "^0.4.2",
 		"chai": "^4.2.0",
 		"chai-bytes": "^0.1.2",
 		"child_process": "",
@@ -31,6 +31,8 @@
 		"uglify-js": "^3.6.1"
 	},
 	"dependencies": {
+		"@babel/core": "^7.17.12",
+		"@babel/register": "^7.17.7",
 		"@ethereumjs/common": "^2.4.0",
 		"@ethereumjs/tx": "^3.2.0",
 		"@ledgerhq/hw-app-eth": "^6.4.1",

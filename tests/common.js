@@ -1,10 +1,8 @@
-const fc = require('fast-check');
-const chai = require('chai');
-const { expect } = chai.use(require('chai-bytes'));
-const { recover } = require('bcrypto/lib/secp256k1');
-const BIPPath = require("bip32-path");
+import fc from 'fast-check';
+import * as chai from 'chai';
+import 'chai-bytes';
 
-async function flowAccept(speculos, expectedPrompts, acceptPrompt="Accept") {
+export async function flowAccept(speculos, expectedPrompts, acceptPrompt="Accept") {
   return await automationStart(speculos, acceptPrompts(expectedPrompts, acceptPrompt));
 }
 
@@ -18,7 +16,7 @@ const headerOnlyScreens = {
 };
 
 /* State machine to read screen events and turn them into screens of prompts. */
-async function automationStart(speculos, interactionFunc) {
+export async function automationStart(speculos, interactionFunc) {
   // If this doesn't exist, we're running against a hardware ledger; just call
   // interactionFunc with no events iterator.
   if(!speculos.automationEvents) {
@@ -131,7 +129,7 @@ async function readMultiScreenPrompt(speculos, source) {
   }
 }
 
-function acceptPrompts(expectedPrompts, selectPrompt) {
+export function acceptPrompts(expectedPrompts, selectPrompt) {
   return async (speculos, screens) => {
     if(!screens) {
       // We're running against hardware, so we can't prompt but
@@ -171,7 +169,7 @@ function acceptPrompts(expectedPrompts, selectPrompt) {
   };
 }
 
-async function flowMultiPrompt(speculos, prompts, nextPrompt="Next", finalPrompt="Accept") {
+export async function flowMultiPrompt(speculos, prompts, nextPrompt="Next", finalPrompt="Accept") {
   // We bounce off the home screen sometimes during this process
   const isHomeScreen = p => p.header == "Avalanche" || p.body == "Configuration" || p.body == "Quit";
   const appScreens = ps => ps.filter(p => !isHomeScreen(p));
@@ -187,7 +185,7 @@ async function flowMultiPrompt(speculos, prompts, nextPrompt="Next", finalPrompt
   });
 }
 
-const chunkPrompts = (prompts) => {
+export const chunkPrompts = (prompts) => {
   const chunkSize = 5;
   let chunked = [];
   for (let i = 0; i < prompts.length; i += chunkSize) {
@@ -204,10 +202,7 @@ const fcConfig = {
 
 fc.configureGlobal(fcConfig);
 
-global.flowAccept = flowAccept;
-global.automationStart = automationStart;
-global.acceptPrompts = acceptPrompts;
-global.signHashPrompts = (hash, pathPrefix) => {
+export const signHashPrompts = (hash, pathPrefix) => {
   return [
     {header:"Sign",body:"Hash"},
     {header:"DANGER!",body:"YOU MUST verify this manually!!!"},
@@ -216,8 +211,6 @@ global.signHashPrompts = (hash, pathPrefix) => {
     {header:"Are you sure?",body:"This is very dangerous!"},
   ];
 };
-global.BIPPath = BIPPath;
-global.recover = recover;
-global.expect = expect;
-global.flowMultiPrompt = flowMultiPrompt;
-global.chunkPrompts = chunkPrompts;
+export const BIPPath = require("bip32-path");
+export const { recover } = require('bcrypto/lib/secp256k1');
+export const { expect } = chai.use(require('chai-bytes'));
