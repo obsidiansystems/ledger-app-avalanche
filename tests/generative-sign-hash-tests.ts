@@ -1,9 +1,15 @@
-const chai = require('chai');
-const { expect } = chai.use(require('chai-bytes'));
+import {
+//  expect,
+  flowAccept,
+} from "./common";
+import * as chai from 'chai';
+
+//const chai = require('chai');
+//const { expect } = chai.use(require('chai-bytes'));
 chai.config.showDiff = true;
 chai.config.truncateThreshold = 0;
 const secp256k1 = require('bcrypto/lib/secp256k1');
-const fc = require('fast-check');
+//const fc = require('fast-check');
 const bip = require('bip32-path');
 
 const prefix = bip.fromString("m/44'/9000'").toPathArray();

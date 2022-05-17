@@ -1,3 +1,9 @@
+import {
+  chunkPrompts,
+  finalizePrompt,
+  flowMultiPrompt,
+} from "./common";
+
 const Transaction = require("@ethereumjs/tx").Transaction;
 const EIP1559Transaction = require("@ethereumjs/tx").FeeMarketEIP1559Transaction;
 const Common = require("@ethereumjs/common").default;
@@ -34,9 +40,6 @@ const rawUnsignedEIP1559Transaction = (chainId, unsignedTxParams) => {
   // https://github.com/ethereumjs/ethereumjs-monorepo/issues/1188
   return unsignedTx.getMessageToSign(false);
 };
-
-
-const finalizePrompt = {header: "Finalize", body: "Transaction"};
 
 const transferPrompts = (address, amount, fee) => chunkPrompts([
   {header: "Transfer",    body: amount + " to " + address},
@@ -79,9 +82,9 @@ async function testLegacySigning(self, chainId, prompts, hexTx) {
   const flow = await flowMultiPrompt(self.speculos, prompts);
 
   const dat = await self.eth.signTransaction("44'/60'/0'/0/0", ethTx);
-  chain = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId });
-  txnBufs = decode(ethTx).slice(0,6).concat([dat.v, dat.r, dat.s].map(a=>Buffer.from(((a.length%2==1)?'0'+a:a),'hex')));
-  ethTxObj = Transaction.fromValuesArray(txnBufs, {common: chain});
+  const chain = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId });
+  const txnBufs = decode(ethTx).slice(0,6).concat([dat.v, dat.r, dat.s].map(a=>Buffer.from(((a.length%2==1)?'0'+a:a),'hex')));
+  const ethTxObj = Transaction.fromValuesArray(txnBufs, {common: chain});
   expect(ethTxObj.verifySignature()).to.equal(true);
   expect(ethTxObj.getSenderPublicKey()).to.equalBytes("ef5b152e3f15eb0c50c9916161c2309e54bd87b9adce722d69716bcdef85f547678e15ab40a78919c7284e67a17ee9a96e8b9886b60f767d93023bac8dbc16e4");
   await flow.promptsPromise;
@@ -92,13 +95,13 @@ async function testEIP1559Signing(self, chainId, prompts, hexTx) {
   const flow = await flowMultiPrompt(self.speculos, prompts);
 
   const dat = await self.eth.signTransaction("44'/60'/0'/0/0", ethTx);
-  chain = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId }, 'london')
+  const chain = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId }, 'london')
   // remove the first byte from the start of the ethtx, the transactionType that's indicating it's an eip1559 transaction
-  txnBufs = decode(ethTx.slice(1)).
+  const txnBufs = decode(ethTx.slice(1)).
       slice(0,9).
       concat([dat.v, dat.r, dat.s].
         map(a=>Buffer.from(((a.length%2==1)?'0'+a:a),'hex')));
-  ethTxObj = EIP1559Transaction.fromValuesArray(txnBufs, {common: chain});
+  const ethTxObj = EIP1559Transaction.fromValuesArray(txnBufs, {common: chain});
   expect(ethTxObj.verifySignature()).to.equal(true);
   expect(ethTxObj.getSenderPublicKey()).to.equalBytes("ef5b152e3f15eb0c50c9916161c2309e54bd87b9adce722d69716bcdef85f547678e15ab40a78919c7284e67a17ee9a96e8b9886b60f767d93023bac8dbc16e4");
   await flow.promptsPromise;
@@ -109,6 +112,7 @@ const testDeploy = (chainId, withAmount) => async function () {
     const [amountPrompt, amountHex] = withAmount
       ? ['0.000000001 nAVAX', '01']
       : [null, '80'];
+    const erc20presetMinterPauser = require("ERC20PresetMinterPauser")
     await testLegacySigning(this, chainId,
       contractDeployPrompts(amountPrompt, '1428785900 GWEI', '3039970'),
       ('f93873' + '03' + '856d6e2edc00' + '832e62e2' + '80' + amountHex
