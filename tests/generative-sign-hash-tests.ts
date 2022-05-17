@@ -1,6 +1,7 @@
 import {
-//  expect,
+  expect,
   flowAccept,
+  signHashPrompts
 } from "./common";
 import * as chai from 'chai';
 
@@ -9,7 +10,7 @@ import * as chai from 'chai';
 chai.config.showDiff = true;
 chai.config.truncateThreshold = 0;
 const secp256k1 = require('bcrypto/lib/secp256k1');
-//const fc = require('fast-check');
+const fc = require('fast-check');
 const bip = require('bip32-path');
 
 const prefix = bip.fromString("m/44'/9000'").toPathArray();
@@ -34,12 +35,12 @@ describe("Sign Hash tests", () => {
           const sv = await sigs;
 
           await ui.promptsMatch;
-          for (ks of sv) {
+          for (let ks of sv) {
             const [keySuffix, sig] = ks;
 
             const key = await this.ava.getWalletExtendedPublicKey(account.toString() + "/" + keySuffix);
 
-            const recovered = secp256k1.recover(Buffer.from(hash, "hex"), sig.slice(0, 64), sig[64], false);
+            const recovered = secp256k1.recover(Buffer.from(hashHex, "hex"), sig.slice(0, 64), sig[64], false);
             expect(recovered).is.equalBytes(key.public_key);
           }
         } catch(e) {

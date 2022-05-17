@@ -322,3 +322,5 @@ export const signHashPrompts = (hash, pathPrefix) => {
 export const BIPPath = require("bip32-path");
 export const { recover } = require('bcrypto/lib/secp256k1');
 export const { expect } = chai.use(require('chai-bytes'));
+
+export const finalizePrompt = {header: "Finalize", body: "Transaction"};

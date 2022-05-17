@@ -1,5 +1,6 @@
 import {
   BIPPath,
+  expect,
   recover,
   flowAccept,
   signHashPrompts,

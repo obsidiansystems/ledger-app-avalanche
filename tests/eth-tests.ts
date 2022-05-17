@@ -1,5 +1,6 @@
 import {
   chunkPrompts,
+  expect,
   finalizePrompt,
   flowMultiPrompt,
 } from "./common";

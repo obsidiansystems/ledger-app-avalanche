@@ -1,5 +1,5 @@
 import {
-  //expect,
+  expect,
 } from "./common";
 import * as chai from 'chai';
 
@@ -7,7 +7,7 @@ import * as chai from 'chai';
 //const { expect, assert } = chai.use(require('chai-bytes'));
 chai.config.showDiff = true;
 chai.config.truncateThreshold = 0;
-//const fc = require('fast-check');
+const fc = require('fast-check');
 
 describe("APDU protocol integrity generative tests", function () {
   context('Generative tests', function () {
