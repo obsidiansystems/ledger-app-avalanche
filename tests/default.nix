@@ -101,7 +101,7 @@ let
           NODE_PATH = nodeModules;
           nodeBuildInputs = [
             (s."@ledgerhq/hw-transport@^6.3.0")
-            (s."bip32-path@0.4.2")
+            (s."bip32-path@^0.4.2")
             (s."create-hash@1.2.0")
             (s."jest@^26.4.1")
           ];

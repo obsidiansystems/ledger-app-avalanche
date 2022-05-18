@@ -1446,7 +1446,7 @@ bindings@^1.4.0, bindings@^1.5.0:
   dependencies:
     file-uri-to-path "1.0.0"
 
-bip32-path@0.4.2:
+bip32-path@^0.4.2:
   version "0.4.2"
   resolved "https://registry.yarnpkg.com/bip32-path/-/bip32-path-0.4.2.tgz#5db0416ad6822712f077836e2557b8697c0c7c99"
   integrity sha1-XbBBataCJxLwd4NuJVe4aXwMfJk=
@@ -2995,7 +2995,7 @@ human-signals@^1.1.1:
   resolved "git+https://github.com/obsidiansystems/hw-app-avalanche.git#c95df0ab7d14a16e7b0b3bb9aa82c7e44485aa12"
   dependencies:
     "@ledgerhq/hw-transport" "^6.3.0"
-    bip32-path "0.4.2"
+    bip32-path "^0.4.2"
     create-hash "1.2.0"
     jest "^26.4.1"
 
