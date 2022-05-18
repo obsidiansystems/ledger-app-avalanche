@@ -130,23 +130,34 @@ let
 in rec {
   inherit deps npmDepsNix npmPackageNix getThunkSrc;
 
-  testPackage = nixLib.buildNodePackage ({
-    inherit src;
+  testModules = nixLib.buildNodePackage ({
+    src = pkgs.runCommand "package-json" {} ''
+      mkdir $out
+      cp ${./package.json} $out/package.json
+    '';
   } // nixLib.callTemplate npmPackageNix deps);
 
   testScript = pkgs.writeShellScriptBin "mocha-wrapper" ''
     suite="$(readlink -e ''${1:-${testPackage}})"
     shift
 
+    cd "$suite"
+
+    export NODE_PATH=${testModules}/node_modules
+    rm ./node_modules
+    ln -s $NODE_PATH ./node_modules
+
     export NO_UPDATE_NOTIFIER=true
-    export NODE_PATH=${testPackage}/node_modules
-    cd ${testPackage}
     exec $NODE_PATH/.bin/mocha -- \
        --no-parallel \
        --require ts-node/register \
-       --require $suite/hooks \
+       --require $PWD/hooks \
        --exit \
-       --config $suite/.mocharc.cjs \
-       $suite/*.ts
+       --config ./.mocharc.cjs \
+       ./*.ts
   '';
+
+  testPackage = nixLib.buildNodePackage ({
+    inherit src;
+  } // nixLib.callTemplate npmPackageNix deps);
 }
