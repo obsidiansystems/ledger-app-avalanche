@@ -144,7 +144,7 @@ export function acceptPrompts(expectedPrompts, selectPrompt) {
       // should tell the person running the test what to do.
       if (expectedPrompts) {
         console.log("Expected prompts: ");
-        for (p in expectedPrompts) {
+        for (const p in expectedPrompts) {
           console.log("Prompt %d", p);
           console.log(expectedPrompts[p][3]);
           console.log(expectedPrompts[p][17]);
@@ -183,7 +183,7 @@ export async function flowMultiPrompt(speculos, prompts, nextPrompt="Next", fina
   const appScreens = ps => ps.filter(p => !isHomeScreen(p));
 
   return await automationStart(speculos, async (speculos, screens) => {
-    for (p of prompts.slice(0,-1)) {
+    for (const p of prompts.slice(0,-1)) {
       const rp = (await acceptPrompts(undefined, nextPrompt)(speculos, screens)).promptList;
       expect(appScreens(rp)).to.deep.equal(p);
     }

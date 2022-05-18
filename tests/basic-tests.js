@@ -7,6 +7,7 @@ import {
   automationStart,
   chunkPrompts,
   flowMultiPrompt,
+  finalizePrompt,
 } from "./common.js";
 
 describe("Basic Tests", () => {
@@ -750,7 +751,7 @@ async function checkSignHash(this_, pathPrefix, pathSuffixes, hash) {
 
   expect(sigs).to.have.keys(pathSuffixes);
 
-  for (suffix in sigs) {
+  for (const suffix in sigs) {
     const sig = sigs.get(suffix);
     expect(sig).to.have.length(65);
 
@@ -883,7 +884,7 @@ async function checkSignTransactionResult(ava, sig, pathPrefix, pathSuffixes) {
   expect(sig.signatures).to.have.length(pathSuffixes.length);
   expect(sig.signatures).to.have.keys(pathSuffixes);
 
-  for (suffix in sig.signatures) {
+  for (const suffix in sig.signatures) {
     const sig = sigs.get(suffix);
     expect(sig).to.have.length(65);
 
