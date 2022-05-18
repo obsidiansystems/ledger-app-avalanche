@@ -125,7 +125,7 @@ let
   };
 
   src = lib.sources.sourceFilesBySuffices src0 [
-    ".js" ".ts" ".json"
+    ".js" ".cjs" ".ts" ".json"
   ];
 in rec {
   inherit deps npmDepsNix npmPackageNix getThunkSrc;
@@ -146,7 +146,7 @@ in rec {
        --require ts-node/register \
        --require $suite/hooks \
        --exit \
-       --config $suite/.mocharc.js \
+       --config $suite/.mocharc.cjs \
        $suite/*.ts
   '';
 }

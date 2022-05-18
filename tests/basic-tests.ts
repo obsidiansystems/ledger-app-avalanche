@@ -7,9 +7,8 @@ import {
   automationStart,
   chunkPrompts,
   flowMultiPrompt,
+  finalizePrompt,
 } from "./common";
-
-const finalizePrompt = {header: "Finalize", body: "Transaction"};
 
 describe("Basic Tests", () => {
   context('Basic APDUs', function () {

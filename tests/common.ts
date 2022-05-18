@@ -1,8 +1,14 @@
 import fc from 'fast-check';
-import * as chai from 'chai';
-import 'chai-bytes';
+
+import chai from 'chai';
+import chai_bytes from 'chai-bytes';
+export const { expect } = chai.use(chai_bytes);
+export { default as BIPPath } from "bip32-path";
+import secp256k1 from 'bcrypto/lib/secp256k1';
+export const { recover } = secp256k1;
 
 let promptVal: { sendEvent: any };
+let screen;
 
 export async function flowAccept(speculos, expectedPrompts?, acceptPrompt="Accept") {
   return await automationStart(speculos, acceptPrompts(expectedPrompts, acceptPrompt));
@@ -139,7 +145,7 @@ export function acceptPrompts(expectedPrompts, selectPrompt) {
       // should tell the person running the test what to do.
       if (expectedPrompts) {
         console.log("Expected prompts: ");
-        for (let p in expectedPrompts) {
+        for (const p in expectedPrompts) {
           console.log("Prompt %d", p);
           console.log(expectedPrompts[p][3]);
           console.log(expectedPrompts[p][17]);
@@ -215,8 +221,5 @@ export const signHashPrompts = (hash, pathPrefix) => {
     {header:"Are you sure?",body:"This is very dangerous!"},
   ];
 };
-export const BIPPath = require("bip32-path");
-export const { recover } = require('bcrypto/lib/secp256k1');
-export const { expect } = chai.use(require('chai-bytes'));
 
 export const finalizePrompt = {header: "Finalize", body: "Transaction"};

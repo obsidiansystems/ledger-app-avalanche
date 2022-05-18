@@ -5,13 +5,13 @@ import {
   flowMultiPrompt,
 } from "./common";
 
-const Transaction = require("@ethereumjs/tx").Transaction;
-const EIP1559Transaction = require("@ethereumjs/tx").FeeMarketEIP1559Transaction;
-const Common = require("@ethereumjs/common").default;
-const BN = require("bn.js");
-const {bnToRlp, rlp} = require("ethereumjs-util");
-const decode = require("rlp").decode;
-const byContractAddress=require("@ledgerhq/hw-app-eth/erc20").byContractAddress;
+import { Transaction } from "@ethereumjs/tx";
+import { FeeMarketEIP1559Transaction as EIP1559Transaction } from "@ethereumjs/tx";
+import Common from "@ethereumjs/common";
+import { BN } from "bn.js";
+import { bnToRlp, rlp } from "ethereumjs-util";
+import { decode } from "rlp";
+import { byContractAddress } from "@ledgerhq/hw-app-eth/erc20.js";
 
 const rawUnsignedLegacyTransaction = (chainId, unsignedTxParams) => {
     const common = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId });
