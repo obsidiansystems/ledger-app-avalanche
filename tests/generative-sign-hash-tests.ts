@@ -22,7 +22,7 @@ describe("Sign Hash tests", () => {
   context('Generative tests', function () {
     it('can sign a hash-sized sequence of bytes', async function () { // Need 'function' to get 'this' for mocha.
       return await fc.assert(fc.asyncProperty(fc.array(subAddressGen,1,10), fc.hexaString(64, 64), async (subAccts, hashHex) => {
-        let ui = { cancel: () => {} };
+        let ui: any = { cancel: () => {} };
         try {
           this.flushStderr();
 
