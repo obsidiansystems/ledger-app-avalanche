@@ -8,7 +8,7 @@ import {
 import { Transaction } from "@ethereumjs/tx";
 import { FeeMarketEIP1559Transaction as EIP1559Transaction } from "@ethereumjs/tx";
 import CommonWhoops from "@ethereumjs/common";
-import * as BN from "bn.js";
+import { BN } from "bn.js";
 import {bnToRlp, rlp} from "ethereumjs-util";
 import { decode } from "rlp";
 import { byContractAddress } from "@ledgerhq/hw-app-eth/erc20.js";
