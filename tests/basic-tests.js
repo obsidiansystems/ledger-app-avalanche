@@ -1,4 +1,13 @@
-const finalizePrompt = {header: "Finalize", body: "Transaction"};
+import {
+  BIPPath,
+  expect,
+  recover,
+  flowAccept,
+  signHashPrompts,
+  automationStart,
+  chunkPrompts,
+  flowMultiPrompt,
+} from "./common.js";
 
 describe("Basic Tests", () => {
   context('Basic APDUs', function () {

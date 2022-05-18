@@ -1,10 +1,17 @@
-const Transaction = require("@ethereumjs/tx").Transaction;
-const EIP1559Transaction = require("@ethereumjs/tx").FeeMarketEIP1559Transaction;
-const Common = require("@ethereumjs/common").default;
-const BN = require("bn.js");
-const {bnToRlp, rlp} = require("ethereumjs-util");
-const decode = require("rlp").decode;
-const byContractAddress=require("@ledgerhq/hw-app-eth/erc20").byContractAddress;
+import {
+  chunkPrompts,
+  expect,
+  finalizePrompt,
+  flowMultiPrompt,
+} from "./common.js";
+
+import { Transaction } from "@ethereumjs/tx";
+import { FeeMarketEIP1559Transaction as EIP1559Transaction } from "@ethereumjs/tx";
+import { default as Common } from "@ethereumjs/common";
+import * as BN from "bn.js";
+import {bnToRlp, rlp} from "ethereumjs-util";
+import { decode } from "rlp";
+import { byContractAddress } from "@ledgerhq/hw-app-eth/erc20.js";
 
 const rawUnsignedLegacyTransaction = (chainId, unsignedTxParams) => {
     const common = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId });
@@ -34,9 +41,6 @@ const rawUnsignedEIP1559Transaction = (chainId, unsignedTxParams) => {
   // https://github.com/ethereumjs/ethereumjs-monorepo/issues/1188
   return unsignedTx.getMessageToSign(false);
 };
-
-
-const finalizePrompt = {header: "Finalize", body: "Transaction"};
 
 const transferPrompts = (address, amount, fee) => chunkPrompts([
   {header: "Transfer",    body: amount + " to " + address},

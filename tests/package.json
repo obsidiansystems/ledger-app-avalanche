@@ -2,6 +2,7 @@
 	"name": "avax-ledger-tests",
 	"version": "0.1.0",
 	"src": "hw-app-avalanche/src",
+	"type": "module",
 	"scripts": {
 		"test": "mocha . --exit --require hooks --config .mocharc.js"
 	},

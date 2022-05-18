@@ -1,14 +1,22 @@
-const Avalanche = require('hw-app-avalanche').default;
-const Eth = require('@ledgerhq/hw-app-eth').default;
-const HidTransport = require('@ledgerhq/hw-transport-node-hid').default;
-const SpeculosTransport = require('@ledgerhq/hw-transport-node-speculos').default;
-const spawn = require('child_process').spawn;
+import AvalancheWhoops from 'hw-app-avalanche';
+import EthWhoops from '@ledgerhq/hw-app-eth';
+import HidTransportWhoops from '@ledgerhq/hw-transport-node-hid';
+import SpeculosTransportWhoops from '@ledgerhq/hw-transport-node-speculos';
+import { spawn } from 'child_process';
+
+const Avalanche = AvalancheWhoops.default;
+const Eth = EthWhoops.default;
+const SpeculosTransport = SpeculosTransportWhoops.default;
+const HidTransport = HidTransportWhoops.default;
 
 const APDU_PORT = 9999;
 const BUTTON_PORT = 8888;
 const AUTOMATION_PORT = 8899;
 
-exports.mochaHooks = {
+let stdoutVal = "";
+let stderrVal = "";
+
+export const mochaHooks = {
   beforeAll: async function () { // Need 'function' to get 'this'
     this.timeout(10000); // We'll let this wait for up to 10 seconds to get a speculos instance.
     if (process.env.LEDGER_LIVE_HARDWARE) {
