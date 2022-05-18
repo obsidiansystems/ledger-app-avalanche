@@ -1,3 +1,8 @@
+import {
+  flowAccept,
+  signHashPrompts,
+} from "./common.js";
+
 import chai from 'chai';
 import chai_bytes from 'chai-bytes';
 export const { expect } = chai.use(chai_bytes);
@@ -17,7 +22,7 @@ describe("Sign Hash tests", () => {
   context('Generative tests', function () {
     it('can sign a hash-sized sequence of bytes', async function () { // Need 'function' to get 'this' for mocha.
       return await fc.assert(fc.asyncProperty(fc.array(subAddressGen,1,10), fc.hexaString(64, 64), async (subAccts, hashHex) => {
-        let ui;
+        let ui = { cancel: () => {} };
         try {
           this.flushStderr();
 
@@ -29,7 +34,7 @@ describe("Sign Hash tests", () => {
           const sv = await sigs;
 
           await ui.promptsMatch;
-          for (ks of sv) {
+          for (const ks of sv) {
             const [keySuffix, sig] = ks;
 
             const key = await this.ava.getWalletExtendedPublicKey(account.toString() + "/" + keySuffix);
@@ -46,7 +51,7 @@ describe("Sign Hash tests", () => {
 
     it('does not produce signatures when prompt is rejected', async function () { // Need 'function' to get 'this' for mocha.
       return await fc.assert(fc.asyncProperty(fc.array(subAddressGen), fc.hexaString(64, 64), async (subAccts, hashHex) => {
-        let ui;
+        let ui = { cancel: () => {} };
         try {
           this.flushStderr();
           if (subAccts.length == 0) return;
