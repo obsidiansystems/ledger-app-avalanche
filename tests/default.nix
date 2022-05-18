@@ -78,7 +78,7 @@ let
           NODE_PATH = nodeModules;
           nodeBuildInputs = [
             (s."@ledgerhq/hw-transport@^5.9.0")
-            (s."bip32-path@0.4.2")
+            (s."bip32-path@^0.4.2")
             (s."babel-cli@^6.26.0")
             (s."babel-eslint@^8.0.2")
             (s."babel-preset-env@^1.7.0")
