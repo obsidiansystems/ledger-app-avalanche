@@ -38,55 +38,46 @@ const rawUnsignedEIP1559Transaction = (chainId, unsignedTxParams) => {
 
 const finalizePrompt = {header: "Finalize", body: "Transaction"};
 
-const transferPrompts = (address, amount, fee) => [
-    [{header: "Transfer",    body: amount + " to " + address}],
-    [{header: "Fee",         body: fee}],
-    [finalizePrompt]
-];
+const transferPrompts = (address, amount, fee) => chunkPrompts([
+  {header: "Transfer",    body: amount + " to " + address},
+  {header: "Fee",         body: fee},
+]).concat([[finalizePrompt]]);
 
-const assetCallTransferPrompts = (assetID, address, amount) => [
-    [{header: "Transfer",    body: amount + " of " + assetID + " to " + address}],
-    [{header: "Maximum Fee", body: "47000000 GWEI"}],
-    [finalizePrompt]
-];
+const assetCallTransferPrompts = (assetID, address, amount) => chunkPrompts([
+  {header: "Transfer",    body: amount + " of " + assetID + " to " + address},
+  {header: "Maximum Fee", body: "47000000 GWEI"},
+]).concat([[finalizePrompt]]);
 
-const assetCallDepositPrompts = (assetID, address, amount) => [
-    [{header: "Deposit",     body: amount + " of " + assetID + " to " + address}],
-    [{header: "Maximum Fee", body: "47000000 GWEI"}],
-    [finalizePrompt]
-];
+const assetCallDepositPrompts = (assetID, address, amount) => chunkPrompts([
+  {header: "Deposit",     body: amount + " of " + assetID + " to " + address},
+  {header: "Maximum Fee", body: "47000000 GWEI"},
+]).concat([[finalizePrompt]]);
 
-const contractCallPrompts = (address, method, argumentPrompts) => {
+const contractCallPrompts = (method, argumentPrompts) => {
     const methodPrompt   = {header: "Contract Call", body: method};
     const maxFeePrompt   = {header: "Maximum Fee",   body: "10229175 GWEI"};
 
-    return [].concat(
-        [[methodPrompt]],
-        argumentPrompts,
-        [[maxFeePrompt],
-         [finalizePrompt]]);
+    return chunkPrompts([methodPrompt, ...argumentPrompts, maxFeePrompt])
+       .concat([[finalizePrompt]]);
 };
 
-const contractDeployPrompts = (bytes, amount, fee, gas) => {
+const contractDeployPrompts = (amount, fee, gas) => {
   const creationPrompt = {header: "Contract",          body: "Creation"};
   const gasPrompt      = {header: "Gas Limit",         body: gas};
   const fundingPrompt  = {header: "Funding Contract",  body: amount};
   const dataPrompt     = {header: "Data",              body: "0x60806040523480156200001157600080fd5b5060..."};
   const feePrompt      = {header: "Maximum Fee",       body: fee};
-  return [].concat(
-      [[creationPrompt, gasPrompt]],
-      amount ? [[fundingPrompt]] : [],
-      [[dataPrompt],
-       [feePrompt],
-       [finalizePrompt]
-      ]
-  );
+  return [
+    [creationPrompt, gasPrompt]
+  ].concat(chunkPrompts(amount
+    ? [fundingPrompt, dataPrompt, feePrompt]
+    : [dataPrompt, feePrompt]
+  )).concat([[finalizePrompt]]);
 };
 
 async function testLegacySigning(self, chainId, prompts, hexTx) {
   const ethTx = Buffer.from(hexTx, 'hex');
   const flow = await flowMultiPrompt(self.speculos, prompts);
-  const chainParams = { common: Common.forCustomChain('mainnet', { networkId: 1, chainId }, 'istanbul')};
 
   const dat = await self.eth.signTransaction("44'/60'/0'/0/0", ethTx);
   chain = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId });
@@ -100,7 +91,6 @@ async function testLegacySigning(self, chainId, prompts, hexTx) {
 async function testEIP1559Signing(self, chainId, prompts, hexTx) {
   const ethTx = Buffer.from(hexTx, 'hex');
   const flow = await flowMultiPrompt(self.speculos, prompts);
-  const chainParams = { common: Common.forCustomChain('mainnet', { networkId: 1, chainId }, 'istanbul')};
 
   const dat = await self.eth.signTransaction("44'/60'/0'/0/0", ethTx);
   chain = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId }, 'london')
@@ -117,9 +107,11 @@ async function testEIP1559Signing(self, chainId, prompts, hexTx) {
 
 const testDeploy = (chainId, withAmount) => async function () {
     this.timeout(8000);
-    const [amountPrompt, amountHex] = withAmount ? ['0.000000001 nAVAX', '01'] : [null, '80'];
+    const [amountPrompt, amountHex] = withAmount
+      ? ['0.000000001 nAVAX', '01']
+      : [null, '80'];
     await testLegacySigning(this, chainId,
-      contractDeployPrompts(erc20presetMinterPauser.bytecodeHex, amountPrompt, '1428785900 GWEI', '3039970'),
+      contractDeployPrompts(amountPrompt, '1428785900 GWEI', '3039970'),
       ('f93873' + '03' + '856d6e2edc00' + '832e62e2' + '80' + amountHex
        + ('b9385e' + erc20presetMinterPauser.bytecodeHex)
        + '82a868' + '80' + '80'
@@ -137,12 +129,12 @@ const testUnrecognizedCalldataTx = (chainId, gasPrice, gasLimit, amountPrompt, a
         data: '0x' + calldata,
     });
 
-    const prompts =
-          [[{header: "Transfer",     body: amountPrompt + " to " + '0x' + address}],
-           [{header: "Contract Data", body: "Is Present (unsafe)"}],
-           [{header: "Maximum Fee",   body: fee}],
-           [finalizePrompt]
-          ];
+    const transferPrompt = {header: "Transfer",     body: amountPrompt + " to " + '0x' + address};
+    const dataPrompt = {header: "Contract Data", body: "Is Present (unsafe)"};
+    const maxFeePrompt = {header: "Maximum Fee",   body: fee};
+
+    const prompts = chunkPrompts([transferPrompt, dataPrompt, maxFeePrompt])
+      .concat([[finalizePrompt]]);
 
     await testLegacySigning(this, chainId, prompts, tx);
 };
@@ -169,7 +161,7 @@ const testCall = (chainId, data, method, args) => async function () {
         data: '0x' + data,
     });
 
-    await testLegacySigning(this, chainId, contractCallPrompts('0x' + address, method, args), tx);
+    await testLegacySigning(this, chainId, contractCallPrompts(method, args), tx);
 };
 
 
@@ -201,19 +193,20 @@ describe("Eth app compatibility tests", async function () {
 
   it('can sign a transaction via the ethereum ledgerjs module', async function() {
     await testLegacySigning(this, 43114,
-      transferPrompts('0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
-      '0.01234 AVAX',
-      '9870000 GWEI'
-      ),
+      transferPrompts(
+        '0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
+        '0.01234 AVAX',
+        '9870000 GWEI'),
       'ed01856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080'
       );
     });
 
     it('can sign a larger transaction via the ethereum ledgerjs module', async function() {
       await testLegacySigning(this, 43114,
-        transferPrompts('0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
-        '238547462614852887054687.704548455429902335 AVAX',
-        '9870000 GWEI'),
+        transferPrompts(
+          '0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
+          '238547462614852887054687.704548455429902335 AVAX',
+          '9870000 GWEI'),
         'f83801856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c79529202bd072a24087400000f0fff0f0fff0f0fff8082a86a8080'
         );
       });
@@ -234,14 +227,13 @@ describe("Eth app compatibility tests", async function () {
           // r: use the default
           // s: use the default
       });
-    
-      const prompts =
-            [[{header: "Transfer",     body: '0.000004096 nAVAX' + " to " + '0x' + '0102030400000000000000000000000000000002'}],
-              [{header: "Contract Data", body: "Is Present (unsafe)"}],
-              [{header: "Maximum Fee",   body: "0.002293452 GWEI"}],
-              [finalizePrompt]
-            ];
-    
+
+      const transferPrompt = {header: "Transfer",     body: '0.000004096 nAVAX' + " to " + '0x' + '0102030400000000000000000000000000000002'};
+      const dataPrompt = {header: "Contract Data", body: "Is Present (unsafe)"};
+      const maxFeePrompt = {header: "Maximum Fee",   body: "0.002293452 GWEI"};
+      const prompts = chunkPrompts([transferPrompt, dataPrompt, maxFeePrompt])
+        .concat([[finalizePrompt]]);
+
       await testEIP1559Signing(this, chainId, prompts, tx);
     });
 
@@ -261,12 +253,11 @@ describe("Eth app compatibility tests", async function () {
           // r: use the default
           // s: use the default
       });
-    
-      const prompts =
-            [[{header: "Transfer",     body: '0.000004096 nAVAX' + " to " + '0x' + '0102030400000000000000000000000000000002'}],
-              [finalizePrompt]
-            ];
-    
+
+      const transferPrompt = {header: "Transfer",     body: '0.000004096 nAVAX' + " to " + '0x' + '0102030400000000000000000000000000000002'};
+      const prompts = chunkPrompts([transferPrompt])
+        .concat([[finalizePrompt]]);
+
       await testEIP1559Signing(this, chainId, prompts, tx);
     });
 
@@ -276,12 +267,14 @@ describe("Eth app compatibility tests", async function () {
     // Collected from a metamask goerli transaction:
     const tx = Buffer.from('02f9018a82a868808506fc23ac008506fc23ac008316e3608080b90170608060405234801561001057600080fd5b50610150806100206000396000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c80632e64cec11461003b5780636057361d14610059575b600080fd5b610043610075565b60405161005091906100d9565b60405180910390f35b610073600480360381019061006e919061009d565b61007e565b005b60008054905090565b8060008190555050565b60008135905061009781610103565b92915050565b6000602082840312156100b3576100b26100fe565b5b60006100c184828501610088565b91505092915050565b6100d3816100f4565b82525050565b60006020820190506100ee60008301846100ca565b92915050565b6000819050919050565b600080fd5b61010c816100f4565b811461011757600080fd5b5056fea2646970667358221220404e37f487a89a932dca5e77faaf6ca2de3b991f93d230604b1b8daaef64766264736f6c63430008070033c0', 'hex');
 
+    const contractCreationPrompt = { header: 'Contract', body: 'Creation' };
+    const gasLimitPrompt = { header: 'Gas Limit', body: '1500000' };
+    const dataPrompt = { header: 'Data', body: '0x608060405234801561001057600080fd5b506101...' };
     const prompts = [
-        [{ header: 'Contract', body: 'Creation' },
-         { header: 'Gas Limit', body: '1500000' }],
-        [{ header: 'Data', body: '0x608060405234801561001057600080fd5b506101...' }],
-        [finalizePrompt],
-      ];
+      [contractCreationPrompt, gasLimitPrompt]
+    ].concat(chunkPrompts([
+      dataPrompt
+    ])).concat([[finalizePrompt]]);
     await testEIP1559Signing(this, chainId, prompts, tx);
   });
 
@@ -326,43 +319,45 @@ describe("Eth app compatibility tests", async function () {
   it('can sign a ERC20PresetMinterPauser pause contract call', testCall(43113, '8456cb59', 'pause', []));
   it('can sign a ERC20PresetMinterPauser unpause contract call', testCall(43113, '3f4ba83a', 'unpause', []));
   it('can sign a ERC20PresetMinterPauser burn contract call', testCall(43113, '42966c68' + testData.amount.hex, 'burn', [
-    [{ header: "amount", body: testData.amount.prompt }],
+    { header: "amount", body: testData.amount.prompt }
   ]));
   it('can sign a ERC20PresetMinterPauser mint contract call', testCall(43113, '40c10f19' + testData.address.hex + testData.amount.hex, 'mint', [
-    [{ header: "to",      body: '0x' + testData.address.prompt }],
-    [{ header: "amount", body: testData.amount.prompt }],
+    { header: "to",      body: '0x' + testData.address.prompt },
+    { header: "amount", body: testData.amount.prompt }
   ]));
 
   it('can sign a ERC20PresetMinterPauser transferFrom contract call', testCall(43113, '23b872dd' + testData.address.hex + testData.address.hex + testData.amount.hex, 'transferFrom', [
-    [{ header: "sender",    body: '0x' + testData.address.prompt }],
-    [{ header: "recipient", body: '0x' + testData.address.prompt }],
-    [{ header: "amount",    body: testData.amount.prompt }],
+    { header: "sender",    body: '0x' + testData.address.prompt },
+    { header: "recipient", body: '0x' + testData.address.prompt },
+    { header: "amount",    body: testData.amount.prompt },
   ]));
 
   it('can sign a ERC20PresetMinterPauser grantRole contract call', testCall(43113, '2f2ff15d' + testData.bytes32 + testData.address.hex, 'grantRole', [
-    [{ header: "role",    body: '0x' + testData.bytes32 }],
-    [{ header: "account", body: '0x' + testData.address.prompt }],
+    { header: "role",    body: '0x' + testData.bytes32 },
+    { header: "account", body: '0x' + testData.address.prompt },
   ]));
 
   it('can sign a transaction deploying erc20 contract without funding', testDeploy(43112, false));
   it('can sign a transaction deploying erc20 contract with funding',    testDeploy(43112, true));
 
   it('can sign a transaction with assetCall via the ethereum ledgerjs module', async function() {
-      await testLegacySigning(this, 43112,
-                        assetCallTransferPrompts('verma4Pa9biWKbjDGNsTXU47cYCyDSNGSU1iBkxucfVSFVXdv',
-                                                 '0x41c9cc6fd27e26e70f951869fb09da685a696f0a',
-                                                 '0x123456789abcdef'),
-                        'f87c01856d6e2edc00830186a094010000000000000000000000000000000000000280b85441c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a00000000000000000000000000000000000000000000000000123456789abcdef82a8688080'
-                       );
+    await testLegacySigning(this, 43112,
+      assetCallTransferPrompts(
+        'verma4Pa9biWKbjDGNsTXU47cYCyDSNGSU1iBkxucfVSFVXdv',
+        '0x41c9cc6fd27e26e70f951869fb09da685a696f0a',
+        '0x123456789abcdef'),
+      'f87c01856d6e2edc00830186a094010000000000000000000000000000000000000280b85441c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a00000000000000000000000000000000000000000000000000123456789abcdef82a8688080'
+    );
   });
 
   it('can sign a transaction with assetCall deposit and funds via the ethereum ledgerjs module', async function() {
-      await testLegacySigning(this, 43112,
-                        assetCallDepositPrompts('verma4Pa9biWKbjDGNsTXU47cYCyDSNGSU1iBkxucfVSFVXdv',
-                                                '0x41c9cc6fd27e26e70f951869fb09da685a696f0a',
-                                                '0x0'),
-                        'f88001856d6e2edc00830186a094010000000000000000000000000000000000000280b85841c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a00000000000000000000000000000000000000000000000000000000000000000d0e30db082a8688080'
-                       );
+    await testLegacySigning(this, 43112,
+      assetCallDepositPrompts(
+        'verma4Pa9biWKbjDGNsTXU47cYCyDSNGSU1iBkxucfVSFVXdv',
+        '0x41c9cc6fd27e26e70f951869fb09da685a696f0a',
+        '0x0'),
+      'f88001856d6e2edc00830186a094010000000000000000000000000000000000000280b85841c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a00000000000000000000000000000000000000000000000000000000000000000d0e30db082a8688080'
+    );
   });
 
   it('can provide an ERC20 Token and sign with the ethereum ledgerjs module', async function() {
@@ -370,21 +365,21 @@ describe("Eth app compatibility tests", async function () {
     const result = await this.eth.provideERC20TokenInformation(zrxInfo);
 
     await testLegacySigning(this, 43114,
-                      transferPrompts('0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
-                                      '0.01234 AVAX',
-                                      '441000 GWEI'),
-                      'ed018504e3b292008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080'
-                     );
+      transferPrompts(
+        '0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
+        '0.01234 AVAX',
+        '441000 GWEI'),
+      'ed018504e3b292008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080'
+    );
   });
 
   it('accepts apdu ending in the middle of parsing length of calldata', async function () {
     const prompts = contractCallPrompts(
-      '0x' + 'df073477da421520cf03af261b782282c304ad66',
       'transferFrom',
       [
-        [{ header: "sender",    body: '0x' + testData.address.prompt }],
-        [{ header: "recipient", body: '0x' + testData.address.prompt }],
-        [{ header: "amount",    body: testData.amount.prompt }],
+        { header: "sender",    body: '0x' + testData.address.prompt },
+        { header: "recipient", body: '0x' + testData.address.prompt },
+        { header: "amount",    body: testData.amount.prompt },
       ]);
     const flow = await flowMultiPrompt(this.speculos, prompts);
     const apdu1 = 'e004000038' + '058000002c8000003c800000000000000000000000' + 'f88b0a8534630b8a0082b19794df073477da421520cf03af261b782282c304ad6680b8';
