@@ -150,6 +150,7 @@ IMPL_FIXED_BE(uint64_t);
 IMPL_FIXED(Id32);
 IMPL_FIXED(blockchain_id_t);
 IMPL_FIXED(Address);
+IMPL_FIXED(Sigindices);
 
 void init_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const state) {
     state->state = 0;
@@ -453,9 +454,7 @@ void init_SubnetAuth(struct SubnetAuth_state *const state)
   INIT_SUBPARSER(uint32State, uint32_t);
 }
 
-enum parse_SubnetAuth(struct SubnetAuth_state *const state,
-                      parser_meta_state_t     *const meta)
-{
+enum parse_rv parse_SubnetAuth(struct SubnetAuth_state *const state, parser_meta_state_t *const meta) {
   enum parse_rv sub_rv = PARSE_RV_INVALID;
   switch(state->state)
   {
@@ -466,17 +465,17 @@ enum parse_SubnetAuth(struct SubnetAuth_state *const state,
       state->state++;
       INIT_SUBPARSER(uint32State, uint32_t);
       fallthrough;
-    case 1:
+    case 1: {
       // Number of Sig Indices
       CALL_SUBPARSER(uint32State, uint32_t);
       state->state++;
       state->sigindices_n = state->uint32State.val;
       PRINTF("Sigind Count\n");
       INIT_SUBPARSER(sigindicesState, Sigindices);
-      fallthrough;
-    case 2:
+    } fallthrough;
+    case 2: {
       //
-      if (state->sigindices_i == state_siginidices_n)
+      if (state->sigindices_i == state->sigindices_n)
       {
         state->state++;
         break;
@@ -492,14 +491,14 @@ enum parse_SubnetAuth(struct SubnetAuth_state *const state,
         CALL_SUBPARSER(sigindicesState, Sigindices);
         
         sigindices_prompt_t sigindices_prompt;
-        memset(&sigindices_prompt, 0, sizeof(siginidices_prompt));
+        memset(&sigindices_prompt, 0, sizeof(sigindices_prompt));
         sigindices_prompt.network_id = meta->network_id; 
         memcpy(&sigindices_prompt.sigindices, &state->sigindicesState.val, sizeof(sigindices_prompt.sigindices));
         
        // ADD_PROMPT("Control Sig", &sigindices_prompt, sizeof(sigindices_prompt_t), output_sigindices_to_string);
         
         state->sigindices_i++;
-        if (state->sigindices_i < state_sigindices_n)
+        if (state->sigindices_i < state->sigindices_n)
         {
           INIT_SUBPARSER(sigindicesState, Sigindices);
           RET_IF_PROMPT_FLUSH;
@@ -512,7 +511,7 @@ enum parse_SubnetAuth(struct SubnetAuth_state *const state,
           break;
         }
       } while(false);
-      fallthrough;
+    } fallthrough;
     case 3:
       sub_rv = PARSE_RV_DONE;
       break;
@@ -1344,35 +1343,32 @@ void init_AddSNValidatorTransaction(struct AddSNValidatorTransactionState *const
   INIT_SUBPARSER(validatorState, Validator);
 }
 
-enum 
-parse_AddSNValidatorTransaction(struct AddSNValidatorTransactionState *const state,
-                                parser_meta_state_t                   *const meta)
-{
+enum parse_rv parse_AddSNValidatorTransaction(struct AddSNValidatorTransactionState *const state, parser_meta_state_t *const meta) {
   enum parse_rv sub_rv = PARSE_RV_INVALID;
   switch(state->state)
   {
     case 0: //ChainID
       CALL_SUBPARSER(validatorState, Validator);
       state->state++;
-      INIT_SUBPARSER(outputState, TransferableOutputs);
+      INIT_SUBPARSER(outputsState, TransferableOutputs);
       fallthrough;
-    case 1: //Value
+    case 1: {//Value
       meta->swap_output = true;
-      CALL_SUBPARSER(outputState, TransferableOutputs);
+      CALL_SUBPARSER(outputsState, TransferableOutputs);
       state->state++;
       INIT_SUBPARSER(id32State, Id32);
-      fallthrough;
-    case 2:
+    } fallthrough;
+    case 2: {
       CALL_SUBPARSER(id32State, Id32);
       PRINTF("Subnet ID: %.*h\n", 32, state->id32State.buf);
       //potentially need to add a check_subnet_id function here
       state->state++;
-      INIT_SUBPARSER(subnetauthState, Subnetauth);
-      fallthrough;
-    case 3:
+      INIT_SUBPARSER(subnetauthState, SubnetAuth);
+    } fallthrough;
+    case 3: {
       CALL_SUBPARSER(subnetauthState, SubnetAuth);
       state->state++;
-      fallthrough;
+    } fallthrough;
     case 5:
       sub_rv = PARSE_RV_DONE;
   }
