@@ -11,7 +11,8 @@ import CommonWhoops from "@ethereumjs/common";
 import { BN } from "bn.js";
 import {bnToRlp, rlp} from "ethereumjs-util";
 import { decode } from "rlp";
-import { byContractAddress } from "@ledgerhq/hw-app-eth/erc20.js";
+import pkg from "@ledgerhq/hw-app-eth/erc20.js";
+const { byContractAddress } = pkg;
 
 const Common = CommonWhoops.default;
 
