@@ -11,8 +11,7 @@ import CommonWhoops from "@ethereumjs/common";
 import { BN } from "bn.js";
 import {bnToRlp, rlp} from "ethereumjs-util";
 import { decode } from "rlp";
-import pkg from "@ledgerhq/hw-app-eth/erc20.js";
-const { byContractAddress } = pkg;
+import { byContractAddressAndChainId } from "@ledgerhq/hw-app-eth/erc20.js";
 
 const Common = CommonWhoops.default;
 
@@ -366,8 +365,11 @@ describe("Eth app compatibility tests", async function () {
   });
 
   it('can provide an ERC20 Token and sign with the ethereum ledgerjs module', async function() {
-    const zrxInfo = byContractAddress("0xe41d2489571d322189246dafa5ebde1f4699f498");
-    const result = await this.eth.provideERC20TokenInformation(zrxInfo);
+    const zrxInfo = byContractAddressAndChainId("0xe41d2489571d322189246dafa5ebde1f4699f498", 43114);
+    if (zrxInfo !== undefined)
+    {
+      const result = await this.eth.provideERC20TokenInformation(zrxInfo);
+    }
 
     await testLegacySigning(this, 43114,
       transferPrompts(
