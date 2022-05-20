@@ -279,7 +279,7 @@ describe('Staking tests', async function () {
   it('can sign an add subnet validator transaction', async function () {
     const txn = Buffer.from([
       0x00, 0x00,
-      0x00, 0x00, 0x00, 0x0c, 0x00, 0x00, 0x30, 0x39,
+      0x00, 0x00, 0x00, 0x0d, 0x00, 0x00, 0x30, 0x39,
       // blockchain ID
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -342,13 +342,13 @@ describe('Staking tests', async function () {
 
     const pathPrefix = "44'/9000'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
+    // Need to add headers for SubnetID and Sigindices?
     const ui = await flowMultiPrompt(this.speculos, [
       [{header: 'Sign', body: 'Add Subnet Validator'}],
       [{header: 'Transfer', body: '3.999 AVAX to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'}],
       [{header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' }],
       [{header: 'Start time', body: '2020-07-29 22:07:25 UTC' }],
       [{header: 'End time', body: '2020-08-28 21:57:26 UTC' }],
-      [{header: 'Delegation Fee', body: '0.01%' }],
       [{header: 'Fee',body: '0.001 AVAX'}],
       [{header: 'Finalize',body: 'Transaction'}],
     ]);

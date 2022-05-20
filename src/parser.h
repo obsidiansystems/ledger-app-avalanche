@@ -73,6 +73,12 @@ typedef struct {
 
 DEFINE_FIXED(Address);
 
+typedef struct {
+    uint8_t val[4];
+} Sigindices;
+
+DEFINE_FIXED(Sigindices);
+
 #define NUMBER_STATES struct uint32_t_state uint32State; struct uint64_t_state uint64State
 
 struct SECP256K1TransferOutput_state {
@@ -93,6 +99,16 @@ struct SECP256K1OutputOwners_state {
         NUMBER_STATES;
         struct Address_state addressState;
     };
+};
+
+struct SubnetAuth_state {
+  int state;
+  uint32_t sigindices_i;
+  uint32_t sigindices_n;
+  union {
+      NUMBER_STATES;
+      struct Sigindices_state sigindicesState;
+  };
 };
 
 struct StakeableLockOutput_state {
@@ -292,11 +308,11 @@ struct AddValidatorTransactionState {
 struct AddSNValidatorTransactionState {
   int state;
   union {
-        struct uint32_t_state uint32State;
         struct Id32_state id32State;
        	struct TransferableOutputs_state outputsState;
 
         struct Validator_state validatorState;
+        struct SubnetAuth_state subnetauthState;
   };
 };
 
@@ -362,6 +378,11 @@ typedef struct {
     network_id_t network_id;
     Address address;
 } address_prompt_t;
+
+typedef struct {
+    network_id_t network_id;
+    Sigindices sigindices; 
+} sigindices_prompt_t;
 
 typedef struct {
     uint64_t amount;

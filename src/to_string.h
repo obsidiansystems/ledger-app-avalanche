@@ -32,6 +32,10 @@ size_t pkh_to_string(
     char out[const], size_t const out_size,
     char const hrp[const], size_t const hrp_size,
     public_key_hash_t const *const payload);
+/*size_t sig_to_string(
+    char out[const], size_t const out_size,
+    char const hrp[const], size_t const hrp_size,
+    public_key_hash_t const *const payload);*/
 size_t nodeid_to_string(
     char out[const], size_t const out_size, public_key_hash_t const *const payload);
 
