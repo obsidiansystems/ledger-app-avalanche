@@ -141,6 +141,8 @@ in rec {
     suite="$(readlink -e ''${1:-${testPackage}})"
     shift
 
+    LEDGER_APP="$(readlink -e ''${LEDGER_APP})"
+
     cd "$suite"
 
     export NODE_PATH=${testModules}/node_modules
