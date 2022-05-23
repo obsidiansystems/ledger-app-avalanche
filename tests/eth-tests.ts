@@ -12,6 +12,7 @@ import { BN } from "bn.js";
 import { bnToRlp, rlp } from "ethereumjs-util";
 import { decode } from "rlp";
 import { byContractAddressAndChainId } from "@ledgerhq/hw-app-eth/erc20";
+import erc20presetMinterPauser from "./ERC20PresetMinterPauser";
 
 const rawUnsignedLegacyTransaction = (chainId, unsignedTxParams) => {
     const common = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId });
@@ -117,7 +118,6 @@ const testDeploy = (chainId, withAmount) => async function () {
     const [amountPrompt, amountHex] = withAmount
       ? ['0.000000001 nAVAX', '01']
       : [null, '80'];
-    const erc20presetMinterPauser = require("ERC20PresetMinterPauser")
     await testLegacySigning(this, chainId,
       contractDeployPrompts(amountPrompt, '1428785900 GWEI', '3039970'),
       ('f93873' + '03' + '856d6e2edc00' + '832e62e2' + '80' + amountHex
