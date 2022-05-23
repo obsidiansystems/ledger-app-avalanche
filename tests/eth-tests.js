@@ -12,6 +12,7 @@ import { BN } from "bn.js";
 import {bnToRlp, rlp} from "ethereumjs-util";
 import { decode } from "rlp";
 import { byContractAddressAndChainId } from "@ledgerhq/hw-app-eth/erc20.js";
+import erc20presetMinterPauser from "./ERC20PresetMinterPauser.js";
 
 const Common = CommonWhoops.default;
 
