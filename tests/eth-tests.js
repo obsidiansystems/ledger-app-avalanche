@@ -11,7 +11,7 @@ import CommonWhoops from "@ethereumjs/common";
 import { BN } from "bn.js";
 import {bnToRlp, rlp} from "ethereumjs-util";
 import { decode } from "rlp";
-import { byContractAddress } from "@ledgerhq/hw-app-eth/erc20.js";
+import { byContractAddressAndChainId } from "@ledgerhq/hw-app-eth/erc20.js";
 
 const Common = CommonWhoops.default;
 
@@ -84,7 +84,8 @@ async function testLegacySigning(self, chainId, prompts, hexTx) {
   const ethTx = Buffer.from(hexTx, 'hex');
   const flow = await flowMultiPrompt(self.speculos, prompts);
 
-  const dat = await self.eth.signTransaction("44'/60'/0'/0/0", ethTx);
+  const resolution = null;
+  const dat = await self.eth.signTransaction("44'/60'/0'/0/0", ethTx, resolution);
   const chain = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId });
   const txnBufs = decode(ethTx).slice(0,6).concat([dat.v, dat.r, dat.s].map(a=>Buffer.from(((a.length%2==1)?'0'+a:a),'hex')));
   const ethTxObj = Transaction.fromValuesArray(txnBufs, {common: chain});
@@ -97,7 +98,8 @@ async function testEIP1559Signing(self, chainId, prompts, hexTx) {
   const ethTx = Buffer.from(hexTx, 'hex');
   const flow = await flowMultiPrompt(self.speculos, prompts);
 
-  const dat = await self.eth.signTransaction("44'/60'/0'/0/0", ethTx);
+  const resolution = null;
+  const dat = await self.eth.signTransaction("44'/60'/0'/0/0", ethTx, resolution);
   const chain = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId }, 'london')
   // remove the first byte from the start of the ethtx, the transactionType that's indicating it's an eip1559 transaction
   const txnBufs = decode(ethTx.slice(1)).
@@ -283,10 +285,12 @@ describe("Eth app compatibility tests", async function () {
   });
 
   it('A call to assetCall with incorrect call data rejects', async function() {
+    const resolution = null;
     try {
       const dat = await this.eth.signTransaction(
-          "44'/60'/0'/0/0",
-          'f83880856d6e2edc00832dc6c0940100000000000000000000000000000000000002019190000102030405060708090a0b0c0d0e0f82a8688080');
+        "44'/60'/0'/0/0",
+        'f83880856d6e2edc00832dc6c0940100000000000000000000000000000000000002019190000102030405060708090a0b0c0d0e0f82a8688080',
+        resolution);
       throw "Signing should have been rejected";
     } catch (e) {
         expect(e).has.property('statusCode', 0x9405); // PARSE_ERROR
@@ -365,8 +369,11 @@ describe("Eth app compatibility tests", async function () {
   });
 
   it('can provide an ERC20 Token and sign with the ethereum ledgerjs module', async function() {
-    const zrxInfo = byContractAddress("0xe41d2489571d322189246dafa5ebde1f4699f498");
-    const result = await this.eth.provideERC20TokenInformation(zrxInfo);
+    const zrxInfo = byContractAddressAndChainId("0xe41d2489571d322189246dafa5ebde1f4699f498", 43114);
+    if (zrxInfo !== undefined)
+    {
+      const result = await this.eth.provideERC20TokenInformation(zrxInfo);
+    }
 
     await testLegacySigning(this, 43114,
       transferPrompts(

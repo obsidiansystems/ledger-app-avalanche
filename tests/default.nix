@@ -7,11 +7,15 @@ let
   yarn2nix = import deps/yarn2nix { inherit pkgs; };
   getThunkSrc = (import ./deps/reflex-platform { }).hackGet;
   npmDepsNix = pkgs.runCommand "npm-deps.nix" {} ''
-    ${yarn2nix}/bin/yarn2nix --offline ${./yarn.lock} > $out
+    ${yarn2nix}/bin/yarn2nix --offline \
+      <(sed -e '/hw-app-avalanche/,/^$/d' ${./yarn.lock}) \
+      > $out
   '';
   npmPackageNix = pkgs.runCommand "npm-package.nix" {} ''
     # We sed hw-app-avalanche to a constant here, so that the package.json can be whatever; we're overriding it anyways.
-    ${yarn2nix}/bin/yarn2nix --template <(sed 's/hw-app-avalanche".*$/hw-app-avalanche": "0.1.0",/' ${./package.json}) > $out
+    ${yarn2nix}/bin/yarn2nix --template \
+      <(sed 's/hw-app-avalanche".*$/hw-app-avalanche": "0.1.0",/' ${./package.json}) \
+      > $out
   '';
   nixLib = yarn2nix.nixLib;
 
@@ -40,8 +44,20 @@ let
           ];
         };
 
+        # https://github.com/Profpatsch/yarn2nix/issues/56
+        "char-regex@1.0.2" = {
+          inherit (super."char-regex@1.0.2") key;
+          drv = super."char-regex@1.0.2".drv.overrideAttrs (_: {
+            dontMakeSourcesWritable = true;
+            postUnpack = ''
+              chmod +x $sourceRoot
+              chmod -R +rw $sourceRoot
+            '';
+          });
+        };
+
         "usb@1.6.3" = {
-          key = super."usb@1.6.3".key;
+          inherit (super."usb@1.6.3") key;
           drv = super."usb@1.6.3".drv.overrideAttrs (attrs: {
             nativeBuildInputs = [ pkgs.python3 pkgs.systemd pkgs.v8_5_x nodejs pkgs.libusb1 ];
             dontBuild = false;
@@ -53,7 +69,7 @@ let
         };
 
         "node-hid@1.3.0" = {
-          key = super."node-hid@1.3.0".key;
+          inherit (super."node-hid@1.3.0") key;
           drv = super."node-hid@1.3.0".drv.overrideAttrs (attrs: {
             nativeBuildInputs = [ pkgs.python3 pkgs.systemd pkgs.v8_5_x nodejs pkgs.libusb1 pkgs.pkg-config ];
             dontBuild = false;
@@ -67,31 +83,27 @@ let
         "hw-app-avalanche@0.1.0" = super._buildNodePackage rec {
           key = "hw-app-avalanche";
           version = "0.1.0";
-          src = getThunkSrc ./hw-app-avalanche;
+          src = getThunkSrc ./deps/hw-app-avalanche;
           buildPhase = ''
-            echo "NODE_GYP TYME"
-            echo $nodeModules
-            node $nodeModules/.bin/babel --source-maps -d lib src
+            ln -s $nodeModules node_modules
+            node $nodeModules/.bin/tsc
+            node $nodeModules/.bin/tsc -m ES6 --outDir lib-es
           '';
-          nodeModules = nixLib.linkNodeDeps { name = "hw-app-avalanche"; dependencies = nodeBuildInputs; };
+          nodeModules = nixLib.linkNodeDeps {
+            name = "hw-app-avalanche";
+            dependencies = nodeBuildInputs ++ [
+              (s."@types/node@^16.10.3")
+              (s."@types/jest@^26.0.24")
+              (s."typescript@^4.4.3")
+            ];
+          };
           passthru = { inherit nodeModules; };
           NODE_PATH = nodeModules;
           nodeBuildInputs = [
-            (s."@ledgerhq/hw-transport@^5.9.0")
+            (s."@ledgerhq/hw-transport@^6.3.0")
             (s."bip32-path@^0.4.2")
-            (s."babel-cli@^6.26.0")
-            (s."babel-eslint@^8.0.2")
-            (s."babel-preset-env@^1.7.0")
-            (s."babel-preset-flow@^6.23.0")
-            (s."babel-preset-react@^6.24.1")
-            (s."babel-preset-stage-0@^6.24.1")
-            (s."flow-bin@^0.109.0")
-            (s."flow-copy-source@^2.0.8")
-            (s."flow-mono-cli@^1.5.0")
-            (s."flow-typed@^2.6.1")
-            (s."prettier@^1.18.2")
-            (s."uglify-js@^3.6.1")
             (s."create-hash@1.2.0")
+            (s."jest@^26.4.1")
           ];
         };
       };
