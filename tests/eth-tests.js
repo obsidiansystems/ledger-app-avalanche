@@ -84,7 +84,8 @@ async function testLegacySigning(self, chainId, prompts, hexTx) {
   const ethTx = Buffer.from(hexTx, 'hex');
   const flow = await flowMultiPrompt(self.speculos, prompts);
 
-  const dat = await self.eth.signTransaction("44'/60'/0'/0/0", ethTx);
+  const resolution = null;
+  const dat = await self.eth.signTransaction("44'/60'/0'/0/0", ethTx, resolution);
   const chain = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId });
   const txnBufs = decode(ethTx).slice(0,6).concat([dat.v, dat.r, dat.s].map(a=>Buffer.from(((a.length%2==1)?'0'+a:a),'hex')));
   const ethTxObj = Transaction.fromValuesArray(txnBufs, {common: chain});
@@ -97,7 +98,8 @@ async function testEIP1559Signing(self, chainId, prompts, hexTx) {
   const ethTx = Buffer.from(hexTx, 'hex');
   const flow = await flowMultiPrompt(self.speculos, prompts);
 
-  const dat = await self.eth.signTransaction("44'/60'/0'/0/0", ethTx);
+  const resolution = null;
+  const dat = await self.eth.signTransaction("44'/60'/0'/0/0", ethTx, resolution);
   const chain = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId }, 'london')
   // remove the first byte from the start of the ethtx, the transactionType that's indicating it's an eip1559 transaction
   const txnBufs = decode(ethTx.slice(1)).
@@ -283,10 +285,12 @@ describe("Eth app compatibility tests", async function () {
   });
 
   it('A call to assetCall with incorrect call data rejects', async function() {
+    const resolution = null;
     try {
       const dat = await this.eth.signTransaction(
-          "44'/60'/0'/0/0",
-          'f83880856d6e2edc00832dc6c0940100000000000000000000000000000000000002019190000102030405060708090a0b0c0d0e0f82a8688080');
+        "44'/60'/0'/0/0",
+        'f83880856d6e2edc00832dc6c0940100000000000000000000000000000000000002019190000102030405060708090a0b0c0d0e0f82a8688080',
+        resolution);
       throw "Signing should have been rejected";
     } catch (e) {
         expect(e).has.property('statusCode', 0x9405); // PARSE_ERROR
