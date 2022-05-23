@@ -7,8 +7,10 @@ export { default as BIPPath } from "bip32-path";
 import secp256k1 from 'bcrypto/lib/secp256k1';
 export const { recover } = secp256k1;
 
+type PromptValue = any;
+
 let promptVal: { sendEvent: any };
-let screen;
+//let screen;
 
 export async function flowAccept(speculos, expectedPrompts?, acceptPrompt="Accept") {
   return await automationStart(speculos, acceptPrompts(expectedPrompts, acceptPrompt));
@@ -45,7 +47,7 @@ export async function automationStart(speculos, interactionFunc) {
   // Make an async iterator we can push stuff into.
   let sendEvent;
   let sendPromise: Promise<{ sendEvent: any }> = new Promise(r=>{sendEvent = r;});
-  let asyncEventIter: any = {
+  let asyncEventIter = {
     next: async ()=>{
       promptVal=await sendPromise;
       sendPromise=new Promise(r=>{sendEvent = r;});
@@ -53,20 +55,22 @@ export async function automationStart(speculos, interactionFunc) {
     },
     peek: async ()=>{
       return await sendPromise;
-    }
+    },
+    unsubscribe: async ()=>{
+    },
   };
 
   // Sync up with the ledger; wait until we're on the home screen, and do some
   // clicking back and forth to make sure we see the event.
-  // Then pass screens to interactionFunc.
-  let readyPromise: any = syncWithLedger(speculos, asyncEventIter, interactionFunc);
+  // Then pass screens to interactionFunc./
+  let readyPromise: Promise<{ promptsPromise: Promise<any>, cancel? }> = syncWithLedger(speculos, asyncEventIter, interactionFunc);
 
   // Resolve our lock when we're done
   readyPromise.then(r=>r.promptsPromise.then(()=>{promptLockResolve(true);}));
 
   let header;
   let body;
-  let screen: any;
+  let screen: Screen;
 
   let subscript = speculos.automationEvents.subscribe({
     next: evt => {
@@ -84,7 +88,11 @@ export async function automationStart(speculos, interactionFunc) {
       header=undefined;
     }});
 
-  asyncEventIter.unsubscribe = () => { subscript.unsubscribe(); };
+  const old = asyncEventIter.unsubscribe;
+  asyncEventIter.unsubscribe = async () => {
+    await old();
+    await subscript.unsubscribe();
+  };
 
   // Send a rightward-click to make sure we get _an_ event and our state
   // machine starts.
@@ -117,7 +125,9 @@ async function syncWithLedger(speculos, source, interactionFunc) {
   return { promptsPromise: interactFP.finally(() => { source.unsubscribe(); }) };
 }
 
-async function readMultiScreenPrompt(speculos, source) {
+type Screen = { header: string, body: string }
+
+async function readMultiScreenPrompt(speculos, source): Promise<Screen> {
   let header;
   let body;
   let screen = await source.next();
@@ -156,7 +166,7 @@ export function acceptPrompts(expectedPrompts, selectPrompt) {
     } else {
       let promptList = [];
       let done = false;
-      let screen: any;
+      let screen: Screen;
       while(!done && (screen = await readMultiScreenPrompt(speculos, screens))) {
         if(screen.body != selectPrompt && screen.body != "Reject") {
           promptList.push(screen);
