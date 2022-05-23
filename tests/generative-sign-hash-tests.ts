@@ -8,7 +8,7 @@ import chai_bytes from 'chai-bytes';
 export const { expect } = chai.use(chai_bytes);
 chai.config.showDiff = true;
 chai.config.truncateThreshold = 0;
-import secp256k1 from 'bcrypto/lib/secp256k1.js';
+import secp256k1 from 'bcrypto/lib/secp256k1';
 import fc from 'fast-check';
 import bip from 'bip32-path';
 
