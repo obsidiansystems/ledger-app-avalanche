@@ -99,7 +99,7 @@ describe("Basic Tests", () => {
         this.ava.encodeBip32Path(BIPPath.fromString(pathPrefix)),
       ]);
 
-      const prompts: any = await flowAccept(
+      const prompts = await flowAccept(
         this.speculos,
         signHashPrompts(
           "111122223333444455556666777788889999AAAABBBBCCCCDDDDEEEEFFFF0000",
@@ -137,8 +137,7 @@ describe("Basic Tests", () => {
         return { promptsMatch: true };
 
       })};
-      const fHP: any = await flipHashPolicy("Disallow");
-      await fHP.promptsPromise;
+      await (await flipHashPolicy("Disallow")).promptsPromise;
 
       try {
         // we could have a signHashExpectFailure, but it's just this line anyways.
@@ -151,8 +150,7 @@ describe("Basic Tests", () => {
         expect(e).has.property('statusCode', 0x6985); // REJECT
         expect(e).has.property('statusText', 'CONDITIONS_OF_USE_NOT_SATISFIED');
       } finally {
-        const fHP2: any = await flipHashPolicy("Allow w/ warning");
-        await fHP2.promptsPromise;
+        await (await flipHashPolicy("Allow w/ warning")).promptsPromise;
       }
     });
 
@@ -166,7 +164,7 @@ describe("Basic Tests", () => {
       const prompts = chunkPrompts([signPrompt, transferPrompt, feePrompt])
           .concat([[finalizePrompt]]);
 
-      const ui: any = await flowMultiPrompt(this.speculos, prompts);
+      const ui = await flowMultiPrompt(this.speculos, prompts);
       const sigPromise = signTransaction(this.ava, pathPrefix, pathSuffixes);
       await ui.promptsPromise;
       await checkSignTransactionResult(this.ava, await sigPromise, pathPrefix, pathSuffixes);
@@ -181,7 +179,7 @@ describe("Basic Tests", () => {
       const prompts = chunkPrompts([signPrompt, transferPrompt, feePrompt])
         .concat([[finalizePrompt]]);
 
-      const ui: any = await flowMultiPrompt(this.speculos, prompts);
+      const ui = await flowMultiPrompt(this.speculos, prompts);
       const sigPromise = signTransaction(this.ava, pathPrefix, pathSuffixes, {
         "outputAmount": Buffer.from([0x00, 0x00, 0x00, 0x00, 0x07, 0x5b, 0xcd, 0x15]),
         "inputAmount": Buffer.from([0x00, 0x00, 0x00, 0x00, 0x3b, 0x9a, 0xca, 0x00]),
@@ -199,7 +197,7 @@ describe("Basic Tests", () => {
       const prompts = chunkPrompts([signPrompt, transferPrompt, feePrompt])
         .concat([[finalizePrompt]]);
 
-      const ui: any = await flowMultiPrompt(this.speculos, prompts);
+      const ui = await flowMultiPrompt(this.speculos, prompts);
       const sigPromise = signTransaction(this.ava, pathPrefix, pathSuffixes, {
         "outputAmount": Buffer.from([0x00, 0x00, 0x00, 0x00, 0x3b, 0x9a, 0xca, 0x00]),
         "inputAmount": Buffer.from([0x00, 0x00, 0x00, 0x00, 0x77, 0x35, 0x94, 0x00]),
@@ -293,7 +291,7 @@ describe("Basic Tests", () => {
       const feePrompt = {header:"Fee",body:"0.001 AVAX"};
       const prompts = chunkPrompts([signPrompt, transferPromptOne, transferPromptTwo, feePrompt])
         .concat([[finalizePrompt]]);
-      const ui: any = await flowMultiPrompt(this.speculos, prompts);
+      const ui = await flowMultiPrompt(this.speculos, prompts);
       const sigPromise = this.ava.signTransaction(
         BIPPath.fromString(pathPrefix),
         pathSuffixes.map(x => BIPPath.fromString(x, false)),
@@ -388,7 +386,7 @@ describe("Basic Tests", () => {
       const feePrompt = {header:"Fee",body:"0.001 AVAX"};
       const prompts = chunkPrompts([signPrompt, transferPromptOne, transferPromptTwo, feePrompt])
         .concat([[finalizePrompt]]);
-      const ui: any = await flowMultiPrompt(this.speculos, prompts);
+      const ui = await flowMultiPrompt(this.speculos, prompts);
       const sigPromise = this.ava.signTransaction(
         BIPPath.fromString(pathPrefix),
         pathSuffixes.map(x => BIPPath.fromString(x, false)),
@@ -405,7 +403,7 @@ describe("Basic Tests", () => {
         const transferPrompt = {header:"Transfer",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"};
         const feePrompt = {header:"Fee",body:"0.123444444 AVAX"};
         const prompts = chunkPrompts([signPrompt, transferPrompt, feePrompt]);
-        const ui: any = await flowMultiPrompt(this.speculos, prompts, "Next", "Next");
+        const ui = await flowMultiPrompt(this.speculos, prompts, "Next", "Next");
         await signTransaction(this.ava, "44'/9000'/0'", ["0/0"], {
           extraEndBytes: Buffer.from([0x00])
         });
@@ -618,7 +616,7 @@ describe("Basic Tests", () => {
         signPrompt, transferPrompt, sourceChainPrompt, feePrompt
       ]).concat([[finalizePrompt]]);
 
-      const ui: any = await flowMultiPrompt(this.speculos, prompts);
+      const ui = await flowMultiPrompt(this.speculos, prompts);
       const sigPromise = this.ava.signTransaction(
         BIPPath.fromString(pathPrefix),
         pathSuffixes.map(x => BIPPath.fromString(x, false)),
@@ -637,7 +635,7 @@ describe("Basic Tests", () => {
           signPrompt, transferPrompt, sourceChainPrompt, feePrompt
         ]).concat([[finalizePrompt]]);
 
-      const ui: any = await flowMultiPrompt(this.speculos, prompts);
+        const ui = await flowMultiPrompt(this.speculos, prompts);
         const sigPromise = this.ava.signTransaction(
           BIPPath.fromString(pathPrefix),
           pathSuffixes.map(x => BIPPath.fromString(x, false)),
@@ -704,7 +702,7 @@ describe("Basic Tests", () => {
         signPrompt, transferPrompt, exportPrompt, feePrompt
       ]).concat([[finalizePrompt]]);
 
-      const ui: any = await flowMultiPrompt(this.speculos, prompts);
+      const ui = await flowMultiPrompt(this.speculos, prompts);
       const sigPromise = this.ava.signTransaction(
         BIPPath.fromString(pathPrefix),
         pathSuffixes.map(x => BIPPath.fromString(x, false)),
@@ -723,7 +721,7 @@ describe("Basic Tests", () => {
         signPrompt, transferPrompt, exportPrompt, feePrompt
       ]).concat([[finalizePrompt]]);
 
-      const ui: any = await flowMultiPrompt(this.speculos, prompts);
+      const ui = await flowMultiPrompt(this.speculos, prompts);
       const sigPromise = this.ava.signTransaction(
         BIPPath.fromString(pathPrefix),
         pathSuffixes.map(x => BIPPath.fromString(x, false)),
@@ -737,7 +735,7 @@ describe("Basic Tests", () => {
 });
 
 async function checkSignHash(this_, pathPrefix, pathSuffixes, hash) {
-  const prompts: any = await flowAccept(
+  const prompts = await flowAccept(
     this_.speculos,
     signHashPrompts(
       "111122223333444455556666777788889999AAAABBBBCCCCDDDDEEEEFFFF0000",
@@ -777,7 +775,7 @@ async function signTransaction(
     0x96, 0xf7, 0xd2, 0x8f, 0x61, 0xbb, 0xe2, 0xaa, // 32-byte asset ID
   ]);
 
-  const fields: any = {
+  const fields = {
     ...{
       codecId: Buffer.from([0x00, 0x00]),
       typeId: Buffer.from([0x00, 0x00, 0x00, 0x00]),
@@ -866,7 +864,7 @@ async function signTransaction(
 
 async function expectSignFailure(speculos, ava, fields, prompts=undefined) {
   try {
-    const ui: any = prompts && prompts.length > 0
+    const ui = prompts && prompts.length > 0
       ? await flowMultiPrompt(speculos, prompts, "Next", "Next")
       : undefined;
     await signTransaction(ava, "44'/9000'/0'", ["0/0"], fields);

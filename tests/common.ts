@@ -7,9 +7,9 @@ export { default as BIPPath } from "bip32-path";
 import secp256k1 from 'bcrypto/lib/secp256k1';
 export const { recover } = secp256k1;
 
-type PromptValue = any;
+type PromptValue = { sendEvent: any };
 
-let promptVal: { sendEvent: any };
+let promptVal: PromptValue;
 //let screen;
 
 export async function flowAccept(speculos, expectedPrompts?, acceptPrompt="Accept") {
@@ -25,8 +25,10 @@ const headerOnlyScreens = {
   "Main menu": 1
 };
 
+type PromptsPromise = Promise<any>;
+
 /* State machine to read screen events and turn them into screens of prompts. */
-export async function automationStart(speculos, interactionFunc) {
+export async function automationStart(speculos, interactionFunc) -> Promise<{ promptsPromise: PromptsPromise }> {
   // If this doesn't exist, we're running against a hardware ledger; just call
   // interactionFunc with no events iterator.
   if(!speculos.automationEvents) {
@@ -46,7 +48,7 @@ export async function automationStart(speculos, interactionFunc) {
 
   // Make an async iterator we can push stuff into.
   let sendEvent;
-  let sendPromise: Promise<{ sendEvent: any }> = new Promise(r=>{sendEvent = r;});
+  let sendPromise: Promise<PromptValue> = new Promise(r=>{sendEvent = r;});
   let asyncEventIter = {
     next: async ()=>{
       promptVal=await sendPromise;
@@ -63,7 +65,7 @@ export async function automationStart(speculos, interactionFunc) {
   // Sync up with the ledger; wait until we're on the home screen, and do some
   // clicking back and forth to make sure we see the event.
   // Then pass screens to interactionFunc./
-  let readyPromise: Promise<{ promptsPromise: Promise<any>, cancel? }> = syncWithLedger(speculos, asyncEventIter, interactionFunc);
+  let readyPromise: Promise<{ promptsPromise: PromptsPromise, cancel? }> = syncWithLedger(speculos, asyncEventIter, interactionFunc);
 
   // Resolve our lock when we're done
   readyPromise.then(r=>r.promptsPromise.then(()=>{promptLockResolve(true);}));
