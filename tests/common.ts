@@ -23,7 +23,7 @@ const headerOnlyScreens = {
 type ManualIterator<A> = {
   next: () => Promise<A>,
   peek: () => Promise<A>,
-  unsubscribe: () => Promise<void>,
+  unsubscribe: () => void,
 };
 
 type InteractionFunc<A> = (speculos, screens?: ManualIterator<Screen>) => Promise<A>;
@@ -65,7 +65,7 @@ export async function automationStart<A>(speculos, interactionFunc: InteractionF
     peek: async () => {
       return await sendPromise;
     },
-    unsubscribe: async () => {
+    unsubscribe: () => {
     },
   };
 
@@ -98,9 +98,9 @@ export async function automationStart<A>(speculos, interactionFunc: InteractionF
     }});
 
   const old = asyncEventIter.unsubscribe;
-  asyncEventIter.unsubscribe = async () => {
-    await old();
-    await subscript.unsubscribe();
+  asyncEventIter.unsubscribe = () => {
+    old();
+    subscript.unsubscribe();
   };
 
   // Send a rightward-click to make sure we get _an_ event and our state
