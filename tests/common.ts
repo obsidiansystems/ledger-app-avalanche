@@ -196,7 +196,7 @@ export async function flowMultiPrompt(speculos, prompts, nextPrompt="Next", fina
   });
 }
 
-export const chunkPrompts = (prompts) => {
+export const chunkPrompts = <A>(prompts: A[] ): A[][] => {
   const chunkSize = 5;
   let chunked = [];
   for (let i = 0; i < prompts.length; i += chunkSize) {
@@ -213,7 +213,7 @@ const fcConfig = {
 
 fc.configureGlobal(fcConfig);
 
-export const signHashPrompts = (hash, pathPrefix) => {
+export const signHashPrompts = (hash, pathPrefix): Screen[] => {
   return [
     {header:"Sign",body:"Hash"},
     {header:"DANGER!",body:"YOU MUST verify this manually!!!"},
