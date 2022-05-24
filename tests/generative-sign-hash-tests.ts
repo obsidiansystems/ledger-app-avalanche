@@ -1,14 +1,15 @@
 import {
+  PromptsPromise,
   flowAccept,
   signHashPrompts,
-} from "./common.js";
+} from "./common";
 
 import chai from 'chai';
 import chai_bytes from 'chai-bytes';
 export const { expect } = chai.use(chai_bytes);
 chai.config.showDiff = true;
 chai.config.truncateThreshold = 0;
-import secp256k1 from 'bcrypto/lib/secp256k1.js';
+import secp256k1 from 'bcrypto/lib/secp256k1';
 import fc from 'fast-check';
 import bip from 'bip32-path';
 
@@ -22,24 +23,27 @@ describe("Sign Hash tests", () => {
   context('Generative tests', function () {
     it('can sign a hash-sized sequence of bytes', async function () { // Need 'function' to get 'this' for mocha.
       return await fc.assert(fc.asyncProperty(fc.array(subAddressGen,1,10), fc.hexaString(64, 64), async (subAccts, hashHex) => {
-        let ui = { cancel: () => {} };
+        let ui: PromptsPromise<{ promptsMatch: true }> = {
+          promptsPromise: (async () => ({ promptsMatch: true }))(),
+          cancel: () => {}
+        };
         try {
           this.flushStderr();
 
           const expectedPrompts = signHashPrompts(hashHex.toUpperCase(), account.toString(true));
-          ui = await flowAccept(this.speculos, expectedPrompts);
+          ui = await flowAccept(this.speculos, expectedPrompts) as PromptsPromise<{ promptsMatch: true }>;
           const hash = Buffer.from(hashHex, "hex");
           const sigs = this.ava.signHash(account, subAccts, hash);
 
           const sv = await sigs;
 
-          await ui.promptsMatch;
+          await (await ui.promptsPromise).promptsMatch;
           for (const ks of sv) {
             const [keySuffix, sig] = ks;
 
             const key = await this.ava.getWalletExtendedPublicKey(account.toString() + "/" + keySuffix);
 
-            const recovered = secp256k1.recover(Buffer.from(hash, "hex"), sig.slice(0, 64), sig[64], false);
+            const recovered = secp256k1.recover(Buffer.from(hashHex, "hex"), sig.slice(0, 64), sig[64], false);
             expect(recovered).is.equalBytes(key.public_key);
           }
         } catch(e) {
@@ -67,7 +71,7 @@ describe("Sign Hash tests", () => {
             expect(e).has.property('statusText', 'CONDITIONS_OF_USE_NOT_SATISFIED');
           }
 
-          await ui.promptsMatch;
+          await (await ui.promptsPromise).promptsMatch;
         } catch(e) {
           ui.cancel();
           throw(e);
