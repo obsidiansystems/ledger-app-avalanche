@@ -22,7 +22,6 @@ const headerOnlyScreens = {
 
 type ManualIterator<A> = {
   next: () => Promise<A>,
-  peek: () => Promise<A>,
   unsubscribe: () => void,
 };
 
@@ -61,9 +60,6 @@ export async function automationStart<A>(speculos, interactionFunc: InteractionF
       promptVal=await sendPromise;
       sendPromise=new Promise(r => { sendEvent = r; });
       return promptVal;
-    },
-    peek: async () => {
-      return await sendPromise;
     },
     unsubscribe: () => {
     },
@@ -126,10 +122,6 @@ async function syncWithLedger<A>(speculos, source: ManualIterator<Screen>, inter
   while(screen.header != "Avalanche") {
     speculos.button("Ll");
     screen = await source.next();
-  }
-  // Sink some extra homescreens to make us a bit more durable to failing tests.
-  while((await source.peek()).header == "Avalanche" || (await source.peek()).body == "Configuration" || (await source.peek()).body == "Quit") {
-    await source.next();
   }
   // And continue on to interactionFunc
   let interactFP = interactionFunc(speculos, source);
