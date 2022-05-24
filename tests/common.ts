@@ -22,7 +22,6 @@ const headerOnlyScreens = {
 
 type ManualIterator<A> = {
   next: () => Promise<A>,
-  peek: () => Promise<A>,
   unsubscribe: () => void,
 };
 
@@ -58,9 +57,6 @@ export async function automationStart(speculos, interactionFunc) {
       sendPromise=new Promise(r => { sendEvent = r; });
       return promptVal;
     },
-    peek: async () => {
-      return await sendPromise;
-    },
     unsubscribe: () => {
     },
   };
@@ -68,7 +64,7 @@ export async function automationStart(speculos, interactionFunc) {
   // Sync up with the ledger; wait until we're on the home screen, and do some
   // clicking back and forth to make sure we see the event.
   // Then pass screens to interactionFunc.
-  let readyPromise: any = syncWithLedger(speculos, asyncEventIter, interactionFunc);
+  let readyPromise: Promise<any> = syncWithLedger(speculos, asyncEventIter, interactionFunc);
 
   // Resolve our lock when we're done
   readyPromise.then(r=>r.promptsPromise.then(()=>{promptLockResolve(true);}));
@@ -106,7 +102,7 @@ export async function automationStart(speculos, interactionFunc) {
   return readyPromise.then(r=>{r.cancel = ()=>{subscript.unsubscribe(); promptLockResolve(true);}; return r;});
 }
 
-async function syncWithLedger<A>(speculos, source, interactionFunc: InteractionFunc<A>)
+async function syncWithLedger<A>(speculos, source: ManualIterator<Screen>, interactionFunc: InteractionFunc<A>)
 {
   let screen = await source.next();
   // Scroll to the end; we do this because we might have seen "Avalanche" when
@@ -121,10 +117,6 @@ async function syncWithLedger<A>(speculos, source, interactionFunc: InteractionF
   while(screen.header != "Avalanche") {
     speculos.button("Ll");
     screen = await source.next();
-  }
-  // Sink some extra homescreens to make us a bit more durable to failing tests.
-  while(await source.peek().header == "Avalanche" || await source.peek().body == "Configuration" || await source.peek().body == "Quit") {
-    await source.next();
   }
   // And continue on to interactionFunc
   let interactFP = interactionFunc(speculos, source);
