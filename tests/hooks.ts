@@ -2,7 +2,7 @@ import Avalanche from 'hw-app-avalanche';
 import Eth from '@ledgerhq/hw-app-eth';
 import HidTransport from '@ledgerhq/hw-transport-node-hid';
 import SpeculosTransport from '@ledgerhq/hw-transport-node-speculos';
-import { spawn } from 'child_process';
+import { SpawnOptions, spawn } from 'child_process';
 
 const APDU_PORT = 9999;
 const BUTTON_PORT = 8888;
@@ -20,7 +20,7 @@ export const mochaHooks = {
       console.log(this.speculos);
     } else {
       if (!process.env.USE_EXISTING_SPECULOS) {
-        const speculosProcessOptions : any = process.env.SPECULOS_DEBUG ? {stdio:"inherit"} : {};
+        const speculosProcessOptions: SpawnOptions = process.env.SPECULOS_DEBUG ? {stdio:"inherit"} : {};
         this.speculosProcess = spawn('speculos', [
           process.env.LEDGER_APP,
           '--display', 'headless',
