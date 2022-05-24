@@ -65,7 +65,7 @@ export async function automationStart(speculos, interactionFunc) {
 
   let header;
   let body;
-  let screen: any;
+  let screen: Screen;
 
   let subscript = speculos.automationEvents.subscribe({
     next: evt => {
@@ -116,6 +116,8 @@ async function syncWithLedger(speculos, source, interactionFunc) {
   return { promptsPromise: interactFP.finally(() => { source.unsubscribe(); }) };
 }
 
+type Screen = { header: string, body: string }
+
 async function readMultiScreenPrompt(speculos, source) {
   let header;
   let body;
@@ -155,7 +157,7 @@ export function acceptPrompts(expectedPrompts, selectPrompt) {
     } else {
       let promptList = [];
       let done = false;
-      let screen: any;
+      let screen: Screen;
       while(!done && (screen = await readMultiScreenPrompt(speculos, screens))) {
         if(screen.body != selectPrompt && screen.body != "Reject") {
           promptList.push(screen);
@@ -221,4 +223,4 @@ export const signHashPrompts = (hash, pathPrefix) => {
   ];
 };
 
-export const finalizePrompt = {header: "Finalize", body: "Transaction"};
+export const finalizePrompt: Screen = {header: "Finalize", body: "Transaction"};
