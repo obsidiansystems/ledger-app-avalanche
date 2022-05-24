@@ -107,7 +107,7 @@ describe("Basic Tests", () => {
         ),
       );
       await this.speculos.send(this.ava.CLA, this.ava.INS_SIGN_HASH, 0x00, 0x00, firstMessage);
-      await prompts.promptsMatch;
+      (await (await prompts).promptsPromise).promptsMatch;
 
       try {
         await this.speculos.send(this.ava.CLA, this.ava.INS_SIGN_HASH, 0x81, 0x00, Buffer.from("00001111", 'hex'));
@@ -747,7 +747,7 @@ async function checkSignHash(this_, pathPrefix, pathSuffixes, hash) {
     pathSuffixes.map(x => BIPPath.fromString(x, false)),
     Buffer.from(hash, "hex"),
   );
-  await prompts.promptsMatch;
+  (await (await prompts).promptsPromise).promptsMatch;
 
   expect(sigs).to.have.keys(pathSuffixes);
 
@@ -762,11 +762,18 @@ async function checkSignHash(this_, pathPrefix, pathSuffixes, hash) {
   }
 }
 
+type FieldOverrides = {
+  inputAmount?: Buffer,
+  outputAmount?: Buffer,
+  transferrableOutput?: Buffer,
+  extraEndBytes?: Buffer,
+};
+
 async function signTransaction(
   ava,
   pathPrefix,
   pathSuffixes,
-  fieldOverrides = {},
+  fieldOverrides: FieldOverrides = {},
 ) {
   const assetId = Buffer.from([
     0x3d, 0x9b, 0xda, 0xc0, 0xed, 0x1d, 0x76, 0x13,
