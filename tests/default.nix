@@ -106,6 +106,7 @@ let
             (s."jest@^26.4.1")
           ];
         };
+
       };
 
   deps = nixLib.buildNodeDeps
@@ -124,12 +125,35 @@ let
   };
 
   src = lib.sources.sourceFilesBySuffices src0 [
-    ".js" ".json" ".sh"
+    ".js" ".cjs" ".ts" ".json"
   ];
-in
-  nixLib.buildNodePackage ({
+in rec {
+  inherit deps npmDepsNix npmPackageNix getThunkSrc;
+
+  testModules = nixLib.buildNodePackage ({
+    src = pkgs.runCommand "package-json" {} ''
+      mkdir $out
+      cp ${./package.json} $out/package.json
+    '';
+  } // nixLib.callTemplate npmPackageNix deps);
+
+  testScript = pkgs.writeShellScriptBin "mocha-wrapper" ''
+    suite="$(readlink -e ''${1:-${testPackage}})"
+    shift
+
+    LEDGER_APP="$(readlink -e ''${LEDGER_APP})"
+
+    cd "$suite"
+
+    export NODE_PATH=${testModules}/node_modules
+    rm ./node_modules
+    ln -s $NODE_PATH ./node_modules
+
+    export NO_UPDATE_NOTIFIER=true
+    exec ${pkgs.yarn}/bin/yarn run test ./*.ts
+  '';
+
+  testPackage = nixLib.buildNodePackage ({
     inherit src;
-    passthru = {
-      inherit deps npmDepsNix npmPackageNix getThunkSrc;
-    };
-  } // nixLib.callTemplate npmPackageNix deps)
+  } // nixLib.callTemplate npmPackageNix deps);
+}

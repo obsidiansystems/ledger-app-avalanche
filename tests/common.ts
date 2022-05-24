@@ -1,13 +1,13 @@
 import fc from 'fast-check';
 
-export const { recover } = secp256k1;
 import chai from 'chai';
 import chai_bytes from 'chai-bytes';
 export const { expect } = chai.use(chai_bytes);
 export { default as BIPPath } from "bip32-path";
-import secp256k1 from 'bcrypto/lib/secp256k1.js';
+import secp256k1 from 'bcrypto/lib/secp256k1';
+export const { recover } = secp256k1;
 
-export async function flowAccept(speculos, expectedPrompts, acceptPrompt="Accept") {
+export async function flowAccept(speculos, expectedPrompts?, acceptPrompt="Accept") {
   return await automationStart(speculos, acceptPrompts(expectedPrompts, acceptPrompt));
 }
 
@@ -19,6 +19,13 @@ const headerOnlyScreens = {
   "Configuration": 1,
   "Main menu": 1
 };
+
+type ManualIterator<A> = {
+  next: () => Promise<A>,
+  unsubscribe: () => void,
+};
+
+type InteractionFunc<A> = (speculos, screens?: ManualIterator<Screen>) => Promise<A>;
 
 /* State machine to read screen events and turn them into screens of prompts. */
 export async function automationStart(speculos, interactionFunc) {
@@ -40,32 +47,31 @@ export async function automationStart(speculos, interactionFunc) {
   speculos.promptsEndPromise = promptsLock; // Set ourselves as the interaction.
 
   // Make an async iterator we can push stuff into.
-  let sendEvent;
-  let sendPromise = new Promise(r=>{sendEvent = r;});
-  let promptVal;
+  let sendEvent: (Screen) => void;
+  let sendPromise: Promise<Screen> = new Promise(r => { sendEvent = r; });
+  let promptVal: Screen;
 
-  let asyncEventIter = {
-    next: async ()=>{
+  let asyncEventIter: ManualIterator<Screen> = {
+    next: async () => {
       promptVal=await sendPromise;
-      sendPromise=new Promise(r=>{sendEvent = r;});
+      sendPromise=new Promise(r => { sendEvent = r; });
       return promptVal;
     },
-    peek: async ()=>{
-      return await sendPromise;
-    }
+    unsubscribe: () => {
+    },
   };
 
   // Sync up with the ledger; wait until we're on the home screen, and do some
   // clicking back and forth to make sure we see the event.
   // Then pass screens to interactionFunc.
-  let readyPromise = syncWithLedger(speculos, asyncEventIter, interactionFunc);
+  let readyPromise: Promise<any> = syncWithLedger(speculos, asyncEventIter, interactionFunc);
 
   // Resolve our lock when we're done
   readyPromise.then(r=>r.promptsPromise.then(()=>{promptLockResolve(true);}));
 
   let header;
   let body;
-  let screen;
+  let screen: Screen;
 
   let subscript = speculos.automationEvents.subscribe({
     next: evt => {
@@ -83,7 +89,11 @@ export async function automationStart(speculos, interactionFunc) {
       header=undefined;
     }});
 
-  asyncEventIter.unsubscribe = () => { subscript.unsubscribe(); };
+  const old = asyncEventIter.unsubscribe;
+  asyncEventIter.unsubscribe = () => {
+    old();
+    subscript.unsubscribe();
+  };
 
   // Send a rightward-click to make sure we get _an_ event and our state
   // machine starts.
@@ -92,7 +102,8 @@ export async function automationStart(speculos, interactionFunc) {
   return readyPromise.then(r=>{r.cancel = ()=>{subscript.unsubscribe(); promptLockResolve(true);}; return r;});
 }
 
-async function syncWithLedger(speculos, source, interactionFunc) {
+async function syncWithLedger<A>(speculos, source: ManualIterator<Screen>, interactionFunc: InteractionFunc<A>)
+{
   let screen = await source.next();
   // Scroll to the end; we do this because we might have seen "Avalanche" when
   // we subscribed, but needed to send a button click to make sure we reached
@@ -107,16 +118,14 @@ async function syncWithLedger(speculos, source, interactionFunc) {
     speculos.button("Ll");
     screen = await source.next();
   }
-  // Sink some extra homescreens to make us a bit more durable to failing tests.
-  while(await source.peek().header == "Avalanche" || await source.peek().body == "Configuration" || await source.peek().body == "Quit") {
-    await source.next();
-  }
   // And continue on to interactionFunc
   let interactFP = interactionFunc(speculos, source);
   return { promptsPromise: interactFP.finally(() => { source.unsubscribe(); }) };
 }
 
-async function readMultiScreenPrompt(speculos, source) {
+type Screen = { header: string, body: string }
+
+async function readMultiScreenPrompt(speculos, source): Promise<Screen> {
   let header;
   let body;
   let screen = await source.next();
@@ -155,7 +164,7 @@ export function acceptPrompts(expectedPrompts, selectPrompt) {
     } else {
       let promptList = [];
       let done = false;
-      let screen;
+      let screen: Screen;
       while(!done && (screen = await readMultiScreenPrompt(speculos, screens))) {
         if(screen.body != selectPrompt && screen.body != "Reject") {
           promptList.push(screen);
@@ -183,7 +192,7 @@ export async function flowMultiPrompt(speculos, prompts, nextPrompt="Next", fina
   const isHomeScreen = p => p.header == "Avalanche" || p.body == "Configuration" || p.body == "Quit";
   const appScreens = ps => ps.filter(p => !isHomeScreen(p));
 
-  return await automationStart(speculos, async (speculos, screens) => {
+  return await automationStart(speculos, async (speculos, screens): Promise<true> => {
     for (const p of prompts.slice(0,-1)) {
       const rp = (await acceptPrompts(undefined, nextPrompt)(speculos, screens)).promptList;
       expect(appScreens(rp)).to.deep.equal(p);
@@ -194,7 +203,7 @@ export async function flowMultiPrompt(speculos, prompts, nextPrompt="Next", fina
   });
 }
 
-export const chunkPrompts = (prompts) => {
+export const chunkPrompts = <A>(prompts: A[] ): A[][] => {
   const chunkSize = 5;
   let chunked = [];
   for (let i = 0; i < prompts.length; i += chunkSize) {
@@ -204,14 +213,14 @@ export const chunkPrompts = (prompts) => {
 }
 
 const fcConfig = {
-  interruptAfterTimeLimit: parseInt(process.env.GEN_TIME_LIMIT || 1000),
+  interruptAfterTimeLimit: parseInt(process.env.GEN_TIME_LIMIT || "1000"),
   markInterruptAsFailure: false,
-  numRuns: parseInt(process.env.GEN_NUM_RUNS || 100)
+  numRuns: parseInt(process.env.GEN_NUM_RUNS || "100")
 };
 
 fc.configureGlobal(fcConfig);
 
-export const signHashPrompts = (hash, pathPrefix) => {
+export const signHashPrompts = (hash, pathPrefix): Screen[] => {
   return [
     {header:"Sign",body:"Hash"},
     {header:"DANGER!",body:"YOU MUST verify this manually!!!"},
@@ -221,4 +230,4 @@ export const signHashPrompts = (hash, pathPrefix) => {
   ];
 };
 
-export const finalizePrompt = {header: "Finalize", body: "Transaction"};
+export const finalizePrompt: Screen = {header: "Finalize", body: "Transaction"};

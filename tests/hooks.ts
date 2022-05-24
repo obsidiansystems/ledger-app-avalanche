@@ -1,23 +1,18 @@
-import AvalancheWhoops from 'hw-app-avalanche';
-import EthWhoops from '@ledgerhq/hw-app-eth';
-import HidTransportWhoops from '@ledgerhq/hw-transport-node-hid';
-import SpeculosTransportWhoops from '@ledgerhq/hw-transport-node-speculos';
-import { spawn } from 'child_process';
-
-const Avalanche = AvalancheWhoops.default;
-const Eth = EthWhoops.default;
-const SpeculosTransport = SpeculosTransportWhoops.default;
-const HidTransport = HidTransportWhoops.default;
+import Avalanche from 'hw-app-avalanche';
+import Eth from '@ledgerhq/hw-app-eth';
+import HidTransport from '@ledgerhq/hw-transport-node-hid';
+import SpeculosTransport from '@ledgerhq/hw-transport-node-speculos';
+import { SpawnOptions, spawn } from 'child_process';
 
 const APDU_PORT = 9999;
 const BUTTON_PORT = 8888;
 const AUTOMATION_PORT = 8899;
 
-let stdoutVal = "";
-let stderrVal = "";
+let stdoutVal: string = "";
+let stderrVal: string = "";
 
 export const mochaHooks = {
-  beforeAll: async function () { // Need 'function' to get 'this'
+  beforeAll: async function (this: Mocha.Context) { // Need 'function' to get 'this'
     this.timeout(10000); // We'll let this wait for up to 10 seconds to get a speculos instance.
     if (process.env.LEDGER_LIVE_HARDWARE) {
       this.speculos = await HidTransport.create();
@@ -25,7 +20,7 @@ export const mochaHooks = {
       console.log(this.speculos);
     } else {
       if (!process.env.USE_EXISTING_SPECULOS) {
-        const speculosProcessOptions = process.env.SPECULOS_DEBUG ? {stdio:"inherit"} : {};
+        const speculosProcessOptions: SpawnOptions = process.env.SPECULOS_DEBUG ? {stdio:"inherit"} : {};
         this.speculosProcess = spawn('speculos', [
           process.env.LEDGER_APP,
           '--display', 'headless',

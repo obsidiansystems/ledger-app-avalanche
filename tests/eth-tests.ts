@@ -3,18 +3,16 @@ import {
   expect,
   finalizePrompt,
   flowMultiPrompt,
-} from "./common.js";
+} from "./common";
 
 import { Transaction } from "@ethereumjs/tx";
 import { FeeMarketEIP1559Transaction as EIP1559Transaction } from "@ethereumjs/tx";
-import CommonWhoops from "@ethereumjs/common";
+import Common from "@ethereumjs/common";
 import { BN } from "bn.js";
-import {bnToRlp, rlp} from "ethereumjs-util";
+import { bnToRlp, rlp } from "ethereumjs-util";
 import { decode } from "rlp";
-import { byContractAddressAndChainId } from "@ledgerhq/hw-app-eth/erc20.js";
-import erc20presetMinterPauser from "./ERC20PresetMinterPauser.js";
-
-const Common = CommonWhoops.default;
+import { byContractAddressAndChainId } from "@ledgerhq/hw-app-eth/erc20";
+import erc20presetMinterPauser from "./ERC20PresetMinterPauser";
 
 const rawUnsignedLegacyTransaction = (chainId, unsignedTxParams) => {
     const common = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId });
@@ -88,7 +86,10 @@ async function testLegacySigning(self, chainId, prompts, hexTx) {
   const resolution = null;
   const dat = await self.eth.signTransaction("44'/60'/0'/0/0", ethTx, resolution);
   const chain = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId });
-  const txnBufs = decode(ethTx).slice(0,6).concat([dat.v, dat.r, dat.s].map(a=>Buffer.from(((a.length%2==1)?'0'+a:a),'hex')));
+  const txnBufsDecoded: any = decode(ethTx).slice(0,6);
+  const txnBufsMap = [dat.v, dat.r, dat.s].map(a=>Buffer.from(((a.length%2==1)?'0'+a:a),'hex'));
+  const txnBufs = txnBufsDecoded.concat(txnBufsMap);
+  //const txnBufs = decode(ethTx).slice(0,6).concat([dat.v, dat.r, dat.s].map(a=>Buffer.from(((a.length%2==1)?'0'+a:a),'hex')));
   const ethTxObj = Transaction.fromValuesArray(txnBufs, {common: chain});
   expect(ethTxObj.verifySignature()).to.equal(true);
   expect(ethTxObj.getSenderPublicKey()).to.equalBytes("ef5b152e3f15eb0c50c9916161c2309e54bd87b9adce722d69716bcdef85f547678e15ab40a78919c7284e67a17ee9a96e8b9886b60f767d93023bac8dbc16e4");
@@ -103,10 +104,9 @@ async function testEIP1559Signing(self, chainId, prompts, hexTx) {
   const dat = await self.eth.signTransaction("44'/60'/0'/0/0", ethTx, resolution);
   const chain = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId }, 'london')
   // remove the first byte from the start of the ethtx, the transactionType that's indicating it's an eip1559 transaction
-  const txnBufs = decode(ethTx.slice(1)).
-      slice(0,9).
-      concat([dat.v, dat.r, dat.s].
-        map(a=>Buffer.from(((a.length%2==1)?'0'+a:a),'hex')));
+  const txnBufsDecoded: any = decode(ethTx.slice(1)).slice(0,9);
+  const txnBufsMap = [dat.v, dat.r, dat.s].map(a=>Buffer.from(((a.length%2==1)?'0'+a:a),'hex'))
+  const txnBufs = txnBufsDecoded.concat(txnBufsMap);
   const ethTxObj = EIP1559Transaction.fromValuesArray(txnBufs, {common: chain});
   expect(ethTxObj.verifySignature()).to.equal(true);
   expect(ethTxObj.getSenderPublicKey()).to.equalBytes("ef5b152e3f15eb0c50c9916161c2309e54bd87b9adce722d69716bcdef85f547678e15ab40a78919c7284e67a17ee9a96e8b9886b60f767d93023bac8dbc16e4");

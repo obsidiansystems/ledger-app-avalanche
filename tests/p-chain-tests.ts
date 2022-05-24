@@ -4,7 +4,7 @@ import {
   expect,
   finalizePrompt,
   flowMultiPrompt,
-} from "./common.js";
+} from "./common";
 
 const fujiAssetId = [
   0x3d, 0x9b, 0xda, 0xc0, 0xed, 0x1d, 0x76, 0x13,
