@@ -53,8 +53,8 @@ export async function automationStart<A>(speculos, interactionFunc: InteractionF
 
   // Make an async iterator we can push stuff into.
   let sendEvent: (Screen) => void;
-  let promptVal: Screen;
   let sendPromise: Promise<Screen> = new Promise(r => { sendEvent = r; });
+  let promptVal: Screen;
 
   let asyncEventIter: ManualIterator<Screen> = {
     next: async () => {
