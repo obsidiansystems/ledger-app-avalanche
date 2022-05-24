@@ -91,7 +91,11 @@ export async function automationStart(speculos, interactionFunc) {
       header=undefined;
     }});
 
-  asyncEventIter.unsubscribe = () => { subscript.unsubscribe(); };
+  const old = asyncEventIter.unsubscribe;
+  asyncEventIter.unsubscribe = () => {
+    old();
+    subscript.unsubscribe();
+  };
 
   // Send a rightward-click to make sure we get _an_ event and our state
   // machine starts.
