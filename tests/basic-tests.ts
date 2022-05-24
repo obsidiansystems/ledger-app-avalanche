@@ -1,6 +1,5 @@
 import {
   BIPPath,
-  expect,
   recover,
   flowAccept,
   signHashPrompts,
@@ -10,7 +9,90 @@ import {
   finalizePrompt,
 } from "./common";
 
+import { expect } from 'chai';
+import { describe, it, before, afterEach } from 'mocha';
+import SpeculosTransport from '@ledgerhq/hw-transport-node-speculos';
+import Axios from 'axios';
+import Transport from "./transport";
+import Ava from "hw-app-avalanche";
+
+let ignoredScreens = [ "W e l c o m e", "Cancel", "Working...", "Exit", "Avalanche 0.1.0"]
+
+let setAcceptAutomationRules = async function() {
+    await Axios.post("http://localhost:5000/automation", {
+      version: 1,
+      rules: [
+        ... ignoredScreens.map(txt => { return { "text": txt, "actions": [] } }),
+        { "y": 16, "actions": [] },
+        { "text": "Confirm", "actions": [ [ "button", 1, true ], [ "button", 2, true ], [ "button", 2, false ], [ "button", 1, false ] ]},
+        { "actions": [ [ "button", 2, true ], [ "button", 2, false ] ]}
+      ]
+    });
+}
+
+let processPrompts = function(prompts: [any]) {
+  let i = prompts.filter((a : any) => !ignoredScreens.includes(a["text"])).values();
+  let {done, value} = i.next();
+  let header = "";
+  let prompt = "";
+  let rv = [];
+  while(!done) {
+    if(value["y"] == 1) {
+      if(value["text"] != header) {
+        if(header || prompt) rv.push({ header, prompt });
+        header = value["text"];
+        prompt = "";
+      }
+    } else if(value["y"] == 16) {
+      prompt += value["text"];
+    } else {
+      if(header || prompt) rv.push({ header, prompt });
+      rv.push(value);
+      header = "";
+      prompt = "";
+    }
+    ({done, value} = i.next());
+  }
+  return rv;
+}
+
+let sendCommandAndAccept = async function(command : any, prompts : any) {
+    await setAcceptAutomationRules();
+    await Axios.delete("http://localhost:5000/events");
+
+    let transport = await Transport.open("http://localhost:5000/apdu");
+    let ava = new Ava(transport);
+
+    //await new Promise(resolve => setTimeout(resolve, 100));
+
+    let err = null;
+
+    try { await command(ava); } catch(e) {
+      err = e;
+    }
+
+    //await new Promise(resolve => setTimeout(resolve, 100));
+
+
+    // expect(((await Axios.get("http://localhost:5000/events")).data["events"] as [any]).filter((a : any) => !ignoredScreens.includes(a["text"]))).to.deep.equal(prompts);
+    expect(processPrompts((await Axios.get("http://localhost:5000/events")).data["events"] as [any])).to.deep.equal(prompts);
+
+    if(err) throw(err);
+}
+
 describe("Basic Tests", () => {
+  before( async function() {
+    let transport = await Transport.open("http://localhost:5000/apdu");
+    let version_string = (await transport.send(0,0xfe,0,0,Buffer.alloc(0))).slice(0,-2).toString();
+    ignoredScreens.push(version_string);
+  })
+
+  afterEach( async function() {
+    console.log("Clearing settings");
+    await Axios.post("http://localhost:5000/automation", {version: 1, rules: []});
+    await Axios.delete("http://localhost:5000/events");
+  });
+
   context('Basic APDUs', function () {
     it('can fetch the version of the app', async function () {
       const cfg = await this.ava.getAppConfiguration();

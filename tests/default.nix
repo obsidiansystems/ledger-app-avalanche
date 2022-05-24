@@ -156,7 +156,7 @@ in rec {
        --require $PWD/hooks \
        --exit \
        --config ./.mocharc.cjs \
-       ./*.ts
+       ./basic-tests.ts
   '';
 
   testPackage = nixLib.buildNodePackage ({
