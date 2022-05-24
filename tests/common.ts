@@ -40,9 +40,9 @@ export async function automationStart(speculos, interactionFunc) {
   speculos.promptsEndPromise = promptsLock; // Set ourselves as the interaction.
 
   // Make an async iterator we can push stuff into.
-  let sendEvent;
-  let sendPromise: Promise<{ sendEvent: any }> = new Promise(r=>{sendEvent = r;});
-  let promptVal;
+  let sendEvent: (Screen) => void;
+  let sendPromise: Promise<Screen> = new Promise(r => { sendEvent = r; });
+  let promptVal: Screen;
 
   let asyncEventIter: any = {
     next: async ()=>{
