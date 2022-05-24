@@ -20,6 +20,12 @@ const headerOnlyScreens = {
   "Main menu": 1
 };
 
+type ManualIterator<A> = {
+  next: () => Promise<A>,
+  peek: () => Promise<A>,
+  unsubscribe: () => void,
+};
+
 /* State machine to read screen events and turn them into screens of prompts. */
 export async function automationStart(speculos, interactionFunc) {
   // If this doesn't exist, we're running against a hardware ledger; just call
@@ -44,15 +50,17 @@ export async function automationStart(speculos, interactionFunc) {
   let sendPromise: Promise<Screen> = new Promise(r => { sendEvent = r; });
   let promptVal: Screen;
 
-  let asyncEventIter: any = {
-    next: async ()=>{
+  let asyncEventIter: ManualIterator<Screen> = {
+    next: async () => {
       promptVal=await sendPromise;
-      sendPromise=new Promise(r=>{sendEvent = r;});
+      sendPromise=new Promise(r => { sendEvent = r; });
       return promptVal;
     },
-    peek: async ()=>{
+    peek: async () => {
       return await sendPromise;
-    }
+    },
+    unsubscribe: () => {
+    },
   };
 
   // Sync up with the ledger; wait until we're on the home screen, and do some
