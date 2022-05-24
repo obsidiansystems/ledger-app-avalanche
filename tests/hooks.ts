@@ -20,7 +20,7 @@ export const mochaHooks = {
         this.speculosProcess = spawn('speculos', [
           process.env.LEDGER_APP,
           '--display', 'headless',
-          '--sdk', '1.6',
+          '--sdk', '2.1',
         ], speculosProcessOptions);
         console.log("Speculos started");
       }

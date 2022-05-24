@@ -80,12 +80,18 @@ let
 
   build = bolos:
     let
+      # We want GNU as not LLVM as, which doesn't something completely
+      # different, or Clang's internal assembler which doesn't take quite the
+      # same syntax. It also expects a C compiler to not complain about extra
+      # args, do C pre-processing, etc. We could get clang to use GNU as, but
+      # we'll just use GCC as they presumably do for this.
+      setAssembler = ''
+        export AS=${ledgerPkgs.gccStdenv.cc}/bin/${ledgerPkgs.clangStdenv.cc.targetPrefix}gcc
+      '';
+
       app = ledgerPkgs.lldClangStdenv.mkDerivation {
         name = "ledger-app-avalanche-nano-${bolos.name}";
         inherit src;
-        shellHook = ''
-          export USE_NIX=1
-        '';
         postConfigure = ''
           patchShebangs test.sh
           # hack to get around no tests for cross logic
@@ -113,6 +119,13 @@ let
         CLANGPATH = "${ledgerPkgs.lldClangStdenv.cc}/bin/";
         GCCPATH = "${ledgerPkgs.stdenv.cc}/bin/";
         DEBUG=if debug then "1" else "0";
+
+        # Do both ways, so nix builds and users running make both work.
+        preBuild = setAssembler;
+        shellHook = ''
+          export USE_NIX=1
+        '' + setAssembler;
+
         installPhase = ''
           mkdir -p $out
           cp -R bin $out
@@ -232,7 +245,7 @@ let
        CCC_ANALYZER_HTML = "${placeholder "out"}";
        CCC_ANALYZER_OUTPUT_FORMAT = "html";
        CCC_ANALYZER_ANALYSIS = analysisOptions;
-       preBuild = ''
+       preBuild = (old.preBuild or "") + ''
          mkdir -p $out
          export CCC_CC=$CC
          export CCC_CXX=$CXX

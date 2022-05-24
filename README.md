@@ -10,7 +10,7 @@ Most instructions assume you have the [Nix](https://nixos.org/nix/) Package Mana
 
 System requirements differ based on if you are using or installing the application. If you are using a Linux machine, you will need to [Prepare your Linux Machine for Ledger Device Communication](#preparing-your-linux-machine-for-ledger-device-communication) for both installing and usaging the application.
 
-This application is has been tested against Ledger Nano S firmware 1.6.1. Ledger Nano X has not been tested yet. Please use [Ledger Live](https://www.ledger.com/ledger-live) to manage your Ledger device's firmware.
+This application is has been tested against Ledger Nano S firmware 2.1.0. Ledger Nano X has not been tested yet. Please use [Ledger Live](https://www.ledger.com/ledger-live) to manage your Ledger device's firmware.
 
 ### For Application Installation
 

@@ -56,6 +56,26 @@ let processPrompts = function(prompts: [any]) {
   return rv;
 }
 
+let sendCommand = async function(command : any) {
+  //await setAcceptAutomationRules();
+  await Axios.delete("http://localhost:5000/events");
+
+  let transport = await Transport.open("http://localhost:5000/apdu");
+  let ava = new Ava(transport);
+
+  //await new Promise(resolve => setTimeout(resolve, 100));
+
+  let err = null;
+
+  try { await command(ava); } catch(e) {
+    err = e;
+  }
+
+  //await new Promise(resolve => setTimeout(resolve, 100));
+
+  if(err) throw(err);
+}
+
 let sendCommandAndAccept = async function(command : any, prompts : any) {
     await setAcceptAutomationRules();
     await Axios.delete("http://localhost:5000/events");
@@ -83,8 +103,8 @@ let sendCommandAndAccept = async function(command : any, prompts : any) {
 describe("Basic Tests", () => {
   before( async function() {
     let transport = await Transport.open("http://localhost:5000/apdu");
-    let version_string = (await transport.send(0,0xfe,0,0,Buffer.alloc(0))).slice(0,-2).toString();
-    ignoredScreens.push(version_string);
+    //let version_string = (await transport.send(0,0xfe,0,0,Buffer.alloc(0))).slice(0,-2).toString();
+    //ignoredScreens.push(version_string);
   })
 
   afterEach( async function() {
@@ -93,16 +113,20 @@ describe("Basic Tests", () => {
     await Axios.delete("http://localhost:5000/events");
   });
 
-  context('Basic APDUs', function () {
+  context.only('Basic APDUs', function () {
     it('can fetch the version of the app', async function () {
-      const cfg = await this.ava.getAppConfiguration();
-      expect(cfg).to.be.a('object');
-      expect(cfg).to.have.property("version", "0.5.8");
-      expect(cfg).to.have.property("name", "Avalanche");
+      await sendCommand(async (ava : Ava) => {
+        const cfg = await ava.getAppConfiguration();
+        expect(cfg).to.be.a('object');
+        expect(cfg).to.have.property("version", "0.5.8");
+        expect(cfg).to.have.property("name", "Avalanche");
+      });
     });
     it('returns the expected wallet ID', async function () {
-      const id = await this.ava.getWalletId();
-      expect(id).to.equalBytes('f0e476edaffc');
+      await sendCommand(async (ava : Ava) => {
+        const id = await ava.getWalletId();
+        expect(id).to.equalBytes('f0e476edaffc');
+      });
     });
   });
 

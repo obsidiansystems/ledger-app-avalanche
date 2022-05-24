@@ -150,13 +150,7 @@ in rec {
     ln -s $NODE_PATH ./node_modules
 
     export NO_UPDATE_NOTIFIER=true
-    exec $NODE_PATH/.bin/mocha -- \
-       --no-parallel \
-       --require ts-node/register \
-       --require $PWD/hooks \
-       --exit \
-       --config ./.mocharc.cjs \
-       ./basic-tests.ts
+    exec ${pkgs.yarn}/bin/yarn run test ./basic-tests.ts
   '';
 
   testPackage = nixLib.buildNodePackage ({

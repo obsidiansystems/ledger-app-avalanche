@@ -1,6 +1,9 @@
 {
   "name": "avax-ledger-tests",
   "version": "0.1.0",
+  "scripts": {
+    "test": "mocha . --no-parallel --exit --require ts-node/register --require $PWD/hooks --config ./.mocharc.cjs"
+  },
   "bin": "run-tests.js",
   "dependencies": {
     "@ethereumjs/common": "^2.4.0",
