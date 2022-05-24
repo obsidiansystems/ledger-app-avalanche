@@ -26,6 +26,8 @@ type ManualIterator<A> = {
   unsubscribe: () => void,
 };
 
+type InteractionFunc<A> = (speculos, screens?: ManualIterator<Screen>) => Promise<A>;
+
 /* State machine to read screen events and turn them into screens of prompts. */
 export async function automationStart(speculos, interactionFunc) {
   // If this doesn't exist, we're running against a hardware ledger; just call
@@ -104,7 +106,8 @@ export async function automationStart(speculos, interactionFunc) {
   return readyPromise.then(r=>{r.cancel = ()=>{subscript.unsubscribe(); promptLockResolve(true);}; return r;});
 }
 
-async function syncWithLedger(speculos, source, interactionFunc) {
+async function syncWithLedger<A>(speculos, source, interactionFunc: InteractionFunc<A>)
+{
   let screen = await source.next();
   // Scroll to the end; we do this because we might have seen "Avalanche" when
   // we subscribed, but needed to send a button click to make sure we reached
@@ -130,7 +133,7 @@ async function syncWithLedger(speculos, source, interactionFunc) {
 
 type Screen = { header: string, body: string }
 
-async function readMultiScreenPrompt(speculos, source) {
+async function readMultiScreenPrompt(speculos, source): Promise<Screen> {
   let header;
   let body;
   let screen = await source.next();
@@ -197,7 +200,7 @@ export async function flowMultiPrompt(speculos, prompts, nextPrompt="Next", fina
   const isHomeScreen = p => p.header == "Avalanche" || p.body == "Configuration" || p.body == "Quit";
   const appScreens = ps => ps.filter(p => !isHomeScreen(p));
 
-  return await automationStart(speculos, async (speculos, screens) => {
+  return await automationStart(speculos, async (speculos, screens): Promise<true> => {
     for (const p of prompts.slice(0,-1)) {
       const rp = (await acceptPrompts(undefined, nextPrompt)(speculos, screens)).promptList;
       expect(appScreens(rp)).to.deep.equal(p);
