@@ -7,9 +7,6 @@ export const { expect } = chai.use(chai_bytes);
 export { default as BIPPath } from "bip32-path";
 import secp256k1 from 'bcrypto/lib/secp256k1.js';
 
-let promptVal;
-let screen;
-
 export async function flowAccept(speculos, expectedPrompts, acceptPrompt="Accept") {
   return await automationStart(speculos, acceptPrompts(expectedPrompts, acceptPrompt));
 }
@@ -45,6 +42,8 @@ export async function automationStart(speculos, interactionFunc) {
   // Make an async iterator we can push stuff into.
   let sendEvent;
   let sendPromise = new Promise(r=>{sendEvent = r;});
+  let promptVal;
+
   let asyncEventIter = {
     next: async ()=>{
       promptVal=await sendPromise;
@@ -66,6 +65,7 @@ export async function automationStart(speculos, interactionFunc) {
 
   let header;
   let body;
+  let screen;
 
   let subscript = speculos.automationEvents.subscribe({
     next: evt => {
@@ -155,6 +155,7 @@ export function acceptPrompts(expectedPrompts, selectPrompt) {
     } else {
       let promptList = [];
       let done = false;
+      let screen;
       while(!done && (screen = await readMultiScreenPrompt(speculos, screens))) {
         if(screen.body != selectPrompt && screen.body != "Reject") {
           promptList.push(screen);
