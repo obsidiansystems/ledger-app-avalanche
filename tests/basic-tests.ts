@@ -16,15 +16,15 @@ import Axios from 'axios';
 import Transport from "./transport";
 import Ava from "hw-app-avalanche";
 
-let ignoredScreens = [ "W e l c o m e", "Cancel", "Working...", "Exit", "Avalanche 0.1.0"]
+let ignoredScreens = [ "W e l c o m e", "Cancel", "Working...", "Exit", "Avalanche", "0.5.8"]
 
 let setAcceptAutomationRules = async function() {
     await Axios.post("http://localhost:5000/automation", {
       version: 1,
       rules: [
         ... ignoredScreens.map(txt => { return { "text": txt, "actions": [] } }),
-        { "y": 16, "actions": [] },
-        { "text": "Confirm", "actions": [ [ "button", 1, true ], [ "button", 2, true ], [ "button", 2, false ], [ "button", 1, false ] ]},
+        { "y": 17, "actions": [] },
+        { "text": "Accept", "actions": [ [ "button", 1, true ], [ "button", 2, true ], [ "button", 2, false ], [ "button", 1, false ] ]},
         { "actions": [ [ "button", 2, true ], [ "button", 2, false ] ]}
       ]
     });
@@ -34,54 +34,67 @@ let processPrompts = function(prompts: [any]) {
   let i = prompts.filter((a : any) => !ignoredScreens.includes(a["text"])).values();
   let {done, value} = i.next();
   let header = "";
-  let prompt = "";
+  let body = "";
   let rv = [];
+  let regexp = /^(.*) \(([0-9]*)\/([0-9]*)\)$/;
   while(!done) {
-    if(value["y"] == 1) {
-      if(value["text"] != header) {
-        if(header || prompt) rv.push({ header, prompt });
-        header = value["text"];
-        prompt = "";
+    if(value["y"] == 3) {
+      let m = value["text"].match(regexp);
+      let cleanM = m && m[1] || value["text"]
+      if(cleanM != header) {
+        if(header || body) rv.push({ header, body });
+        header = cleanM;
+        body = "";
       }
-    } else if(value["y"] == 16) {
-      prompt += value["text"];
+    } else if(value["y"] == 17) {
+      body += value["text"];
     } else {
-      if(header || prompt) rv.push({ header, prompt });
-      rv.push(value);
+      if(header || body) rv.push({ header, body });
+      if(value["text"] != "Accept" && value["text"] != "Reject") {
+        rv.push(value);
+      }
       header = "";
-      prompt = "";
+      body = "";
     }
     ({done, value} = i.next());
   }
   return rv;
 }
 
-let sendCommand = async function(command : any) {
-  //await setAcceptAutomationRules();
-  await Axios.delete("http://localhost:5000/events");
+let deleteEvents = async () => await Axios.delete("http://localhost:5000/events");
 
+let makeAva = async () => {
   let transport = await Transport.open("http://localhost:5000/apdu");
-  let ava = new Ava(transport);
+  return new Ava(transport);
+};
+
+let sendCommand = async function<A>(command : (Ava) => Promise<A>): Promise<A> {
+  await setAcceptAutomationRules();
+  await deleteEvents();
+  let ava = await makeAva();
 
   //await new Promise(resolve => setTimeout(resolve, 100));
 
   let err = null;
+  let res;
 
-  try { await command(ava); } catch(e) {
+  try { res = await command(ava); } catch(e) {
     err = e;
   }
 
   //await new Promise(resolve => setTimeout(resolve, 100));
 
-  if(err) throw(err);
+  if(err) {
+    throw(err);
+  } else {
+    return res;
+  }
 }
 
 let sendCommandAndAccept = async function(command : any, prompts : any) {
     await setAcceptAutomationRules();
-    await Axios.delete("http://localhost:5000/events");
-
-    let transport = await Transport.open("http://localhost:5000/apdu");
-    let ava = new Ava(transport);
+    await deleteEvents();
+    let ava = await makeAva();
 
     //await new Promise(resolve => setTimeout(resolve, 100));
 
@@ -130,40 +143,52 @@ describe("Basic Tests", () => {
     });
   });
 
-  context('Public Keys', function () {
+  context.only('Public Keys', function () {
     it('can retrieve an address from the app', async function() {
-      const key = await this.ava.getWalletAddress("44'/9000'/0'/0/0");
-      expect(key).to.equalBytes('41c9cc6fd27e26e70f951869fb09da685a696f0a');
+      await sendCommand(async (ava : Ava) => {
+        const key = await ava.getWalletAddress("44'/9000'/0'/0/0");
+        expect(key).to.equalBytes('41c9cc6fd27e26e70f951869fb09da685a696f0a');
+      });
     });
     it('can retrieve a different address from the app', async function() {
-      const key = await this.ava.getWalletAddress("44'/9000'/0'/0/1");
-      expect(key).to.equalBytes('68c2185ed05ab18220808fb6a11731c9952bd9aa');
+      await sendCommand(async (ava : Ava) => {
+        const key = await ava.getWalletAddress("44'/9000'/0'/0/1");
+        expect(key).to.equalBytes('68c2185ed05ab18220808fb6a11731c9952bd9aa');
+      });
     });
     it('can retrieve a change address from the app', async function() {
-      const key = await this.ava.getWalletAddress("44'/9000'/0'/1/0");
-      expect(key).to.equalBytes('95250c0b1dccfe79388290381e44cdf6956b55e6');
+      await sendCommand(async (ava : Ava) => {
+        const key = await ava.getWalletAddress("44'/9000'/0'/1/0");
+        expect(key).to.equalBytes('95250c0b1dccfe79388290381e44cdf6956b55e6');
+      });
     });
     it('cannot retrieve a non-hardened account from the app', async function() {
-      try {
-        await this.ava.getWalletAddress("44'/9000'/0/0/0");
-        throw "Expected failure";
-      } catch (e) {
-        expect(e).has.property('statusCode', 0x6982);
-        expect(e).has.property('statusText', 'SECURITY_STATUS_NOT_SATISFIED');
-      }
+      await sendCommand(async (ava : Ava) => {
+        try {
+          await ava.getWalletAddress("44'/9000'/0/0/0");
+          throw "Expected failure";
+        } catch (e) {
+          expect(e).has.property('statusCode', 0x6982);
+          expect(e).has.property('statusText', 'SECURITY_STATUS_NOT_SATISFIED');
+        }
+      });
     });
     it('produces the expected top-level extended key for the zeroeth account', async function() {
-      const key = await this.ava.getWalletExtendedPublicKey("44'/9000'/0'");
-      expect(key).to.have.property('public_key').equalBytes('043033e21973c30ed7e50fa546f8690e25685ac900c3be24c5f641b9c1b959344151169853808be753760dd6aeddd3556f0efaafa6279b64f0ae49de0417ea70b2');
-      expect(key).to.have.property('chain_code').to.equalBytes('590c70e192c597c23ad7c8185c12952b50525ff9d839a95bf6a7e6da359ce873');
+      await sendCommand(async (ava : Ava) => {
+        const key = await ava.getWalletExtendedPublicKey("44'/9000'/0'");
+        expect(key).to.have.property('public_key').equalBytes('043033e21973c30ed7e50fa546f8690e25685ac900c3be24c5f641b9c1b959344151169853808be753760dd6aeddd3556f0efaafa6279b64f0ae49de0417ea70b2');
+        expect(key).to.have.property('chain_code').to.equalBytes('590c70e192c597c23ad7c8185c12952b50525ff9d839a95bf6a7e6da359ce873');
+      });
     });
     it('can retrieve an extended public key from the app', async function() {
-      const key = await this.ava.getWalletExtendedPublicKey("44'/9000'/0'/0/0");
-      expect(key).to.have.property('public_key').to.equalBytes('046b3cdd6f3313c11165a28463715f9cdb704f8163d04f25e814c0471c58da35637469a60d22c1eab5347c3a0a2920f27539730ebfc74d172c200a8164eaa70878');
-      expect(key).to.have.property('chain_code').to.equalBytes('3b63e0f576c7b865a46c357bcfb2751e914af951f84e5eef0592e9ea7e3ea3c2');
+      await sendCommand(async (ava : Ava) => {
+        const key = await ava.getWalletExtendedPublicKey("44'/9000'/0'/0/0");
+        expect(key).to.have.property('public_key').to.equalBytes('046b3cdd6f3313c11165a28463715f9cdb704f8163d04f25e814c0471c58da35637469a60d22c1eab5347c3a0a2920f27539730ebfc74d172c200a8164eaa70878');
+        expect(key).to.have.property('chain_code').to.equalBytes('3b63e0f576c7b865a46c357bcfb2751e914af951f84e5eef0592e9ea7e3ea3c2');
+      });
     });
   });
-  context('Signing', function () {
+  context.only('Signing', function () {
     it('can sign a hash-sized sequence of bytes with one path', async function () {
       await checkSignHash(
         this,
@@ -177,7 +202,7 @@ describe("Basic Tests", () => {
       await checkSignHash(
         this,
         "44'/9000'/0'",
-        ["0/0", "1/20", "1'/200'", "3000'/90030'"],
+        ["0/0", "1/20", "1/200", "0/90030"],
         "111122223333444455556666777788889999aaaabbbbccccddddeeeeffff0000"
       );
     });
@@ -224,7 +249,7 @@ describe("Basic Tests", () => {
       }
     });
 
-    it('rejects signing hash when disallowed in settings', async function () {
+    it.skip('rejects signing hash when disallowed in settings', async function () {
       let flipHashPolicy = async (target) => {return await automationStart(this.speculos, async (speculos, screens) => {
         speculos.button("Rr");
         while((await screens.next()).body != "Configuration") speculos.button("Rr");
@@ -841,30 +866,26 @@ describe("Basic Tests", () => {
 });
 
 async function checkSignHash(this_, pathPrefix, pathSuffixes, hash) {
-  const prompts = await flowAccept(
-    this_.speculos,
-    signHashPrompts(
-      "111122223333444455556666777788889999AAAABBBBCCCCDDDDEEEEFFFF0000",
-      pathPrefix,
-    ),
-  );
-  const sigs = await this_.ava.signHash(
-    BIPPath.fromString(pathPrefix),
-    pathSuffixes.map(x => BIPPath.fromString(x, false)),
-    Buffer.from(hash, "hex"),
-  );
-  (await (await prompts).promptsPromise).promptsMatch;
+  let sigs;
+  await sendCommandAndAccept(async (ava : Ava) => {
+    sigs = await ava.signHash(
+      BIPPath.fromString(pathPrefix),
+      pathSuffixes.map(x => BIPPath.fromString(x, false)),
+      Buffer.from(hash, "hex"),
+    );
+  }, signHashPrompts(hash.toUpperCase(), pathPrefix));
 
   expect(sigs).to.have.keys(pathSuffixes);
 
-  for (const suffix in sigs) {
-    const sig = sigs.get(suffix);
+  //sigs.forEach(([suffix, sig]) => {
+  for (const [suffix, sig] of sigs.entries()) {
+    //const sig = sigs.get(suffix);
     expect(sig).to.have.length(65);
-
-    await flowAccept(this_.speculos);
-    const key = (await this_.ava.getWalletExtendedPublicKey(pathPrefix + "/" + suffix)).public_key;
-    const recovered = recover(Buffer.from(hash, 'hex'), sig.slice(0, 64), sig[64], false);
-    expect(recovered).is.equalBytes(key);
+    await sendCommand(async (ava : Ava) => {
+      const key = (await ava.getWalletExtendedPublicKey(pathPrefix + "/" + suffix)).public_key;
+      const recovered = recover(Buffer.from(hash, 'hex'), sig.slice(0, 64), sig[64], false);
+      expect(recovered).is.equalBytes(key);
+    });
   }
 }
 
