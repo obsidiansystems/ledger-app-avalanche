@@ -7,9 +7,6 @@ export { default as BIPPath } from "bip32-path";
 import secp256k1 from 'bcrypto/lib/secp256k1';
 export const { recover } = secp256k1;
 
-let promptVal: { sendEvent: any };
-let screen;
-
 export async function flowAccept(speculos, expectedPrompts?, acceptPrompt="Accept") {
   return await automationStart(speculos, acceptPrompts(expectedPrompts, acceptPrompt));
 }
@@ -45,6 +42,8 @@ export async function automationStart(speculos, interactionFunc) {
   // Make an async iterator we can push stuff into.
   let sendEvent;
   let sendPromise: Promise<{ sendEvent: any }> = new Promise(r=>{sendEvent = r;});
+  let promptVal;
+
   let asyncEventIter: any = {
     next: async ()=>{
       promptVal=await sendPromise;
