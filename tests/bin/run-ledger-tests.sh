@@ -12,7 +12,12 @@ if [[ ! ($suite == /nix/*) && -f $suite/hw-app-avalanche/src/Avalanche.js ]]; th
   pushd $suite
   nix-shell -A 'passthru.deps."hw-app-avalanche@0.1.0"' --run "pushd hw-app-avalanche; node \$nodeModules/.bin/babel --source-maps -d lib src; popd"
   popd
+else
+  rm $suite/node_modules
+  ln -s $MY_NODE_MODULES $suite/node_modules
 fi
 
-export NODE_PATH=$suite:$MY_NODE_MODULES:$NODE_PATH
-$MY_NODE_MODULES/.bin/mocha $suite --exit --require $suite/hooks --config tests/.mocharc.js "$@"
+$MY_NODE_MODULES/.bin/mocha $suite \
+  --exit \
+  --require $suite/hooks.js \
+  --config $suite/.mocharc.cjs "$@"

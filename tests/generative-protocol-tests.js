@@ -1,8 +1,10 @@
-const chai = require('chai');
-const { expect, assert } = chai.use(require('chai-bytes'));
+import chai from 'chai';
+import chai_bytes from 'chai-bytes';
+export const { expect, assert } = chai.use(chai_bytes);
 chai.config.showDiff = true;
 chai.config.truncateThreshold = 0;
-const fc = require('fast-check');
+
+import fc from 'fast-check';
 
 describe("APDU protocol integrity generative tests", function () {
   context('Generative tests', function () {
