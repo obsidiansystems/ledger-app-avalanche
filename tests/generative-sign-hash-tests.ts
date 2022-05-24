@@ -1,4 +1,5 @@
 import {
+  PromptsPromise,
   flowAccept,
   signHashPrompts,
 } from "./common";
@@ -22,18 +23,21 @@ describe("Sign Hash tests", () => {
   context('Generative tests', function () {
     it('can sign a hash-sized sequence of bytes', async function () { // Need 'function' to get 'this' for mocha.
       return await fc.assert(fc.asyncProperty(fc.array(subAddressGen,1,10), fc.hexaString(64, 64), async (subAccts, hashHex) => {
-        let ui: any = { cancel: () => {} };
+        let ui: PromptsPromise<{ promptsMatch: true }> = {
+          promptsPromise: (async () => ({ promptsMatch: true }))(),
+          cancel: () => {}
+        };
         try {
           this.flushStderr();
 
           const expectedPrompts = signHashPrompts(hashHex.toUpperCase(), account.toString(true));
-          ui = await flowAccept(this.speculos, expectedPrompts);
+          ui = await flowAccept(this.speculos, expectedPrompts) as PromptsPromise<{ promptsMatch: true }>;
           const hash = Buffer.from(hashHex, "hex");
           const sigs = this.ava.signHash(account, subAccts, hash);
 
           const sv = await sigs;
 
-          await ui.promptsMatch;
+          await (await ui.promptsPromise).promptsMatch;
           for (const ks of sv) {
             const [keySuffix, sig] = ks;
 
@@ -67,7 +71,7 @@ describe("Sign Hash tests", () => {
             expect(e).has.property('statusText', 'CONDITIONS_OF_USE_NOT_SATISFIED');
           }
 
-          await ui.promptsMatch;
+          await (await ui.promptsPromise).promptsMatch;
         } catch(e) {
           ui.cancel();
           throw(e);

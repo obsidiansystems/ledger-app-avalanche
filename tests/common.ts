@@ -27,12 +27,16 @@ type ManualIterator<A> = {
 
 type InteractionFunc<A> = (speculos, screens?: ManualIterator<Screen>) => Promise<A>;
 
+export type PromptsPromise<A> = { promptsPromise: Promise<A>, cancel: () => void };
+
 /* State machine to read screen events and turn them into screens of prompts. */
-export async function automationStart(speculos, interactionFunc) {
+export async function automationStart<A>(speculos, interactionFunc: InteractionFunc<A>):
+  Promise<PromptsPromise<A>>
+{
   // If this doesn't exist, we're running against a hardware ledger; just call
   // interactionFunc with no events iterator.
   if(!speculos.automationEvents) {
-    return new Promise(r=>r({ promptsPromise: interactionFunc(speculos) }));
+    return new Promise(r=>r({ promptsPromise: interactionFunc(speculos), cancel: () => {} }));
   }
 
   // This is so that you can just "await flowAccept(this.speculos);" in a test
@@ -63,8 +67,8 @@ export async function automationStart(speculos, interactionFunc) {
 
   // Sync up with the ledger; wait until we're on the home screen, and do some
   // clicking back and forth to make sure we see the event.
-  // Then pass screens to interactionFunc.
-  let readyPromise: Promise<any> = syncWithLedger(speculos, asyncEventIter, interactionFunc);
+  // Then pass screens to interactionFunc./
+  let readyPromise: Promise<PromptsPromise<A>> = syncWithLedger(speculos, asyncEventIter, interactionFunc);
 
   // Resolve our lock when we're done
   readyPromise.then(r=>r.promptsPromise.then(()=>{promptLockResolve(true);}));
@@ -102,7 +106,8 @@ export async function automationStart(speculos, interactionFunc) {
   return readyPromise.then(r=>{r.cancel = ()=>{subscript.unsubscribe(); promptLockResolve(true);}; return r;});
 }
 
-async function syncWithLedger<A>(speculos, source: ManualIterator<Screen>, interactionFunc: InteractionFunc<A>)
+async function syncWithLedger<A>(speculos, source: ManualIterator<Screen>, interactionFunc: InteractionFunc<A>):
+ Promise<PromptsPromise<A>>
 {
   let screen = await source.next();
   // Scroll to the end; we do this because we might have seen "Avalanche" when
@@ -120,7 +125,10 @@ async function syncWithLedger<A>(speculos, source: ManualIterator<Screen>, inter
   }
   // And continue on to interactionFunc
   let interactFP = interactionFunc(speculos, source);
-  return { promptsPromise: interactFP.finally(() => { source.unsubscribe(); }) };
+  return {
+    promptsPromise: interactFP.finally(() => { source.unsubscribe(); }),
+    cancel: async () => {}
+  };
 }
 
 type Screen = { header: string, body: string }
@@ -146,7 +154,9 @@ async function readMultiScreenPrompt(speculos, source): Promise<Screen> {
   }
 }
 
-export function acceptPrompts(expectedPrompts, selectPrompt) {
+export function acceptPrompts(expectedPrompts: undefined | Screen[], selectPrompt):
+  InteractionFunc<{ promptsMatch?: true, expectedPrompts?, promptList?: Screen[] }>
+{
   return async (speculos, screens) => {
     if(!screens) {
       // We're running against hardware, so we can't prompt but
@@ -187,7 +197,7 @@ export function acceptPrompts(expectedPrompts, selectPrompt) {
   };
 }
 
-export async function flowMultiPrompt(speculos, prompts, nextPrompt="Next", finalPrompt="Accept") {
+export async function flowMultiPrompt(speculos, prompts, nextPrompt="Next", finalPrompt="Accept"): Promise<{ promptsPromise: Promise<true> }> {
   // We bounce off the home screen sometimes during this process
   const isHomeScreen = p => p.header == "Avalanche" || p.body == "Configuration" || p.body == "Quit";
   const appScreens = ps => ps.filter(p => !isHomeScreen(p));
