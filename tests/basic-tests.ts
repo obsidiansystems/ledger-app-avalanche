@@ -1,5 +1,6 @@
 import {
   BIPPath,
+  Screen,
   automationStart,
   chunkPrompts,
   finalizePrompt,
@@ -20,6 +21,7 @@ import SpeculosTransport from '@ledgerhq/hw-transport-node-speculos';
 import Axios from 'axios';
 import Transport from "./transport";
 import Ava from "hw-app-avalanche";
+import createHash from "create-hash";
 
 let deleteEvents = async () => await Axios.delete("http://localhost:5000/events");
 
@@ -215,20 +217,21 @@ describe("Basic Tests", () => {
       }
     });
 
-    it('can sign a transaction based on the serialization reference in verbose mode', async function () {
+    it.only('can sign a transaction based on the serialization reference in verbose mode', async function () {
       const pathPrefix = "44'/9000'/0'";
       const pathSuffixes = ["0/0", "0/1", "1/100"];
+      const txn = buildTransaction(pathPrefix, pathSuffixes);
 
       const signPrompt = {header:"Sign",body:"Transaction"};
       const transferPrompt = {header:"Transfer",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"};
       const feePrompt = {header:"Fee",body:"0.123444444 AVAX"};
-      const prompts = chunkPrompts([signPrompt, transferPrompt, feePrompt])
-          .concat([[finalizePrompt]]);
+      const prompts = [signPrompt, transferPrompt, feePrompt, finalizePrompt];
+      //console.log("this.speculos", this.speculos);
+      //const ui = await flowMultiPrompt(this.speculos, prompts);
+      //await ui.promptsPromise;
+      //await checkSignTransactionResult(this.ava, await sigPromise, pathPrefix, pathSuffixes);
 
-      const ui = await flowMultiPrompt(this.speculos, prompts);
-      const sigPromise = signTransaction(this.ava, pathPrefix, pathSuffixes);
-      await ui.promptsPromise;
-      await checkSignTransactionResult(this.ava, await sigPromise, pathPrefix, pathSuffixes);
+      await checkSignTransaction(pathPrefix, pathSuffixes, txn, prompts);
     });
 
     it('can display a transaction with lots of digits', async function () {
@@ -819,15 +822,22 @@ async function checkSignHash(this_, pathPrefix, pathSuffixes, hash) {
   }
 }
 
-async function checkSignTransaction(pathPrefix, pathSuffixes, transaction, hash) {
+async function checkSignTransaction(
+  pathPrefix: string,
+  pathSuffixes: string[],
+  transaction: Buffer,
+  prompts: Screen[],
+) {
   let sigs;
+  const hash = createHash("sha256").update(transaction).digest();
+  console.log("hash ", hash.toString('hex'));
   await sendCommandAndAccept(async (ava : Ava) => {
     sigs = await ava.signTransaction(
       BIPPath.fromString(pathPrefix),
       pathSuffixes.map(x => BIPPath.fromString(x, false)),
-      Buffer.from(transaction, "hex"),
+      transaction,
     );
-  }, signHashPrompts(hash.toUpperCase(), pathPrefix));
+  }, prompts);
 
   expect(sigs).to.have.keys(pathSuffixes);
 
@@ -837,7 +847,7 @@ async function checkSignTransaction(pathPrefix, pathSuffixes, transaction, hash)
     expect(sig).to.have.length(65);
     await sendCommand(async (ava : Ava) => {
       const key = (await ava.getWalletExtendedPublicKey(pathPrefix + "/" + suffix)).public_key;
-      const recovered = recover(Buffer.from(hash, 'hex'), sig.slice(0, 64), sig[64], false);
+      const recovered = recover(hash, sig.slice(0, 64), sig[64], false);
       expect(recovered).is.equalBytes(key);
     });
   }
@@ -851,8 +861,7 @@ type FieldOverrides = {
   extraEndBytes?: Buffer,
 };
 
-async function signTransaction(
-  ava,
+function buildTransaction(
   pathPrefix,
   pathSuffixes,
   fieldOverrides: FieldOverrides = {},
@@ -916,7 +925,7 @@ async function signTransaction(
     ]),
   ]);
 
-  const txn = Buffer.concat([
+  return Buffer.concat([
     fields.codecId,
     fields.typeId,
     fields.networkId,
@@ -943,7 +952,15 @@ async function signTransaction(
     ]),
     fields.extraEndBytes,
   ]);
+}
 
+async function signTransaction(
+  ava,
+  pathPrefix,
+  pathSuffixes,
+  fieldOverrides: FieldOverrides = {},
+) {
+  const txn = buildTransaction(pathPrefix, pathSuffixes, fieldOverrides);
   return await ava.signTransaction(
     BIPPath.fromString(pathPrefix),
     pathSuffixes.map(x => BIPPath.fromString(x, false)),

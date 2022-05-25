@@ -25,6 +25,8 @@ export const ignoredScreens: string[] = [
   "Avalanche", "0.5.8",
 ]
 
+const ignoredScreensMore: string[] = ignoredScreens.concat(["Next"]);
+
 export const setAcceptAutomationRules = async function() {
     await Axios.post("http://localhost:5000/automation", {
       version: 1,
@@ -39,8 +41,8 @@ export const setAcceptAutomationRules = async function() {
     });
 }
 
-let processPrompts = function(prompts: [any]) {
-  let i = prompts.filter((a : any) => !ignoredScreens.includes(a["text"])).values();
+let processPrompts = function(prompts: [any]): Screen[] {
+  let i = prompts.filter((a : any) => !ignoredScreensMore.includes(a["text"])).values();
   let {done, value} = i.next();
   let header = "";
   let body = "";
@@ -73,7 +75,7 @@ let processPrompts = function(prompts: [any]) {
 
 let deleteEvents = async () => await Axios.delete("http://localhost:5000/events");
 
-export const sendCommandAndAccept = async function(command : any, prompts : any) {
+export const sendCommandAndAccept = async (command: (Ava) => void, prompts: Screen[]) => {
     await setAcceptAutomationRules();
     await deleteEvents();
     let ava = await makeAva();
@@ -92,6 +94,7 @@ export const sendCommandAndAccept = async function(command : any, prompts : any)
     // expect(((await Axios.get("http://localhost:5000/events")).data["events"] as [any]).filter((a : any) => !ignoredScreens.includes(a["text"]))).to.deep.equal(prompts);
     expect(processPrompts((await Axios.get("http://localhost:5000/events")).data["events"] as [any])).to.deep.equal(prompts);
 
+    console.log(err);
     if(err) throw(err);
 }
 
@@ -131,6 +134,7 @@ export async function automationStart<A>(speculos, interactionFunc: InteractionF
 {
   // If this doesn't exist, we're running against a hardware ledger; just call
   // interactionFunc with no events iterator.
+  console.log("!speculos.automationEvents", speculos.automationEvents);
   if(!speculos.automationEvents) {
     return new Promise(r=>r({ promptsPromise: interactionFunc(speculos), cancel: () => {} }));
   }
@@ -172,7 +176,7 @@ export async function automationStart<A>(speculos, interactionFunc: InteractionF
   let header;
   let body;
   let screen: Screen;
-
+  console.log("automationEvents", speculos.automationEvents);
   let subscript = speculos.automationEvents.subscribe({
     next: evt => {
       // Wrap up two-line prompts into one:
@@ -227,7 +231,7 @@ async function syncWithLedger<A>(speculos, source: ManualIterator<Screen>, inter
   };
 }
 
-type Screen = { header: string, body: string }
+export type Screen = { header: string, body: string }
 
 async function readMultiScreenPrompt(speculos, source): Promise<Screen> {
   let header;
