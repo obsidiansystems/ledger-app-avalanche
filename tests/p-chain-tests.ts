@@ -359,17 +359,16 @@ describe('Staking tests', async function () {
     const pathPrefix = "44'/9000'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     // Need to add headers for SubnetID and Sigindices?
-    const ui = await flowMultiPrompt(this.speculos, [
-      [{header: 'Sign', body: 'Add Subnet Validator'}],
-      [{header: 'Transfer', body: '3.999 AVAX to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'}],
-      [{header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' }],
-      [{header: 'Start time', body: '2020-07-29 22:07:25 UTC' }],
-      [{header: 'End time', body: '2020-08-28 21:57:26 UTC' }],
-      [{header: 'Total Stake', body: '0.00054321 AVAX' }],
-      [{header: 'Address Index', body: '0' }],
-      [{header: 'Fee',body: '0.001 AVAX'}],
-    ]).concat([[finalizePrompt]]);
-    const ui = await flowMultiPrompt(this.speculos, prompts);
+    const ui = await flowMultiPrompt(this.speculos, chunkPrompts([
+      {header: 'Sign', body: 'Add Subnet Validator'},
+      {header: 'Transfer', body: '3.999 AVAX to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'},
+      {header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' },
+      {header: 'Start time', body: '2020-07-29 22:07:25 UTC' },
+      {header: 'End time', body: '2020-08-28 21:57:26 UTC' },
+      {header: 'Total Stake', body: '0.00054321 AVAX' },
+      {header: 'Address Index', body: '0' },
+      {header: 'Fee', body: '0.001 AVAX'},
+    ]).concat([[finalizePrompt]]));
     const sigPromise = this.ava.signTransaction(
       BIPPath.fromString(pathPrefix),
       pathSuffixes.map(x => BIPPath.fromString(x, false)),
