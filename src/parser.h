@@ -389,7 +389,7 @@ typedef struct {
     } data;
 } prompt_entry_t;
 
-#define TRANSACTION_PROMPT_MAX_BATCH_SIZE 2
+#define TRANSACTION_PROMPT_MAX_BATCH_SIZE 5
 
 enum transaction_x_chain_type_id_t {
     TRANSACTION_X_CHAIN_TYPE_ID_BASE            = 0x00,
@@ -446,10 +446,5 @@ typedef struct {
 
 
 } parser_meta_state_t;
-#pragma once
 
-#include "types.h"
-#include "uint256.h"
-#include "network_info.h"
-
-// some global definitions
+void set_next_batch_size(prompt_batch_t *const prompt, size_t size);

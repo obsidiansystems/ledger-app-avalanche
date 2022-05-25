@@ -1,0 +1,8 @@
+{
+  "compilerOptions": {
+    "esModuleInterop": true
+  },
+  "ts-node": {
+    "files": true
+  }
+}

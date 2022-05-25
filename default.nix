@@ -73,7 +73,10 @@ let
     ".c" ".h" ".gif" "Makefile" ".sh" ".json" ".js" ".bats" ".txt" ".der"
   ];
 
-  tests = import ./tests { inherit pkgs; };
+  tests = import ./tests {
+    inherit pkgs;
+    nodejs = pkgs.nodejs-14_x;
+  };
 
   build = bolos:
     let
@@ -96,13 +99,11 @@ let
           ledgerPkgs.buildPackages.gdb
           ledgerPkgs.buildPackages.jq
           ledgerPkgs.buildPackages.libusb
-          ledgerPkgs.buildPackages.nodejs-12_x
           ledgerPkgs.buildPackages.openssl
           ledgerPkgs.buildPackages.pkg-config
           ledgerPkgs.buildPackages.xxd
-          ledgerPkgs.buildPackages.yarn
           speculos.speculos
-          tests
+          tests.testScript
           # usbtool
         ];
         TARGET = bolos.target;
