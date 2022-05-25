@@ -1364,7 +1364,7 @@ enum parse_rv parse_AddSNValidatorTransaction(struct AddSNValidatorTransactionSt
       CALL_SUBPARSER(subnetauthState, SubnetAuth);
       state->state++;
     } fallthrough;
-    case 5:
+    case 4:
       sub_rv = PARSE_RV_DONE;
   }
   return sub_rv;
