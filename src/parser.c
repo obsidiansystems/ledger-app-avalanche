@@ -47,7 +47,9 @@ static void check_asset_id(Id32 const *const asset_id, parser_meta_state_t *cons
     network_info_t const *const network_info = network_info_from_network_id(meta->network_id);
     check_null(network_info);
     if (memcmp(asset_id, network_info->avax_asset_id, sizeof(asset_id_t)) != 0) {
-      REJECT("Asset ID is not supported");
+      REJECT("Asset ID %.*h is not %.*h and so not supported",
+        sizeof(asset_id_t), asset_id,
+        sizeof(asset_id_t), network_info->avax_asset_id);
     }
 }
 
@@ -1291,8 +1293,10 @@ void init_AddValidatorTransaction(struct AddValidatorTransactionState *const sta
 // Also covers AddDelegator transactions; the structure is identical but
 // thresholds and result are different. We've already notified the user of
 // which we are doing before we reach this stage.
-enum parse_rv parse_AddValidatorTransaction(struct AddValidatorTransactionState
-    *const state, parser_meta_state_t *const meta) {
+enum parse_rv parse_AddValidatorTransaction(
+  struct AddValidatorTransactionState *const state,
+  parser_meta_state_t *const meta)
+{
     enum parse_rv sub_rv = PARSE_RV_INVALID;
     switch (state->state) {
         case 0: // ChainID
@@ -1338,7 +1342,10 @@ void init_AddSNValidatorTransaction(struct AddSNValidatorTransactionState *const
   INIT_SUBPARSER(validatorState, Validator);
 }
 
-enum parse_rv parse_AddSNValidatorTransaction(struct AddSNValidatorTransactionState *const state, parser_meta_state_t *const meta) {
+enum parse_rv parse_AddSNValidatorTransaction(
+  struct AddSNValidatorTransactionState *const state,
+  parser_meta_state_t *const meta)
+{
   enum parse_rv sub_rv = PARSE_RV_INVALID;
   switch(state->state)
   {

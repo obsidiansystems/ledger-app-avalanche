@@ -248,6 +248,7 @@ describe('Staking tests', async function () {
       0x00, 0x00, 0x00, 0x00, 0x5f, 0x49, 0x7d, 0xc6,
       // Weight
       0x00, 0x00, 0x01, 0xd1, 0xa9, 0x4a, 0x20, 0x00,
+
       // Stake
       0x00, 0x00, 0x00, 0x01,
       // Stake asset
@@ -266,7 +267,8 @@ describe('Staking tests', async function () {
       0xbe, 0x82, 0xec, 0xc0, 0x0c, 0x34, 0xf3, 0x61,
       0xed, 0xa8, 0xeb, 0x30, 0xfb, 0x5a, 0x71, 0x5c,
       // Shares
-      0x00, 0x00, 0x00, 0x64]);
+      0x00, 0x00, 0x00, 0x64
+    ]);
 
     const pathPrefix = "44'/9000'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
@@ -343,6 +345,7 @@ describe('Staking tests', async function () {
       0x00, 0x00, 0x00, 0x00, 0x5f, 0x49, 0x7d, 0xc6,
       // Weight
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xd4, 0x31,
+
       // SubnetID
       0x58, 0xb1, 0x09, 0x28, 0x71, 0xdb, 0x85, 0xbc,
       0x75, 0x27, 0x42, 0x05, 0x4e, 0x2e, 0x8b, 0xe0,
@@ -354,7 +357,8 @@ describe('Staking tests', async function () {
       // SigIndices length
       0x00, 0x00, 0x00, 0x01,
       // SigIndices
-      0x00, 0x00, 0x00, 0x00]);
+      0x00, 0x00, 0x00, 0x00
+    ]);
 
     const pathPrefix = "44'/9000'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
@@ -365,7 +369,7 @@ describe('Staking tests', async function () {
       {header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' },
       {header: 'Start time', body: '2020-07-29 22:07:25 UTC' },
       {header: 'End time', body: '2020-08-28 21:57:26 UTC' },
-      {header: 'Total Stake', body: '0.00054321 AVAX' },
+      {header: 'Total Stake', body: '0.000054321 AVAX' },
       {header: 'Address Index', body: '0' },
       {header: 'Fee', body: '0.001 AVAX'}
     ]).concat([[finalizePrompt]]);
