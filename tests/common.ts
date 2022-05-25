@@ -5,10 +5,106 @@ import chai_bytes from 'chai-bytes';
 export const { expect } = chai.use(chai_bytes);
 export { default as BIPPath } from "bip32-path";
 import secp256k1 from 'bcrypto/lib/secp256k1';
+import Transport from "./transport";
+import Ava from "hw-app-avalanche";
+import Axios from 'axios';
 export const { recover } = secp256k1;
 
-export async function flowAccept(speculos, expectedPrompts?, acceptPrompt="Accept") {
-  return await automationStart(speculos, acceptPrompts(expectedPrompts, acceptPrompt));
+export const transportOpen = async () => {
+  return await Transport.open("http://localhost:5000/apdu");
+}
+
+export const makeAva = async () => {
+  const transport = await transportOpen();
+  return new Ava(transport);
+};
+
+export const ignoredScreens: string[] = [
+  "W e l c o m e",
+  "Cancel", "Working...", "Exit",
+  "Avalanche", "0.5.8",
+]
+
+export const setAcceptAutomationRules = async function() {
+    await Axios.post("http://localhost:5000/automation", {
+      version: 1,
+      rules: [
+        ... ignoredScreens.map(txt => { return { "text": txt, "actions": [] } }),
+        { "y": 17, "actions": [] },
+        { "text": "Next", "actions": [ [ "button", 1, true ], [ "button", 2, true ], [ "button", 2, false ], [ "button", 1, false ] ]},
+        { "text": "Accept", "actions": [ [ "button", 1, true ], [ "button", 2, true ], [ "button", 2, false ], [ "button", 1, false ] ]},
+        { "text": "Confirm", "actions": [ [ "button", 1, true ], [ "button", 2, true ], [ "button", 2, false ], [ "button", 1, false ] ]},
+        { "actions": [ [ "button", 2, true ], [ "button", 2, false ] ]}
+      ]
+    });
+}
+
+let processPrompts = function(prompts: [any]) {
+  let i = prompts.filter((a : any) => !ignoredScreens.includes(a["text"])).values();
+  let {done, value} = i.next();
+  let header = "";
+  let body = "";
+  let rv = [];
+  let regexp = /^(.*) \(([0-9]*)\/([0-9]*)\)$/;
+  while(!done) {
+    if(value["y"] == 3) {
+      let m = value["text"].match(regexp);
+      let cleanM = m && m[1] || value["text"]
+      if(cleanM != header) {
+        if(header || body) rv.push({ header, body });
+        header = cleanM;
+        body = "";
+      }
+    } else if(value["y"] == 17) {
+      body += value["text"];
+    } else {
+      if(header || body) rv.push({ header, body });
+      if(value["text"] != "Accept" && value["text"] != "Reject") {
+        rv.push(value);
+      }
+      header = "";
+      body = "";
+    }
+    ({done, value} = i.next());
+  }
+  return rv;
+}
+
+
+let deleteEvents = async () => await Axios.delete("http://localhost:5000/events");
+
+export const sendCommandAndAccept = async function(command : any, prompts : any) {
+    await setAcceptAutomationRules();
+    await deleteEvents();
+    let ava = await makeAva();
+
+    //await new Promise(resolve => setTimeout(resolve, 100));
+
+    let err = null;
+
+    try { await command(ava); } catch(e) {
+      err = e;
+    }
+
+    //await new Promise(resolve => setTimeout(resolve, 100));
+
+
+    // expect(((await Axios.get("http://localhost:5000/events")).data["events"] as [any]).filter((a : any) => !ignoredScreens.includes(a["text"]))).to.deep.equal(prompts);
+    expect(processPrompts((await Axios.get("http://localhost:5000/events")).data["events"] as [any])).to.deep.equal(prompts);
+
+    if(err) throw(err);
+}
+
+export async function flowAccept(command, expectedPrompts?, acceptPrompt="Accept") {
+  return {
+    promptsPromise: sendCommandAndAccept(
+      command,
+      expectedPrompts,
+    ).then(r => ({
+      promptsMatch: true
+    }))
+  };
+  //return await automationStart(speculos, acceptPrompts(expectedPrompts, acceptPrompt));
 }
 
 // A couple of our screens use "bn" formatting for only one line of text and we

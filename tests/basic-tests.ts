@@ -1,12 +1,17 @@
 import {
   BIPPath,
-  recover,
-  flowAccept,
-  signHashPrompts,
   automationStart,
   chunkPrompts,
-  flowMultiPrompt,
   finalizePrompt,
+  flowAccept,
+  flowMultiPrompt,
+  ignoredScreens,
+  makeAva,
+  recover,
+  sendCommandAndAccept,
+  setAcceptAutomationRules,
+  signHashPrompts,
+  transportOpen,
 } from "./common";
 
 import { expect } from 'chai';
@@ -16,57 +21,7 @@ import Axios from 'axios';
 import Transport from "./transport";
 import Ava from "hw-app-avalanche";
 
-let ignoredScreens = [ "W e l c o m e", "Cancel", "Working...", "Exit", "Avalanche", "0.5.8"]
-
-let setAcceptAutomationRules = async function() {
-    await Axios.post("http://localhost:5000/automation", {
-      version: 1,
-      rules: [
-        ... ignoredScreens.map(txt => { return { "text": txt, "actions": [] } }),
-        { "y": 17, "actions": [] },
-        { "text": "Accept", "actions": [ [ "button", 1, true ], [ "button", 2, true ], [ "button", 2, false ], [ "button", 1, false ] ]},
-        { "actions": [ [ "button", 2, true ], [ "button", 2, false ] ]}
-      ]
-    });
-}
-
-let processPrompts = function(prompts: [any]) {
-  let i = prompts.filter((a : any) => !ignoredScreens.includes(a["text"])).values();
-  let {done, value} = i.next();
-  let header = "";
-  let body = "";
-  let rv = [];
-  let regexp = /^(.*) \(([0-9]*)\/([0-9]*)\)$/;
-  while(!done) {
-    if(value["y"] == 3) {
-      let m = value["text"].match(regexp);
-      let cleanM = m && m[1] || value["text"]
-      if(cleanM != header) {
-        if(header || body) rv.push({ header, body });
-        header = cleanM;
-        body = "";
-      }
-    } else if(value["y"] == 17) {
-      body += value["text"];
-    } else {
-      if(header || body) rv.push({ header, body });
-      if(value["text"] != "Accept" && value["text"] != "Reject") {
-        rv.push(value);
-      }
-      header = "";
-      body = "";
-    }
-    ({done, value} = i.next());
-  }
-  return rv;
-}
-
 let deleteEvents = async () => await Axios.delete("http://localhost:5000/events");
-
-let makeAva = async () => {
-  let transport = await Transport.open("http://localhost:5000/apdu");
-  return new Ava(transport);
-};
 
 let sendCommand = async function<A>(command : (Ava) => Promise<A>): Promise<A> {
   await setAcceptAutomationRules();
@@ -91,28 +46,6 @@ let sendCommand = async function<A>(command : (Ava) => Promise<A>): Promise<A> {
   }
 }
 
-let sendCommandAndAccept = async function(command : any, prompts : any) {
-    await setAcceptAutomationRules();
-    await deleteEvents();
-    let ava = await makeAva();
-
-    //await new Promise(resolve => setTimeout(resolve, 100));
-
-    let err = null;
-
-    try { await command(ava); } catch(e) {
-      err = e;
-    }
-
-    //await new Promise(resolve => setTimeout(resolve, 100));
-
-
-    // expect(((await Axios.get("http://localhost:5000/events")).data["events"] as [any]).filter((a : any) => !ignoredScreens.includes(a["text"]))).to.deep.equal(prompts);
-    expect(processPrompts((await Axios.get("http://localhost:5000/events")).data["events"] as [any])).to.deep.equal(prompts);
-
-    if(err) throw(err);
-}
-
 describe("Basic Tests", () => {
   before( async function() {
     let transport = await Transport.open("http://localhost:5000/apdu");
@@ -126,7 +59,7 @@ describe("Basic Tests", () => {
     await Axios.delete("http://localhost:5000/events");
   });
 
-  context.only('Basic APDUs', function () {
+  context('Basic APDUs', function () {
     it('can fetch the version of the app', async function () {
       await sendCommand(async (ava : Ava) => {
         const cfg = await ava.getAppConfiguration();
@@ -143,7 +76,7 @@ describe("Basic Tests", () => {
     });
   });
 
-  context.only('Public Keys', function () {
+  context('Public Keys', function () {
     it('can retrieve an address from the app', async function() {
       await sendCommand(async (ava : Ava) => {
         const key = await ava.getWalletAddress("44'/9000'/0'/0/0");
@@ -224,24 +157,21 @@ describe("Basic Tests", () => {
 
     it('refuses to sign when given an invalid path suffix', async function () {
       const pathPrefix = "44'/9000'/0'";
+      const transport = await transportOpen();
+      const ava = new Ava(transport);
+
       const firstMessage = Buffer.concat([
-        this.ava.uInt8Buffer(1),
+        ava.uInt8Buffer(1),
         Buffer.from("111122223333444455556666777788889999aaaabbbbccccddddeeeeffff0000", "hex"),
-        this.ava.encodeBip32Path(BIPPath.fromString(pathPrefix)),
+        ava.encodeBip32Path(BIPPath.fromString(pathPrefix)),
       ]);
 
-      const prompts = await flowAccept(
-        this.speculos,
-        signHashPrompts(
-          "111122223333444455556666777788889999AAAABBBBCCCCDDDDEEEEFFFF0000",
-          pathPrefix,
-        ),
-      );
-      await this.speculos.send(this.ava.CLA, this.ava.INS_SIGN_HASH, 0x00, 0x00, firstMessage);
-      (await (await prompts).promptsPromise).promptsMatch;
+      await setAcceptAutomationRules();
+
+      await transport.send(ava.CLA, ava.INS_SIGN_HASH, 0x00, 0x00, firstMessage);
 
       try {
-        await this.speculos.send(this.ava.CLA, this.ava.INS_SIGN_HASH, 0x81, 0x00, Buffer.from("00001111", 'hex'));
+        await transport.send(ava.CLA, ava.INS_SIGN_HASH, 0x81, 0x00, Buffer.from("00001111", 'hex'));
         throw "Expected failure";
       } catch (e) {
         expect(e).has.property('statusCode', 0x6a80); // WRONG_VALUES
@@ -888,6 +818,31 @@ async function checkSignHash(this_, pathPrefix, pathSuffixes, hash) {
     });
   }
 }
+
+async function checkSignTransaction(pathPrefix, pathSuffixes, transaction, hash) {
+  let sigs;
+  await sendCommandAndAccept(async (ava : Ava) => {
+    sigs = await ava.signTransaction(
+      BIPPath.fromString(pathPrefix),
+      pathSuffixes.map(x => BIPPath.fromString(x, false)),
+      Buffer.from(transaction, "hex"),
+    );
+  }, signHashPrompts(hash.toUpperCase(), pathPrefix));
+
+  expect(sigs).to.have.keys(pathSuffixes);
+
+  //sigs.forEach(([suffix, sig]) => {
+  for (const [suffix, sig] of sigs.entries()) {
+    //const sig = sigs.get(suffix);
+    expect(sig).to.have.length(65);
+    await sendCommand(async (ava : Ava) => {
+      const key = (await ava.getWalletExtendedPublicKey(pathPrefix + "/" + suffix)).public_key;
+      const recovered = recover(Buffer.from(hash, 'hex'), sig.slice(0, 64), sig[64], false);
+      expect(recovered).is.equalBytes(key);
+    });
+  }
+}
+
 
 type FieldOverrides = {
   inputAmount?: Buffer,
