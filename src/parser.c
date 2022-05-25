@@ -1488,6 +1488,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
               switch (meta->type_id.p) {
               case TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR:
                 INIT_SUBPARSER(addSNValidatorTxState, AddSNValidatorTransaction);
+                break;
               case TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR:
               case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR:
                 INIT_SUBPARSER(addValidatorTxState, AddValidatorTransaction);
@@ -1534,6 +1535,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
               switch (meta->type_id.p) {
               case TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR:
                 CALL_SUBPARSER_BREAK(addSNValidatorTxState, AddSNValidatorTransaction);
+                break;
               case TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR:
               case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR:
                 CALL_SUBPARSER_BREAK(addValidatorTxState, AddValidatorTransaction);
