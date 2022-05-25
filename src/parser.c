@@ -268,6 +268,11 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                             );
                         break;
                     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR:
+                        ADD_PROMPT(
+                            "P sbnt vldtr",
+                            &output_prompt, sizeof(output_prompt),
+                            output_prompt_to_string
+                            );
                         break;
                     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR:
                     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR:
