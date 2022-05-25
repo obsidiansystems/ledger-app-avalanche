@@ -73,12 +73,6 @@ typedef struct {
 
 DEFINE_FIXED(Address);
 
-typedef struct {
-    uint8_t val[4];
-} Sigindices;
-
-DEFINE_FIXED(Sigindices);
-
 #define NUMBER_STATES struct uint32_t_state uint32State; struct uint64_t_state uint64State
 
 struct SECP256K1TransferOutput_state {
@@ -107,7 +101,6 @@ struct SubnetAuth_state {
   uint32_t sigindices_n;
   union {
       NUMBER_STATES;
-      struct Sigindices_state sigindicesState;
   };
 };
 
@@ -378,11 +371,6 @@ typedef struct {
     network_id_t network_id;
     Address address;
 } address_prompt_t;
-
-typedef struct {
-    network_id_t network_id;
-    Sigindices sigindices; 
-} sigindices_prompt_t;
 
 typedef struct {
     uint64_t amount;

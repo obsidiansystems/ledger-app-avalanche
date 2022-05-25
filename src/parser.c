@@ -150,7 +150,6 @@ IMPL_FIXED_BE(uint64_t);
 IMPL_FIXED(Id32);
 IMPL_FIXED(blockchain_id_t);
 IMPL_FIXED(Address);
-IMPL_FIXED(Sigindices);
 
 void init_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const state) {
     state->state = 0;
@@ -180,12 +179,6 @@ static void output_address_to_string(char *const out, size_t const out_size, add
     pkh_to_string(&out[ix], out_size - ix, hrp, strlen(hrp), &in->address.val);
 }
 
-/*
-static void output_sigindices_to_string(char *const out, size_t const out_size, sigindices_prompt_t const *const in){	
-    char const *const hrp = network_info_from_network_id_not_null(in->network_id)->hrp;
-    sig_to_string(&out[ix], out_size - ix, hrp, strlen(hrp), &in->sigindices.val);
-}
-*/
 static void validator_to_string(char *const out, size_t const out_size, address_prompt_t const *const in) {
     size_t ix = 0;
     nodeid_to_string(&out[ix], out_size - ix, &in->address.val);
@@ -273,6 +266,8 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                             &output_prompt, sizeof(output_prompt),
                             output_prompt_to_string
                             );
+                        break;
+                    case TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR:
                         break;
                     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR:
                     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR:
@@ -488,19 +483,14 @@ enum parse_rv parse_SubnetAuth(struct SubnetAuth_state *const state, parser_meta
           THROW(EXC_MEMORY_ERROR);
         }
         
-        CALL_SUBPARSER(sigindicesState, Sigindices);
+        CALL_SUBPARSER(uint32State, uint32_t);
         
-        sigindices_prompt_t sigindices_prompt;
-        memset(&sigindices_prompt, 0, sizeof(sigindices_prompt));
-        sigindices_prompt.network_id = meta->network_id; 
-        memcpy(&sigindices_prompt.sigindices, &state->sigindicesState.val, sizeof(sigindices_prompt.sigindices));
-        
-       // ADD_PROMPT("Control Sig", &sigindices_prompt, sizeof(sigindices_prompt_t), output_sigindices_to_string);
+        ADD_PROMPT("Address Index", &state->uint32State.val, sizeof(uint32_t), number_to_string_indirect32);
         
         state->sigindices_i++;
         if (state->sigindices_i < state->sigindices_n)
         {
-          INIT_SUBPARSER(sigindicesState, Sigindices);
+          INIT_SUBPARSER(uint32State, uint32_t);
           RET_IF_PROMPT_FLUSH;
           continue;
         }
