@@ -197,7 +197,7 @@ describe("P-chain import and export tests", () => {
 
 });
 describe('Staking tests', async function () {
-  it.only('can sign an add validator transaction', async function () {
+  it('can sign an add validator transaction', async function () {
     const txn = Buffer.from([
       0x00, 0x00,
       0x00, 0x00, 0x00, 0x0c, 0x00, 0x00, 0x30, 0x39,
@@ -292,7 +292,7 @@ describe('Staking tests', async function () {
     await ui.promptsPromise;
   });
 
-  it('can sign an add subnet validator transaction', async function () {
+  it.only('can sign an add subnet validator transaction', async function () {
     const txn = Buffer.from([
       0x00, 0x00,
       0x00, 0x00, 0x00, 0x0d, 0x00, 0x00, 0x30, 0x39,
@@ -359,7 +359,7 @@ describe('Staking tests', async function () {
     const pathPrefix = "44'/9000'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
     // Need to add headers for SubnetID and Sigindices?
-    const ui = await flowMultiPrompt(this.speculos, chunkPrompts([
+    const prompts = chunkPrompts([
       {header: 'Sign', body: 'Add Subnet Validator'},
       {header: 'Transfer', body: '3.999 AVAX to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'},
       {header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' },
@@ -367,8 +367,9 @@ describe('Staking tests', async function () {
       {header: 'End time', body: '2020-08-28 21:57:26 UTC' },
       {header: 'Total Stake', body: '0.00054321 AVAX' },
       {header: 'Address Index', body: '0' },
-      {header: 'Fee', body: '0.001 AVAX'},
-    ]).concat([[finalizePrompt]]));
+      {header: 'Fee', body: '0.001 AVAX'}
+    ]).concat([[finalizePrompt]]);
+    const ui = await flowMultiPrompt(this.speculos, prompts);
     const sigPromise = this.ava.signTransaction(
       BIPPath.fromString(pathPrefix),
       pathSuffixes.map(x => BIPPath.fromString(x, false)),
