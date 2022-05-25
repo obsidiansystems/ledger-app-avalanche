@@ -466,7 +466,7 @@ enum parse_rv parse_SubnetAuth(struct SubnetAuth_state *const state, parser_meta
       state->state++;
       state->sigindices_n = state->uint32State.val;
       PRINTF("Sigind Count\n");
-      INIT_SUBPARSER(sigindicesState, Sigindices);
+      INIT_SUBPARSER(uint32State, uint32_t);
     } fallthrough;
     case 2: {
       //
