@@ -359,9 +359,11 @@ describe('Staking tests', async function () {
       [{header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' }],
       [{header: 'Start time', body: '2020-07-29 22:07:25 UTC' }],
       [{header: 'End time', body: '2020-08-28 21:57:26 UTC' }],
+      [{header: 'Total Stake', body: '0.00054321 AVAX' }],
+      [{header: 'Address Index', body: '0' }],
       [{header: 'Fee',body: '0.001 AVAX'}],
-      [{header: 'Finalize',body: 'Transaction'}],
-    ]);
+    ]).concat([[finalizePrompt]]);
+    const ui = await flowMultiPrompt(this.speculos, prompts);
     const sigPromise = this.ava.signTransaction(
       BIPPath.fromString(pathPrefix),
       pathSuffixes.map(x => BIPPath.fromString(x, false)),
@@ -370,6 +372,8 @@ describe('Staking tests', async function () {
     await sigPromise;
     await ui.promptsPromise;
   });
+    
+
   it('Rejects an add validator transaction if total stake is not sum of stake UTXOs', async function () {
     try {
       const txn = Buffer.from([
