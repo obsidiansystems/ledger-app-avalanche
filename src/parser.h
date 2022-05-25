@@ -334,7 +334,6 @@ struct TransactionState {
     struct AddDelegatorTransactionState addDelegatorTxState;
     struct CChainImportTransactionState cChainImportState;
     struct CChainExportTransactionState cChainExportState;
-    size_t length;
   };
 };
 
