@@ -479,7 +479,7 @@ enum parse_rv parse_SubnetAuth(struct SubnetAuth_state *const state, parser_meta
       {
         state->state++;
         break;
-      } 
+      }
       do
       {
         // loop invariant
@@ -487,11 +487,11 @@ enum parse_rv parse_SubnetAuth(struct SubnetAuth_state *const state, parser_meta
         {
           THROW(EXC_MEMORY_ERROR);
         }
-        
+
         CALL_SUBPARSER(uint32State, uint32_t);
-        
+
         ADD_PROMPT("Address Index", &state->uint32State.val, sizeof(uint32_t), number_to_string_indirect32);
-        
+
         state->sigindices_i++;
         if (state->sigindices_i < state->sigindices_n)
         {
@@ -512,7 +512,7 @@ enum parse_rv parse_SubnetAuth(struct SubnetAuth_state *const state, parser_meta
       break;
   }
   return sub_rv;
-} 
+}
 
 static void lockedFundsPrompt(char *const out, size_t const out_size, locked_prompt_t const *const in) {
     size_t ix = nano_avax_to_string(out, out_size, in->amount);

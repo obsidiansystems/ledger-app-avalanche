@@ -378,7 +378,6 @@ describe('Staking tests', async function () {
     await sigPromise;
     await ui.promptsPromise;
   });
-    
 
   it('Rejects an add validator transaction if total stake is not sum of stake UTXOs', async function () {
     try {
