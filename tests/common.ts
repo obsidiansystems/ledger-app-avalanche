@@ -25,8 +25,6 @@ export const ignoredScreens: string[] = [
   "Avalanche", "0.5.8",
 ]
 
-const ignoredScreensMore: string[] = ignoredScreens.concat(["Next"]);
-
 export const setAcceptAutomationRules = async function() {
     await Axios.post("http://localhost:5000/automation", {
       version: 1,
@@ -42,7 +40,7 @@ export const setAcceptAutomationRules = async function() {
 }
 
 let processPrompts = function(prompts: [any]): Screen[] {
-  let i = prompts.filter((a : any) => !ignoredScreensMore.includes(a["text"])).values();
+  let i = prompts.filter((a : any) => !ignoredScreens.includes(a["text"])).values();
   let {done, value} = i.next();
   let header = "";
   let body = "";
@@ -59,6 +57,10 @@ let processPrompts = function(prompts: [any]): Screen[] {
       }
     } else if(value["y"] == 17) {
       body += value["text"];
+    } else if (value["y"] == 19 && value["text"] == "Next") {
+      rv.push({ header: "Next", body });
+      header = "";
+      body = "";
     } else {
       if(header || body) rv.push({ header, body });
       if(value["text"] != "Accept" && value["text"] != "Reject") {
@@ -318,11 +320,21 @@ export async function flowMultiPrompt(speculos, prompts, nextPrompt="Next", fina
   });
 }
 
+const chunkSize = 2;
+
 export const chunkPrompts = <A>(prompts: A[] ): A[][] => {
-  const chunkSize = 2;
-  let chunked = [];
+  let chunked: A[][] = [];
   for (let i = 0; i < prompts.length; i += chunkSize) {
     chunked.push(prompts.slice(i, i + chunkSize));
+  }
+  return chunked;
+}
+
+export const chunkPrompts2 = (prompts: Screen[] ): Screen[] => {
+  let chunked: Screen[] = [];
+  for (let i = 0; i < prompts.length; i += chunkSize) {
+    chunked = chunked.concat(prompts.slice(i, i + chunkSize));
+    chunked.push({ header: "Next", body: "" })
   }
   return chunked;
 }

@@ -3,6 +3,7 @@ import {
   Screen,
   automationStart,
   chunkPrompts,
+  chunkPrompts2,
   finalizePrompt,
   flowAccept,
   flowMultiPrompt,
@@ -225,11 +226,8 @@ describe("Basic Tests", () => {
       const signPrompt = {header:"Sign",body:"Transaction"};
       const transferPrompt = {header:"Transfer",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"};
       const feePrompt = {header:"Fee",body:"0.123444444 AVAX"};
-      const prompts = [signPrompt, transferPrompt, feePrompt, finalizePrompt];
-      //console.log("this.speculos", this.speculos);
-      //const ui = await flowMultiPrompt(this.speculos, prompts);
-      //await ui.promptsPromise;
-      //await checkSignTransactionResult(this.ava, await sigPromise, pathPrefix, pathSuffixes);
+      const prompts = chunkPrompts2([signPrompt, transferPrompt, feePrompt])
+        .concat([finalizePrompt]);
 
       await checkSignTransaction(pathPrefix, pathSuffixes, txn, prompts);
     });
