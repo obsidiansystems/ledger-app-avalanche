@@ -799,9 +799,8 @@ describe("Basic Tests", () => {
 });
 
 async function checkSignHash(this_, pathPrefix, pathSuffixes, hash) {
-  let sigs;
-  await sendCommandAndAccept(async (ava : Ava) => {
-    sigs = await ava.signHash(
+  const sigs = await sendCommandAndAccept(async (ava : Ava) => {
+    return await ava.signHash(
       BIPPath.fromString(pathPrefix),
       pathSuffixes.map(x => BIPPath.fromString(x, false)),
       Buffer.from(hash, "hex"),
@@ -828,21 +827,18 @@ async function checkSignTransaction(
   transaction: Buffer,
   prompts: Screen[],
 ) {
-  let sigs;
-  const hash = createHash("sha256").update(transaction).digest();
-  console.log("hash ", hash.toString('hex'));
-  await sendCommandAndAccept(async (ava : Ava) => {
-    sigs = await ava.signTransaction(
+  const hash_expected = createHash("sha256").update(transaction).digest();
+  const { hash, signatures } = await sendCommandAndAccept(async (ava : Ava) => {
+    return await ava.signTransaction(
       BIPPath.fromString(pathPrefix),
       pathSuffixes.map(x => BIPPath.fromString(x, false)),
       transaction,
     );
   }, prompts);
-
-  expect(sigs).to.have.keys(pathSuffixes);
-
+  expect(hash).is.equalBytes(hash_expected);
+  expect(signatures).to.have.keys(pathSuffixes);
   //sigs.forEach(([suffix, sig]) => {
-  for (const [suffix, sig] of sigs.entries()) {
+  for (const [suffix, sig] of signatures.entries()) {
     //const sig = sigs.get(suffix);
     expect(sig).to.have.length(65);
     await sendCommand(async (ava : Ava) => {

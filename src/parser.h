@@ -367,7 +367,7 @@ typedef struct {
     } data;
 } prompt_entry_t;
 
-#define TRANSACTION_PROMPT_MAX_BATCH_SIZE 5
+#define TRANSACTION_PROMPT_MAX_BATCH_SIZE 2
 
 enum transaction_x_chain_type_id_t {
     TRANSACTION_X_CHAIN_TYPE_ID_BASE            = 0x00,

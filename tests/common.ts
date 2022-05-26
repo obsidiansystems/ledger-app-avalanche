@@ -75,27 +75,32 @@ let processPrompts = function(prompts: [any]): Screen[] {
 
 let deleteEvents = async () => await Axios.delete("http://localhost:5000/events");
 
-export const sendCommandAndAccept = async (command: (Ava) => void, prompts: Screen[]) => {
-    await setAcceptAutomationRules();
-    await deleteEvents();
-    let ava = await makeAva();
+export const sendCommandAndAccept = async <A>(command: (Ava) => A, prompts: Screen[]): Promise<A> => {
+  await setAcceptAutomationRules();
+  await deleteEvents();
+  let ava = await makeAva();
 
-    //await new Promise(resolve => setTimeout(resolve, 100));
+  //await new Promise(resolve => setTimeout(resolve, 100));
 
-    let err = null;
+  let err = null;
+  let ret: A;
+  try {
+    ret = await command(ava);
+  } catch(e) {
+    err = e;
+  }
 
-    try { await command(ava); } catch(e) {
-      err = e;
-    }
-
-    //await new Promise(resolve => setTimeout(resolve, 100));
+  //await new Promise(resolve => setTimeout(resolve, 100));
 
 
-    // expect(((await Axios.get("http://localhost:5000/events")).data["events"] as [any]).filter((a : any) => !ignoredScreens.includes(a["text"]))).to.deep.equal(prompts);
-    expect(processPrompts((await Axios.get("http://localhost:5000/events")).data["events"] as [any])).to.deep.equal(prompts);
+  // expect(((await Axios.get("http://localhost:5000/events")).data["events"] as [any]).filter((a : any) => !ignoredScreens.includes(a["text"]))).to.deep.equal(prompts);
+  expect(processPrompts((await Axios.get("http://localhost:5000/events")).data["events"] as [any])).to.deep.equal(prompts);
 
-    console.log(err);
-    if(err) throw(err);
+  if(err) {
+    throw(err);
+  } else {
+    return ret;
+  }
 }
 
 export async function flowAccept(command, expectedPrompts?, acceptPrompt="Accept") {
@@ -314,7 +319,7 @@ export async function flowMultiPrompt(speculos, prompts, nextPrompt="Next", fina
 }
 
 export const chunkPrompts = <A>(prompts: A[] ): A[][] => {
-  const chunkSize = 5;
+  const chunkSize = 2;
   let chunked = [];
   for (let i = 0; i < prompts.length; i += chunkSize) {
     chunked.push(prompts.slice(i, i + chunkSize));
