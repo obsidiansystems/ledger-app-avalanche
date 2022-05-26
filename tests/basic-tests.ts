@@ -124,7 +124,7 @@ describe("Basic Tests", () => {
       });
     });
   });
-  context.only('Signing', function () {
+  context('Signing', function () {
     it('can sign a hash-sized sequence of bytes with one path', async function () {
       await checkSignHash(
         this,
@@ -218,10 +218,8 @@ describe("Basic Tests", () => {
       }
     });
 
-    it.only('can sign a transaction based on the serialization reference in verbose mode', async function () {
-      const pathPrefix = "44'/9000'/0'";
-      const pathSuffixes = ["0/0", "0/1", "1/100"];
-      const txn = buildTransaction(pathPrefix, pathSuffixes);
+    it('can sign a transaction based on the serialization reference in verbose mode', async function () {
+      const txn = buildTransaction();
 
       const signPrompt = {header:"Sign",body:"Transaction"};
       const transferPrompt = {header:"Transfer",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"};
@@ -229,43 +227,43 @@ describe("Basic Tests", () => {
       const prompts = chunkPrompts2([signPrompt, transferPrompt, feePrompt])
         .concat([finalizePrompt]);
 
+      const pathPrefix = "44'/9000'/0'";
+      const pathSuffixes = ["0/0", "0/1", "1/100"];
       await checkSignTransaction(pathPrefix, pathSuffixes, txn, prompts);
     });
 
     it('can display a transaction with lots of digits', async function () {
-      const pathPrefix = "44'/9000'/0'";
-      const pathSuffixes = ["0/0", "0/1", "1/100"];
-      const signPrompt = {header:"Sign",body:"Transaction"};
-      const transferPrompt = {header:"Transfer",body:"0.123456789 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"};
-      const feePrompt = {header:"Fee",body:"0.876543211 AVAX"};
-      const prompts = chunkPrompts([signPrompt, transferPrompt, feePrompt])
-        .concat([[finalizePrompt]]);
-
-      const ui = await flowMultiPrompt(this.speculos, prompts);
-      const sigPromise = signTransaction(this.ava, pathPrefix, pathSuffixes, {
+      const txn = buildTransaction({
         "outputAmount": Buffer.from([0x00, 0x00, 0x00, 0x00, 0x07, 0x5b, 0xcd, 0x15]),
         "inputAmount": Buffer.from([0x00, 0x00, 0x00, 0x00, 0x3b, 0x9a, 0xca, 0x00]),
       });
-      await ui.promptsPromise;
-      await checkSignTransactionResult(this.ava, await sigPromise, pathPrefix, pathSuffixes);
+
+      const signPrompt = {header:"Sign",body:"Transaction"};
+      const transferPrompt = {header:"Transfer",body:"0.123456789 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"};
+      const feePrompt = {header:"Fee",body:"0.876543211 AVAX"};
+      const prompts = chunkPrompts2([signPrompt, transferPrompt, feePrompt])
+        .concat([finalizePrompt]);
+
+      const pathPrefix = "44'/9000'/0'";
+      const pathSuffixes = ["0/0", "0/1", "1/100"];
+      await checkSignTransaction(pathPrefix, pathSuffixes, txn, prompts);
     });
 
     it('can display a transaction with no decimal', async function () {
-      const pathPrefix = "44'/9000'/0'";
-      const pathSuffixes = ["0/0", "0/1", "1/100"];
-      const signPrompt = {header:"Sign",body:"Transaction"};
-      const transferPrompt = {header:"Transfer",body:"1 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"};
-      const feePrompt = {header:"Fee",body:"1 AVAX"};
-      const prompts = chunkPrompts([signPrompt, transferPrompt, feePrompt])
-        .concat([[finalizePrompt]]);
-
-      const ui = await flowMultiPrompt(this.speculos, prompts);
-      const sigPromise = signTransaction(this.ava, pathPrefix, pathSuffixes, {
+      const txn = buildTransaction({
         "outputAmount": Buffer.from([0x00, 0x00, 0x00, 0x00, 0x3b, 0x9a, 0xca, 0x00]),
         "inputAmount": Buffer.from([0x00, 0x00, 0x00, 0x00, 0x77, 0x35, 0x94, 0x00]),
       });
-      await ui.promptsPromise;
-      await checkSignTransactionResult(this.ava, await sigPromise, pathPrefix, pathSuffixes);
+
+      const signPrompt = {header:"Sign",body:"Transaction"};
+      const transferPrompt = {header:"Transfer",body:"1 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"};
+      const feePrompt = {header:"Fee",body:"1 AVAX"};
+      const prompts = chunkPrompts2([signPrompt, transferPrompt, feePrompt])
+        .concat([finalizePrompt]);
+
+      const pathPrefix = "44'/9000'/0'";
+      const pathSuffixes = ["0/0", "0/1", "1/100"];
+      await checkSignTransaction(pathPrefix, pathSuffixes, txn, prompts);
     });
 
     it('can sign a sample fuji transaction', async function () {
@@ -345,22 +343,16 @@ describe("Basic Tests", () => {
         0x00, 0x00, 0x00, 0x00,
       ]);
 
-      const pathPrefix = "44'/9000'/0'";
-      const pathSuffixes = ["0/0", "0/1", "1/100"];
       const signPrompt = {header:"Sign",body:"Transaction"};
       const transferPromptOne = {header:"Transfer",body:"0.000001 AVAX to fuji10an3cucdfqru984pnvv6y0rspvvclz634xwwhs"};
       const transferPromptTwo = {header:"Transfer",body:"0.006999 AVAX to fuji15jh6hlessx2jtxvs48jnr0vzxrg34x32vuc7jc"};
       const feePrompt = {header:"Fee",body:"0.001 AVAX"};
-      const prompts = chunkPrompts([signPrompt, transferPromptOne, transferPromptTwo, feePrompt])
-        .concat([[finalizePrompt]]);
-      const ui = await flowMultiPrompt(this.speculos, prompts);
-      const sigPromise = this.ava.signTransaction(
-        BIPPath.fromString(pathPrefix),
-        pathSuffixes.map(x => BIPPath.fromString(x, false)),
-        txn,
-      );
-      await ui.promptsPromise;
-      await checkSignTransactionResult(this.ava, await sigPromise, pathPrefix, pathSuffixes);
+      const prompts = chunkPrompts2([signPrompt, transferPromptOne, transferPromptTwo, feePrompt])
+        .concat([finalizePrompt]);
+
+      const pathPrefix = "44'/9000'/0'";
+      const pathSuffixes = ["0/0", "0/1", "1/100"];
+      await checkSignTransaction(pathPrefix, pathSuffixes, txn, prompts);
     });
 
     it('can skip a change address in sample fuji transaction', async function () {
@@ -440,23 +432,16 @@ describe("Basic Tests", () => {
         0x00, 0x00, 0x00, 0x00,
       ]);
 
-      const pathPrefix = "44'/9000'/0'";
-      const pathSuffixes = ["0/0", "0/1", "1/100"];
       const signPrompt = {header:"Sign",body:"Transaction"};
       const transferPromptOne = {header:"Transfer",body:"0.000001 AVAX to fuji10an3cucdfqru984pnvv6y0rspvvclz634xwwhs"};
       const transferPromptTwo = {header:"Transfer",body:"0.006999 AVAX to fuji179xfr036ym3uuv8ewrv8y4la97ealwmlfg8yrr"};
       const feePrompt = {header:"Fee",body:"0.001 AVAX"};
-      const prompts = chunkPrompts([signPrompt, transferPromptOne, transferPromptTwo, feePrompt])
-        .concat([[finalizePrompt]]);
-      const ui = await flowMultiPrompt(this.speculos, prompts);
-      const sigPromise = this.ava.signTransaction(
-        BIPPath.fromString(pathPrefix),
-        pathSuffixes.map(x => BIPPath.fromString(x, false)),
-        txn,
-        BIPPath.fromString("44'/9000'/0'/0/0"),
-      );
-      await ui.promptsPromise;
-      await checkSignTransactionResult(this.ava, await sigPromise, pathPrefix, pathSuffixes);
+      const prompts = chunkPrompts2([signPrompt, transferPromptOne, transferPromptTwo, feePrompt])
+        .concat([finalizePrompt]);
+
+      const pathPrefix = "44'/9000'/0'";
+      const pathSuffixes = ["0/0", "0/1", "1/100"];
+      await checkSignTransaction(pathPrefix, pathSuffixes, txn, prompts);
     });
 
     it('rejects a transaction that has extra data', async function () {
@@ -464,12 +449,13 @@ describe("Basic Tests", () => {
         const signPrompt = {header:"Sign",body:"Transaction"};
         const transferPrompt = {header:"Transfer",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"};
         const feePrompt = {header:"Fee",body:"0.123444444 AVAX"};
-        const prompts = chunkPrompts([signPrompt, transferPrompt, feePrompt]);
-        const ui = await flowMultiPrompt(this.speculos, prompts, "Next", "Next");
-        await signTransaction(this.ava, "44'/9000'/0'", ["0/0"], {
-          extraEndBytes: Buffer.from([0x00])
+        const prompts = chunkPrompts2([signPrompt, transferPrompt, feePrompt])
+
+        const txn = buildTransaction({
+          "extraEndBytes": Buffer.from([0x00]),
         });
-        await ui.promptsPromise;
+
+        await checkSignTransaction("44'/9000'/0'", ["0/0"], txn, prompts);
         throw "Signing should have been rejected";
       } catch (e) {
         expect(e).has.property('statusCode', 0x9405); // PARSE_ERROR
@@ -478,22 +464,20 @@ describe("Basic Tests", () => {
     });
 
     it('rejects an unrecognized codec ID', async function () {
-      await expectSignFailure(this.speculos, this.ava, { codecId: Buffer.from([0x01, 0x00]) });
+      await expectSignFailure({ codecId: Buffer.from([0x01, 0x00]) });
     });
 
     it('rejects an unrecognized type ID', async function () {
-      await expectSignFailure(this.speculos, this.ava, { typeId: Buffer.from([0x01, 0x00, 0x00, 0x00]) });
+      await expectSignFailure({ typeId: Buffer.from([0x01, 0x00, 0x00, 0x00]) });
     });
 
     it('rejects an unrecognized network ID', async function () {
       await expectSignFailure(
-        this.speculos,
-        this.ava,
         { networkId: Buffer.from([0x01, 0x00, 0x00, 0x00]) },
         [],
       );
     });
-
+/*
     it('rejects a recognized network ID that does not match blockchain ID', async function () {
       await expectSignFailure(
         this.speculos,
@@ -597,9 +581,10 @@ describe("Basic Tests", () => {
          [{header:"Sign",body:"Transaction"}],
        ],
      );
-    });
+    });*/
   });
 
+/*
   describe("X-chain Import and Export", function() {
     const pathPrefix = "44'/9000'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
@@ -794,6 +779,7 @@ describe("Basic Tests", () => {
     });
 
   });
+  */
 });
 
 async function checkSignHash(this_, pathPrefix, pathSuffixes, hash) {
@@ -837,7 +823,6 @@ async function checkSignTransaction(
   expect(signatures).to.have.keys(pathSuffixes);
   //sigs.forEach(([suffix, sig]) => {
   for (const [suffix, sig] of signatures.entries()) {
-    //const sig = sigs.get(suffix);
     expect(sig).to.have.length(65);
     await sendCommand(async (ava : Ava) => {
       const key = (await ava.getWalletExtendedPublicKey(pathPrefix + "/" + suffix)).public_key;
@@ -849,15 +834,10 @@ async function checkSignTransaction(
 
 
 type FieldOverrides = {
-  inputAmount?: Buffer,
-  outputAmount?: Buffer,
-  transferrableOutput?: Buffer,
-  extraEndBytes?: Buffer,
+  [key: string]: Buffer
 };
 
 function buildTransaction(
-  pathPrefix,
-  pathSuffixes,
   fieldOverrides: FieldOverrides = {},
 ) {
   const assetId = Buffer.from([
@@ -867,21 +847,23 @@ function buildTransaction(
     0x96, 0xf7, 0xd2, 0x8f, 0x61, 0xbb, 0xe2, 0xaa, // 32-byte asset ID
   ]);
 
-  const fields = {
-    ...{
-      codecId: Buffer.from([0x00, 0x00]),
-      typeId: Buffer.from([0x00, 0x00, 0x00, 0x00]),
-      networkId: Buffer.from([0x00, 0x00, 0x00, 0x05]),
-      extraEndBytes: Buffer.from([]),
-      inputAssetId: assetId,
-      inputTypeId: Buffer.from([0x00, 0x00, 0x00, 0x05]),
-      outputAssetId: assetId,
-      outputTypeId: Buffer.from([0x00, 0x00, 0x00, 0x07]),
-      outputAmount: Buffer.from([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x30, 0x39]),
-      inputAmount: Buffer.from([0x00, 0x00, 0x00, 0x00, 0x07, 0x5b, 0xcd, 0x15]),
-    },
+  const defaultFields = {
+    codecId: Buffer.from([0x00, 0x00]),
+    typeId: Buffer.from([0x00, 0x00, 0x00, 0x00]),
+    networkId: Buffer.from([0x00, 0x00, 0x00, 0x05]),
+    extraEndBytes: Buffer.from([]),
+    inputAssetId: assetId,
+    inputTypeId: Buffer.from([0x00, 0x00, 0x00, 0x05]),
+    outputAssetId: assetId,
+    outputTypeId: Buffer.from([0x00, 0x00, 0x00, 0x07]),
+    outputAmount: Buffer.from([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x30, 0x39]),
+    inputAmount: Buffer.from([0x00, 0x00, 0x00, 0x00, 0x07, 0x5b, 0xcd, 0x15]),
+  };
+
+  const fields: typeof defaultFields & FieldOverrides = {
+    ...defaultFields,
     ...fieldOverrides,
-  }
+  };
 
   const transferrableOutput = Buffer.concat([
       fields.outputAssetId,
@@ -954,7 +936,7 @@ async function signTransaction(
   pathSuffixes,
   fieldOverrides: FieldOverrides = {},
 ) {
-  const txn = buildTransaction(pathPrefix, pathSuffixes, fieldOverrides);
+  const txn = buildTransaction(fieldOverrides);
   return await ava.signTransaction(
     BIPPath.fromString(pathPrefix),
     pathSuffixes.map(x => BIPPath.fromString(x, false)),
@@ -962,13 +944,11 @@ async function signTransaction(
   );
 }
 
-async function expectSignFailure(speculos, ava, fields, prompts=undefined) {
+//async function expectSignFailure(speculos, ava, fields, prompts=undefined) {
+async function expectSignFailure(fields: FieldOverrides, prompts: Screen[] = undefined) {
   try {
-    const ui = prompts && prompts.length > 0
-      ? await flowMultiPrompt(speculos, prompts, "Next", "Next")
-      : undefined;
-    await signTransaction(ava, "44'/9000'/0'", ["0/0"], fields);
-    if (ui) await ui.promptsPromise;
+    const txn = buildTransaction(fields);
+    await checkSignTransaction("44'/9000'/0'", ["0/0"], txn, prompts);
     throw "Signing should have been rejected";
   } catch (e) {
     expect(e).has.property('statusCode', 0x9405); // PARSE_ERROR

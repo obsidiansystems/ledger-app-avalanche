@@ -77,7 +77,7 @@ let processPrompts = function(prompts: [any]): Screen[] {
 
 let deleteEvents = async () => await Axios.delete("http://localhost:5000/events");
 
-export const sendCommandAndAccept = async <A>(command: (Ava) => A, prompts: Screen[]): Promise<A> => {
+export const sendCommandAndAccept = async <A>(command: (Ava) => A, prompts: undefined | Screen[]): Promise<A> => {
   await setAcceptAutomationRules();
   await deleteEvents();
   let ava = await makeAva();
@@ -96,7 +96,9 @@ export const sendCommandAndAccept = async <A>(command: (Ava) => A, prompts: Scre
 
 
   // expect(((await Axios.get("http://localhost:5000/events")).data["events"] as [any]).filter((a : any) => !ignoredScreens.includes(a["text"]))).to.deep.equal(prompts);
-  expect(processPrompts((await Axios.get("http://localhost:5000/events")).data["events"] as [any])).to.deep.equal(prompts);
+  if (prompts) {
+    expect(processPrompts((await Axios.get("http://localhost:5000/events")).data["events"] as [any])).to.deep.equal(prompts);
+  }
 
   if(err) {
     throw(err);
