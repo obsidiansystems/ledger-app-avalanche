@@ -477,40 +477,36 @@ describe("Basic Tests", () => {
         [],
       );
     });
-/*
+
     it('rejects a recognized network ID that does not match blockchain ID', async function () {
       await expectSignFailure(
-        this.speculos,
-        this.ava,
         { networkId: Buffer.from([0x00, 0x00, 0x00, 0x01]) },
         [],
       );
     });
 
     it('rejects an unrecognized output type ID', async function () {
+      const signPrompt = {header:"Sign",body:"Transaction"};
+      const prompts = chunkPrompts2([signPrompt]);
       await expectSignFailure(
-        this.speculos,
-        this.ava,
         { outputTypeId: Buffer.from([0x01, 0x00, 0x00, 0x00]) },
-        [[{header:"Sign",body:"Transaction"}]],
+        prompts,
       );
     });
 
     it('rejects a different unrecognized output type ID', async function () {
+      const signPrompt = {header:"Sign",body:"Transaction"};
+      const prompts = chunkPrompts2([signPrompt]);
       await expectSignFailure(
-        this.speculos,
-        this.ava,
         { outputTypeId: Buffer.from([0x00, 0x00, 0xf0, 0x00]) },
-        [[{header:"Sign",body:"Transaction"}]],
+        prompts,
       );
     });
 
     it('rejects an unrecognized input type ID', async function () {
       await expectSignFailure(
-        this.speculos,
-        this.ava,
         { inputTypeId: Buffer.from([0x01, 0x00, 0x00, 0x00]) },
-        chunkPrompts([
+        chunkPrompts2([
           {header:"Sign",body:"Transaction"},
           {header:"Transfer",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"},
         ]),
@@ -518,6 +514,9 @@ describe("Basic Tests", () => {
     });
 
     it('rejects unsupported asset IDs', async function () {
+      const signPrompt = {header:"Sign",body:"Transaction"};
+      const prompts = chunkPrompts2([signPrompt]);
+
       const assetId = Buffer.from([
         0x3d, 0x9b, 0xda, 0xc0, 0xed, 0x1d, 0x76, 0x13,
         0x30, 0xcf, 0x68, 0x0e, 0xfd, 0xeb, 0x1a, 0x42,
@@ -526,40 +525,38 @@ describe("Basic Tests", () => {
       ]);
 
       await expectSignFailure(
-        this.speculos,
-        this.ava,
         {
           inputAssetId: assetId,
           outputAssetId: assetId
         },
-        [
-          [{header:"Sign",body:"Transaction"}],
-        ],
+        prompts,
       );
     });
 
-   it('rejects an AVAX asset ID from a different network', async function () {
-     const assetId = Buffer.from([
-       0x21, 0xe6, 0x73, 0x17, 0xcb, 0xc4, 0xbe, 0x2a,
-       0xeb, 0x00, 0x67, 0x7a, 0xd6, 0x46, 0x27, 0x78,
-       0xa8, 0xf5, 0x22, 0x74, 0xb9, 0xd6, 0x05, 0xdf,
-       0x25, 0x91, 0xb2, 0x30, 0x27, 0xa8, 0x7d, 0xff, // mainnet AVAX asset ID
-     ]);
+    it('rejects an AVAX asset ID from a different network', async function () {
+      const signPrompt = {header:"Sign",body:"Transaction"};
+      const prompts = chunkPrompts2([signPrompt]);
 
-     await expectSignFailure(
-       this.speculos,
-       this.ava,
-       {
-         inputAssetId: assetId,
-         outputAssetId: assetId
-       },
-       [
-         [{header:"Sign",body:"Transaction"}],
-       ],
-     );
-   });
+      const assetId = Buffer.from([
+        0x21, 0xe6, 0x73, 0x17, 0xcb, 0xc4, 0xbe, 0x2a,
+        0xeb, 0x00, 0x67, 0x7a, 0xd6, 0x46, 0x27, 0x78,
+        0xa8, 0xf5, 0x22, 0x74, 0xb9, 0xd6, 0x05, 0xdf,
+        0x25, 0x91, 0xb2, 0x30, 0x27, 0xa8, 0x7d, 0xff, // mainnet AVAX asset ID
+      ]);
 
-   it('rejects multi-address outputs', async function () {
+      await expectSignFailure(
+        {
+          inputAssetId: assetId,
+          outputAssetId: assetId
+        },
+        prompts,
+      );
+    });
+
+    it('rejects multi-address outputs', async function () {
+      const signPrompt = {header:"Sign",body:"Transaction"};
+      const prompts = chunkPrompts2([signPrompt]);
+
      const output = Buffer.from([
        0x3d, 0x9b, 0xda, 0xc0, 0xed, 0x1d, 0x76, 0x13,
        0x30, 0xcf, 0x68, 0x0e, 0xfd, 0xeb, 0x1a, 0x42,
@@ -574,14 +571,10 @@ describe("Basic Tests", () => {
        0xD1, 0x1A, 0x9A, 0x2A, // 20-byte address 2
      ]);
      await expectSignFailure(
-       this.speculos,
-       this.ava,
        { transferrableOutput: output },
-       [
-         [{header:"Sign",body:"Transaction"}],
-       ],
+       prompts,
      );
-    });*/
+    });
   });
 
 /*
