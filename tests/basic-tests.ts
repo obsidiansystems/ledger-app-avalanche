@@ -67,7 +67,7 @@ describe("Basic Tests", () => {
       await sendCommand(async (ava : Ava) => {
         const cfg = await ava.getAppConfiguration();
         expect(cfg).to.be.a('object');
-        expect(cfg).to.have.property("version", "0.5.8");
+        expect(cfg).to.have.property("version", "0.6.0");
         expect(cfg).to.have.property("name", "Avalanche");
       });
     });
