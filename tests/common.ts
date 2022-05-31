@@ -19,10 +19,12 @@ export const makeAva = async () => {
   return new Ava(transport);
 };
 
+export const APP_VERSION: string = "0.6.0";
+
 export const ignoredScreens: string[] = [
   "W e l c o m e",
   "Cancel", "Working...", "Exit",
-  "Avalanche", "0.5.8",
+  "Avalanche", APP_VERSION,
 ]
 
 export const setAcceptAutomationRules = async function() {
