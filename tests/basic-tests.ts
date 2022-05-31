@@ -778,9 +778,7 @@ async function checkSignHash(this_, pathPrefix, pathSuffixes, hash) {
 
   expect(sigs).to.have.keys(pathSuffixes);
 
-  //sigs.forEach(([suffix, sig]) => {
   for (const [suffix, sig] of sigs.entries()) {
-    //const sig = sigs.get(suffix);
     expect(sig).to.have.length(65);
     await sendCommand(async (ava : Ava) => {
       const key = (await ava.getWalletExtendedPublicKey(pathPrefix + "/" + suffix)).public_key;
@@ -806,7 +804,6 @@ async function checkSignTransaction(
   }, prompts);
   expect(hash).is.equalBytes(hash_expected);
   expect(signatures).to.have.keys(pathSuffixes);
-  //sigs.forEach(([suffix, sig]) => {
   for (const [suffix, sig] of signatures.entries()) {
     expect(sig).to.have.length(65);
     await sendCommand(async (ava : Ava) => {
