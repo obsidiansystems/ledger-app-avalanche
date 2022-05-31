@@ -3,7 +3,7 @@
 #include "exception.h"
 #include "to_string.h"
 
-#ifdef TARGET_NANOX
+#if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
 #include "ux.h"
 #endif
 
@@ -42,12 +42,12 @@ void init_globals(void) {
 
 // DO NOT TRY TO INIT THIS. This can only be written via an system call.
 // The "N_" is *significant*. It tells the linker to put this in NVRAM.
-#ifdef TARGET_NANOX
+#if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
 nvram_data const N_data_real;
 #else
 nvram_data N_data_real;
 #endif
 
-#ifndef TARGET_NANOX
+#if !defined(TARGET_NANOX) && !defined(TARGET_NANOS2)
 _Static_assert(sizeof(global) <= 2120, "Size of globals_t exceeds the tested working limit");
 #endif
