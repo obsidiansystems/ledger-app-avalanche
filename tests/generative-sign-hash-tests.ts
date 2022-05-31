@@ -19,6 +19,7 @@ const bipHardened = bipNotHardened.map(a => a + 0x80000000);
 const account = bip.fromPathArray(prefix.concat([0 + 0x80000000]));
 const subAddressGen = fc.tuple(fc.integer(0,1), fc.integer(0,2147483648)).map(([a, b]) => bip.fromPathArray([a,b]));
 
+/*
 describe("Sign Hash tests", () => {
   context('Generative tests', function () {
     it('can sign a hash-sized sequence of bytes', async function () { // Need 'function' to get 'this' for mocha.
@@ -101,3 +102,4 @@ describe("Sign Hash tests", () => {
     });
   });
 });
+*/

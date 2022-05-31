@@ -190,6 +190,7 @@ const testData = {
   }
 };
 
+/*
 describe("Eth app compatibility tests", async function () {
   this.timeout(3000);
   it('can get a key from the app with the ethereum ledgerjs module', async function() {
@@ -440,3 +441,4 @@ describe("Eth app compatibility tests", async function () {
     }
   });
 });
+*/

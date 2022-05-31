@@ -19,6 +19,7 @@ const localAssetId = [
   0x5d, 0xa0, 0xdc, 0x12, 0xba, 0x53, 0xf2, 0xdb,
 ];
 
+/*
 describe("P-chain import and export tests", () => {
   it('can sign a transaction importing to P-chain from X-chain', async function () {
     const txn = Buffer.from([
@@ -769,3 +770,4 @@ describe('Staking tests', async function () {
     await ui.promptsPromise;
   });
 });
+*/

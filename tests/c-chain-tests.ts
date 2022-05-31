@@ -18,6 +18,7 @@ const localAssetId = [
   0x5d, 0xa0, 0xdc, 0x12, 0xba, 0x53, 0xf2, 0xdb,
 ];
 
+/*
 describe("C-chain import and export tests", () => {
   it('can sign an X-chain to C-chain import transaction', async function () {
     const address = [
@@ -198,3 +199,4 @@ describe("C-chain import and export tests", () => {
     await ui.promptsPromise;
   });
 });
+*/
