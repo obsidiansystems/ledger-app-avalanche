@@ -659,26 +659,19 @@ describe("Basic Tests", () => {
 
       checkSignTransaction(pathPrefix, pathSuffixes, importTxn(fujiPChainID), prompts);
     });
-    /*
+
     it("Can sign a C->X Import transaction", async function() {
-        const signPrompt = {header:"Sign",body:"Import"};
-        const transferPrompt = {header:"Sending",body: "0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3"};
-        const sourceChainPrompt = {header:"From",body: "C-chain"};
-        const feePrompt = {header:"Fee",body:"0.246901233 AVAX"};
-        const prompts = chunkPrompts([
-          signPrompt, transferPrompt, sourceChainPrompt, feePrompt
-        ]).concat([[finalizePrompt]]);
+      const signPrompt = {header:"Sign",body:"Import"};
+      const transferPrompt = {header:"Sending",body: "0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3"};
+      const sourceChainPrompt = {header:"From",body: "C-chain"};
+      const feePrompt = {header:"Fee",body:"0.246901233 AVAX"};
+      const prompts = chunkPrompts2([
+        signPrompt, transferPrompt, sourceChainPrompt, feePrompt
+      ]).concat([finalizePrompt]);
 
-        const ui = await flowMultiPrompt(this.speculos, prompts);
-        const sigPromise = this.ava.signTransaction(
-          BIPPath.fromString(pathPrefix),
-          pathSuffixes.map(x => BIPPath.fromString(x, false)),
-          importTxn(fujiCChainID),
-        );
-        await sigPromise;
-        await ui.promptsPromise;
+      checkSignTransaction(pathPrefix, pathSuffixes, importTxn(fujiCChainID), prompts);
     });
-
+    /*
     const exportTxn = destinationChainID => Buffer.from([
       // Codec ID
       0x00, 0x00,
