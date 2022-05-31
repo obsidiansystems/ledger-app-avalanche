@@ -578,7 +578,7 @@ describe("Basic Tests", () => {
     });
   });
 
-/*
+
   describe("X-chain Import and Export", function() {
     const pathPrefix = "44'/9000'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
@@ -653,20 +653,13 @@ describe("Basic Tests", () => {
       const transferPrompt = {header:"Sending",body: "0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3"};
       const sourceChainPrompt = {header:"From",body: "P-chain"};
       const feePrompt = {header:"Fee",body:"0.246901233 AVAX"};
-      const prompts = chunkPrompts([
+      const prompts = chunkPrompts2([
         signPrompt, transferPrompt, sourceChainPrompt, feePrompt
-      ]).concat([[finalizePrompt]]);
+      ]).concat([finalizePrompt]);
 
-      const ui = await flowMultiPrompt(this.speculos, prompts);
-      const sigPromise = this.ava.signTransaction(
-        BIPPath.fromString(pathPrefix),
-        pathSuffixes.map(x => BIPPath.fromString(x, false)),
-        importTxn(fujiPChainID),
-      );
-      await sigPromise;
-      await ui.promptsPromise;
+      checkSignTransaction(pathPrefix, pathSuffixes, importTxn(fujiPChainID), prompts);
     });
-
+    /*
     it("Can sign a C->X Import transaction", async function() {
         const signPrompt = {header:"Sign",body:"Import"};
         const transferPrompt = {header:"Sending",body: "0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3"};
@@ -770,10 +763,8 @@ describe("Basic Tests", () => {
       );
       await sigPromise;
       await ui.promptsPromise;
-    });
-
+    }); */
   });
-  */
 });
 
 async function checkSignHash(this_, pathPrefix, pathSuffixes, hash) {
