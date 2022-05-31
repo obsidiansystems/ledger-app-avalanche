@@ -1,5 +1,39 @@
 # Avalanche Hardware Wallet for Ledger
 
+## WIP 0.6.0
+
+* More P <-> X interopt is supported.
+* Prompts are now batched for easier usage.
+* Testsuite now is in type script using ES6 modules.
+
+## 0.5.7 -- 0.5.9
+
+Just small bugfixes
+
+## 0.5.5 -- 0.5.6
+
+Improvements relating to Ethereum / C chain.
+
+## 0.5.4
+
+* Improve wei to AVAX or NAVAX rendering.
+
+## 0.5.3
+
+* Fix Ethereum / C chain issue.
+
+## 0.5.2
+
+Just build infrastructure improvements, no app proper changes.
+
+## 0.5.1
+
+* Fix Ethereum / C chain issue making RLP parsing more robust.
+
+## 0.5.0
+
+* Vastly improve Ethereum support for the C Chain.
+
 ## 0.4.0
 
 * Support C chain import and export.
