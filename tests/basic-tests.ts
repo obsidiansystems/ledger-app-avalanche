@@ -671,7 +671,7 @@ describe("Basic Tests", () => {
 
       checkSignTransaction(pathPrefix, pathSuffixes, importTxn(fujiCChainID), prompts);
     });
-    /*
+
     const exportTxn = destinationChainID => Buffer.from([
       // Codec ID
       0x00, 0x00,
@@ -725,18 +725,11 @@ describe("Basic Tests", () => {
       const transferPrompt = {header:"Transfer",body: "0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3"};
       const exportPrompt = {header:"X to P chain",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"};
       const feePrompt = {header:"Fee",body:"0.123432099 AVAX"};
-      const prompts = chunkPrompts([
+      const prompts = chunkPrompts2([
         signPrompt, transferPrompt, exportPrompt, feePrompt
-      ]).concat([[finalizePrompt]]);
+      ]).concat([finalizePrompt]);
 
-      const ui = await flowMultiPrompt(this.speculos, prompts);
-      const sigPromise = this.ava.signTransaction(
-        BIPPath.fromString(pathPrefix),
-        pathSuffixes.map(x => BIPPath.fromString(x, false)),
-        exportTxn(fujiPChainID),
-      );
-      await sigPromise;
-      await ui.promptsPromise;
+      checkSignTransaction(pathPrefix, pathSuffixes, importTxn(fujiPChainID), prompts);
     });
 
     it("Can sign a X->C Export transaction", async function() {
@@ -744,19 +737,12 @@ describe("Basic Tests", () => {
       const transferPrompt = {header:"Transfer",body: "0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3"};
       const exportPrompt = {header:"X to C chain",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"};
       const feePrompt = {header:"Fee",body:"0.123432099 AVAX"};
-      const prompts = chunkPrompts([
+      const prompts = chunkPrompts2([
         signPrompt, transferPrompt, exportPrompt, feePrompt
-      ]).concat([[finalizePrompt]]);
+      ]).concat([finalizePrompt]);
 
-      const ui = await flowMultiPrompt(this.speculos, prompts);
-      const sigPromise = this.ava.signTransaction(
-        BIPPath.fromString(pathPrefix),
-        pathSuffixes.map(x => BIPPath.fromString(x, false)),
-        exportTxn(fujiCChainID),
-      );
-      await sigPromise;
-      await ui.promptsPromise;
-    }); */
+      checkSignTransaction(pathPrefix, pathSuffixes, importTxn(fujiCChainID), prompts);
+    });
   });
 });
 
