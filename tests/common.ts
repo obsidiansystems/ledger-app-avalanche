@@ -1,9 +1,11 @@
 import fc from 'fast-check';
 
+import createHash from "create-hash";
 import chai from 'chai';
 import chai_bytes from 'chai-bytes';
 export const { expect } = chai.use(chai_bytes);
-export { default as BIPPath } from "bip32-path";
+import BIPPath from "bip32-path";
+export {default as BIPPath } from "bip32-path";
 import secp256k1 from 'bcrypto/lib/secp256k1';
 import Transport from "./transport";
 import Ava from "hw-app-avalanche";
@@ -77,7 +79,30 @@ let processPrompts = function(prompts: [any]): Screen[] {
 }
 
 
-let deleteEvents = async () => await Axios.delete("http://localhost:5000/events");
+const deleteEvents = async () => await Axios.delete("http://localhost:5000/events");
+
+export const sendCommand = async function<A>(command : (Ava) => Promise<A>): Promise<A> {
+  await setAcceptAutomationRules();
+  await deleteEvents();
+  let ava = await makeAva();
+
+  //await new Promise(resolve => setTimeout(resolve, 100));
+
+  let err = null;
+  let res;
+
+  try { res = await command(ava); } catch(e) {
+    err = e;
+  }
+
+  //await new Promise(resolve => setTimeout(resolve, 100));
+
+  if(err) {
+    throw(err);
+  } else {
+    return res;
+  }
+}
 
 export const sendCommandAndAccept = async <A>(command: (Ava) => A, prompts: undefined | Screen[]): Promise<A> => {
   await setAcceptAutomationRules();
@@ -262,6 +287,53 @@ async function readMultiScreenPrompt(speculos, source): Promise<Screen> {
     return { header: header, body: body };
   } else {
     return screen;
+  }
+}
+
+export async function checkSignHash(this_, pathPrefix, pathSuffixes, hash) {
+  const sigs = await sendCommandAndAccept(async (ava : Ava) => {
+    return await ava.signHash(
+      BIPPath.fromString(pathPrefix),
+      pathSuffixes.map(x => BIPPath.fromString(x, false)),
+      Buffer.from(hash, "hex"),
+    );
+  }, signHashPrompts(hash.toUpperCase(), pathPrefix));
+
+  expect(sigs).to.have.keys(pathSuffixes);
+
+  for (const [suffix, sig] of sigs.entries()) {
+    expect(sig).to.have.length(65);
+    await sendCommand(async (ava : Ava) => {
+      const key = (await ava.getWalletExtendedPublicKey(pathPrefix + "/" + suffix)).public_key;
+      const recovered = recover(Buffer.from(hash, 'hex'), sig.slice(0, 64), sig[64], false);
+      expect(recovered).is.equalBytes(key);
+    });
+  }
+}
+
+export async function checkSignTransaction(
+  pathPrefix: string,
+  pathSuffixes: string[],
+  transaction: Buffer,
+  prompts: Screen[],
+) {
+  const hash_expected = createHash("sha256").update(transaction).digest();
+  const { hash, signatures } = await sendCommandAndAccept(async (ava : Ava) => {
+    return await ava.signTransaction(
+      BIPPath.fromString(pathPrefix),
+      pathSuffixes.map(x => BIPPath.fromString(x, false)),
+      transaction,
+    );
+  }, prompts);
+  expect(hash).is.equalBytes(hash_expected);
+  expect(signatures).to.have.keys(pathSuffixes);
+  for (const [suffix, sig] of signatures.entries()) {
+    expect(sig).to.have.length(65);
+    await sendCommand(async (ava : Ava) => {
+      const key = (await ava.getWalletExtendedPublicKey(pathPrefix + "/" + suffix)).public_key;
+      const recovered = recover(hash, sig.slice(0, 64), sig[64], false);
+      expect(recovered).is.equalBytes(key);
+    });
   }
 }
 
