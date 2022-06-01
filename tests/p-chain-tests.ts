@@ -1,6 +1,7 @@
 import {
   BIPPath,
-  chunkPrompts,
+  checkSignTransaction,
+  chunkPrompts2,
   expect,
   finalizePrompt,
   flowMultiPrompt,
@@ -70,18 +71,11 @@ describe("P-chain import and export tests", () => {
     const signPrompt = {header:"Sign",body:"Import"};
     const importPrompt = {header:"P chain import",body:"19999.999 AVAX to fuji18jma8ppw3nhx5r4ap8clazz0dps7rv5u6wmu4t"};
     const feePrompt = {header:"Fee",body:"15188.373088832 AVAX"};
-    const prompts = chunkPrompts([
+    const prompts = chunkPrompts2([
       signPrompt, importPrompt, feePrompt
-    ]).concat([[finalizePrompt]]);
+    ]).concat([finalizePrompt]);
 
-    const ui = await flowMultiPrompt(this.speculos, prompts);
-    const sigPromise = this.ava.signTransaction(
-      BIPPath.fromString(pathPrefix),
-      pathSuffixes.map(x => BIPPath.fromString(x, false)),
-      txn,
-    );
-    await sigPromise;
-    await ui.promptsPromise;
+    await checkSignTransaction(pathPrefix, pathSuffixes, txn, prompts);
   });
 
   it('can sign a transaction exporting to X-chain from P-chain', async function () {
@@ -138,18 +132,11 @@ describe("P-chain import and export tests", () => {
     const transferPrompt = {header:"Transfer",body:'0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3'};
     const exportPrompt = {header:"P chain export",body:'0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx'};
     const feePrompt = {header:"Fee",body:"0.123432099 AVAX"};
-    const prompts = chunkPrompts([
+    const prompts = chunkPrompts2([
       signPrompt, transferPrompt, exportPrompt, feePrompt
-    ]).concat([[finalizePrompt]]);
+    ]).concat([finalizePrompt]);
 
-    const ui = await flowMultiPrompt(this.speculos, prompts);
-    const sigPromise = this.ava.signTransaction(
-      BIPPath.fromString(pathPrefix),
-      pathSuffixes.map(x => BIPPath.fromString(x, false)),
-      txn,
-    );
-    await sigPromise;
-    await ui.promptsPromise;
+    await checkSignTransaction(pathPrefix, pathSuffixes, txn, prompts);
   });
 
   it('can sign a transaction exporting to C-chain from P-chain', async function() {
@@ -160,18 +147,11 @@ describe("P-chain import and export tests", () => {
     const signPrompt = {header:"Sign",body:"Export"};
     const exportPrompt = {header:"P chain export",body:'29999999 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'};
     const feePrompt = {header:"Fee",body:"1 AVAX"};
-    const prompts = chunkPrompts([
+    const prompts = chunkPrompts2([
       signPrompt, exportPrompt, feePrompt
-    ]).concat([[finalizePrompt]]);
+    ]).concat([finalizePrompt]);
 
-    const ui = await flowMultiPrompt(this.speculos, prompts);
-    const sigPromise = this.ava.signTransaction(
-      BIPPath.fromString(pathPrefix),
-      pathSuffixes.map(x => BIPPath.fromString(x, false)),
-      txn,
-    );
-    await sigPromise;
-    await ui.promptsPromise;
+    await checkSignTransaction(pathPrefix, pathSuffixes, txn, prompts);
   });
 
   it('can sign a transaction importing to P-chain from C-chain', async function() {
@@ -182,20 +162,12 @@ describe("P-chain import and export tests", () => {
     const signPrompt = {header:"Sign",body:"Import"};
     const importPrompt = {header:"Importing",body:'27473249 AVAX to local13kuhcl8vufyu9wvtmspzdnzv9ftm75hunmtqe9'};
     const feePrompt = {header:"Fee",body:"2526750 AVAX"};
-    const prompts = chunkPrompts([
+    const prompts = chunkPrompts2([
       signPrompt, importPrompt, feePrompt
-    ]).concat([[finalizePrompt]]);
+    ]).concat([finalizePrompt]);
 
-    const ui = await flowMultiPrompt(this.speculos, prompts);
-    const sigPromise = this.ava.signTransaction(
-      BIPPath.fromString(pathPrefix),
-      pathSuffixes.map(x => BIPPath.fromString(x, false)),
-      txn,
-    );
-    await sigPromise;
-    await ui.promptsPromise;
+    await checkSignTransaction(pathPrefix, pathSuffixes, txn, prompts);
   });
-
 });
 describe('Staking tests', async function () {
   it('can sign an add validator transaction', async function () {
@@ -271,7 +243,7 @@ describe('Staking tests', async function () {
 
     const pathPrefix = "44'/9000'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
-    const prompts = chunkPrompts([
+    const prompts = chunkPrompts2([
       {header: 'Sign', body: 'Add Validator'},
       {header: 'Transfer', body: '3.999 AVAX to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'},
       {header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' },
@@ -282,16 +254,11 @@ describe('Staking tests', async function () {
       {header: 'Rewards To', body: 'local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n' },
       {header: 'Delegation Fee', body: '0.01%' },
       {header: 'Fee',body: '0.001 AVAX'},
-    ]).concat([[finalizePrompt]]);
-    const ui = await flowMultiPrompt(this.speculos, prompts);
-    const sigPromise = this.ava.signTransaction(
-      BIPPath.fromString(pathPrefix),
-      pathSuffixes.map(x => BIPPath.fromString(x, false)),
-      txn,
-    );
-    await sigPromise;
-    await ui.promptsPromise;
+    ]).concat([finalizePrompt]);
+
+    await checkSignTransaction(pathPrefix, pathSuffixes, txn, prompts);
   });
+
   it('Rejects an add validator transaction if total stake is not sum of stake UTXOs', async function () {
     try {
       const txn = Buffer.from([
@@ -366,7 +333,7 @@ describe('Staking tests', async function () {
 
       const pathPrefix = "44'/9000'/0'";
       const pathSuffixes = ["0/0", "0/1", "100/100"];
-      const prompts = chunkPrompts([
+      const prompts = chunkPrompts2([
         {header: 'Sign', body: 'Add Validator'},
         {header: 'Transfer', body: '3.999 AVAX to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'},
         {header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' },
@@ -375,14 +342,8 @@ describe('Staking tests', async function () {
         {header: 'Total Stake', body: '0.000054321 AVAX' },
         {header: 'Stake',body: '2000 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'}
       ]);
-      const ui = await flowMultiPrompt(this.speculos, prompts, "Next", "Next");
-      const sigPromise = this.ava.signTransaction(
-        BIPPath.fromString(pathPrefix),
-        pathSuffixes.map(x => BIPPath.fromString(x, false)),
-        txn,
-      );
-      await sigPromise;
-      await ui.promptsPromise;
+
+      await checkSignTransaction(pathPrefix, pathSuffixes, txn, prompts);
     } catch(e) {
       expect(e).has.property('statusCode', 0x9405);
     }
@@ -450,7 +411,7 @@ describe('Staking tests', async function () {
     ]);
     const pathPrefix = "44'/9000'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
-    const prompts = chunkPrompts([{header: 'Sign', body: 'Add Delegator'},
+    const prompts = chunkPrompts2([{header: 'Sign', body: 'Add Delegator'},
       {header: 'Transfer', body: '3.999 AVAX to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'},
       {header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' },
       {header: 'Start time', body: '2020-07-29 22:07:25 UTC' },
@@ -459,15 +420,9 @@ describe('Staking tests', async function () {
       {header: 'Stake', body: '2000 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'},
       {header: 'Rewards To', body: 'local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n' },
       {header: 'Fee', body: '0.001 AVAX'},
-    ]).concat([[finalizePrompt]]);
-    const ui = await flowMultiPrompt(this.speculos, prompts);
-    const sigPromise = this.ava.signTransaction(
-      BIPPath.fromString(pathPrefix),
-      pathSuffixes.map(x => BIPPath.fromString(x, false)),
-      txn,
-    );
-    await sigPromise;
-    await ui.promptsPromise;
+    ]).concat([finalizePrompt]);
+
+    await checkSignTransaction(pathPrefix, pathSuffixes, txn, prompts);
   });
   it('rejects an add delegator transaction where weight is not sum of stake', async function () {
     try {
@@ -532,22 +487,16 @@ describe('Staking tests', async function () {
       ]);
       const pathPrefix = "44'/9000'/0'";
       const pathSuffixes = ["0/0", "0/1", "100/100"];
-      const prompts = chunkPrompts([{header: 'Sign', body: 'Add Delegator'},
-      {header: 'Transfer', body: '3.999 AVAX to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'},
-      {header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' },
-      {header: 'Start time', body: '2020-07-29 22:07:25 UTC' },
-      {header: 'End time', body: '2020-08-28 21:57:26 UTC' },
-      {header: 'Total Stake', body: '0.000054321 AVAX' },
-      {header: 'Stake', body: '2000 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'}
+      const prompts = chunkPrompts2([{header: 'Sign', body: 'Add Delegator'},
+        {header: 'Transfer', body: '3.999 AVAX to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'},
+        {header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' },
+        {header: 'Start time', body: '2020-07-29 22:07:25 UTC' },
+        {header: 'End time', body: '2020-08-28 21:57:26 UTC' },
+        {header: 'Total Stake', body: '0.000054321 AVAX' },
+        {header: 'Stake', body: '2000 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'}
       ]);
-      const ui = await flowMultiPrompt(this.speculos, prompts, "Next", "Next");
-      const sigPromise = this.ava.signTransaction(
-        BIPPath.fromString(pathPrefix),
-        pathSuffixes.map(x => BIPPath.fromString(x, false)),
-        txn,
-      );
-      await sigPromise;
-      await ui.promptsPromise;
+
+      await checkSignTransaction(pathPrefix, pathSuffixes, txn, prompts);
     } catch(e) {
       expect(e).has.property('statusCode', 0x9405);
     }
@@ -635,7 +584,7 @@ describe('Staking tests', async function () {
 
     const pathPrefix = "44'/9000'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
-    const prompts = chunkPrompts([{header: 'Sign', body: 'Add Validator'},
+    const prompts = chunkPrompts2([{header: 'Sign', body: 'Add Validator'},
       {header: 'Transfer', body: '3.999 AVAX to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'},
       {header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' },
       {header: 'Start time', body: '2020-07-29 22:07:25 UTC' },
@@ -646,15 +595,9 @@ describe('Staking tests', async function () {
       {header: 'Rewards To', body: 'local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n' },
       {header: 'Delegation Fee', body: '0.01%' },
       {header: 'Fee',body: '0.001 AVAX'}
-    ]).concat([[finalizePrompt]]);
-    const ui = await flowMultiPrompt(this.speculos, prompts);
-    const sigPromise = this.ava.signTransaction(
-      BIPPath.fromString(pathPrefix),
-      pathSuffixes.map(x => BIPPath.fromString(x, false)),
-      txn,
-    );
-    await sigPromise;
-    await ui.promptsPromise;
+    ]).concat([finalizePrompt]);
+
+    await checkSignTransaction(pathPrefix, pathSuffixes, txn, prompts);
   });
   it('can sign a live add validator transaction where some funds are locked', async function () {
     const txn = Buffer.from([
@@ -747,7 +690,7 @@ describe('Staking tests', async function () {
 
     const pathPrefix = "44'/9000'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
-    const prompts = chunkPrompts([{header: 'Sign', body: 'Add Validator'},
+    const prompts = chunkPrompts2([{header: 'Sign', body: 'Add Validator'},
       {header: 'Transfer', body: '0.5 AVAX to fuji1asxdpfsmah8wqr6m8ymfwse5e4pa9fwnvudmpn'},
       {header: 'Funds locked', body: '0.5 AVAX until 2021-05-31 21:28:00 UTC'},
       {header: 'Validator', body: 'NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ'},
@@ -759,15 +702,9 @@ describe('Staking tests', async function () {
       {header: 'Rewards To', body: 'fuji1kekq6vfg56qj5vxfhlwzmgyejfxsczqld3kdup'},
       {header: 'Delegation Fee', body: '2%'},
       {header: 'Fee', body: '0 AVAX'}
-    ]).concat([[finalizePrompt]]);
-    const ui = await flowMultiPrompt(this.speculos, prompts);
-    const sigPromise = this.ava.signTransaction(
-      BIPPath.fromString(pathPrefix),
-      pathSuffixes.map(x => BIPPath.fromString(x, false)),
-      txn,
-    );
-    await sigPromise;
-    await ui.promptsPromise;
+    ]).concat([finalizePrompt]);
+
+    await checkSignTransaction(pathPrefix, pathSuffixes, txn, prompts);
   });
 });
 */

@@ -1,7 +1,9 @@
 import {
-  BIPPath,
+  APP_VERSION,
   Screen,
   automationStart,
+  checkSignHash,
+  checkSignTransaction,
   chunkPrompts,
   chunkPrompts2,
   finalizePrompt,
@@ -14,11 +16,9 @@ import {
   sendCommandAndAccept,
   setAcceptAutomationRules,
   transportOpen,
-  APP_VERSION,
-  checkSignHash,
-  checkSignTransaction,
 } from "./common";
 
+import { default as BIPPath } from "bip32-path";
 import { expect } from 'chai';
 import { describe, it, before, afterEach } from 'mocha';
 import SpeculosTransport from '@ledgerhq/hw-transport-node-speculos';
@@ -635,7 +635,7 @@ describe("Basic Tests", () => {
         signPrompt, transferPrompt, sourceChainPrompt, feePrompt
       ]).concat([finalizePrompt]);
 
-      checkSignTransaction(pathPrefix, pathSuffixes, importTxn(fujiPChainID), prompts);
+      await checkSignTransaction(pathPrefix, pathSuffixes, importTxn(fujiPChainID), prompts);
     });
 
     it("Can sign a C->X Import transaction", async function() {
@@ -647,7 +647,7 @@ describe("Basic Tests", () => {
         signPrompt, transferPrompt, sourceChainPrompt, feePrompt
       ]).concat([finalizePrompt]);
 
-      checkSignTransaction(pathPrefix, pathSuffixes, importTxn(fujiCChainID), prompts);
+      await checkSignTransaction(pathPrefix, pathSuffixes, importTxn(fujiCChainID), prompts);
     });
 
     const exportTxn = destinationChainID => Buffer.from([
@@ -707,7 +707,7 @@ describe("Basic Tests", () => {
         signPrompt, transferPrompt, exportPrompt, feePrompt
       ]).concat([finalizePrompt]);
 
-      checkSignTransaction(pathPrefix, pathSuffixes, importTxn(fujiPChainID), prompts);
+      await checkSignTransaction(pathPrefix, pathSuffixes, exportTxn(fujiPChainID), prompts);
     });
 
     it("Can sign a X->C Export transaction", async function() {
@@ -719,11 +719,10 @@ describe("Basic Tests", () => {
         signPrompt, transferPrompt, exportPrompt, feePrompt
       ]).concat([finalizePrompt]);
 
-      checkSignTransaction(pathPrefix, pathSuffixes, importTxn(fujiCChainID), prompts);
+      await checkSignTransaction(pathPrefix, pathSuffixes, exportTxn(fujiCChainID), prompts);
     });
   });
 });
-
 
 type FieldOverrides = {
   [key: string]: Buffer
