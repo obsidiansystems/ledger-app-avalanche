@@ -708,7 +708,7 @@ describe("Basic Tests", () => {
         signPrompt, transferPrompt, exportPrompt, feePrompt
       ]).concat([finalizePrompt]);
 
-      await checkSignTransaction(pathPrefix, pathSuffixes, importTxn(fujiPChainID), prompts);
+      await checkSignTransaction(pathPrefix, pathSuffixes, exportTxn(fujiPChainID), prompts);
     });
 
     it("Can sign a X->C Export transaction", async function() {
@@ -720,7 +720,7 @@ describe("Basic Tests", () => {
         signPrompt, transferPrompt, exportPrompt, feePrompt
       ]).concat([finalizePrompt]);
 
-      await checkSignTransaction(pathPrefix, pathSuffixes, importTxn(fujiCChainID), prompts);
+      await checkSignTransaction(pathPrefix, pathSuffixes, exportTxn(fujiCChainID), prompts);
     });
   });
 });
