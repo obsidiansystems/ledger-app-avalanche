@@ -1,6 +1,8 @@
 import {
   BIPPath,
+  checkSignTransaction,
   chunkPrompts,
+  chunkPrompts2,
   finalizePrompt,
   flowMultiPrompt,
 } from "./common";
@@ -18,7 +20,7 @@ const localAssetId = [
   0x5d, 0xa0, 0xdc, 0x12, 0xba, 0x53, 0xf2, 0xdb,
 ];
 
-/*
+
 describe("C-chain import and export tests", () => {
   it('can sign an X-chain to C-chain import transaction', async function () {
     const address = [
@@ -77,19 +79,13 @@ describe("C-chain import and export tests", () => {
     ]);
     const pathPrefix = "44'/60'/0'";
     const pathSuffixes = ["0/0", "0/1", "100/100"];
-    const prompts = chunkPrompts([
+    const prompts = chunkPrompts2([
       {header:"Sign", body:"Import"},
       {header:"Importing",body:"0.268435456 AVAX to local1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqljssag"},
       {header:"Fee", body:"0 AVAX"},
-    ]).concat([[finalizePrompt]]);
-    const ui = await flowMultiPrompt(this.speculos, prompts);
-    const sigPromise = this.ava.signTransaction(
-      BIPPath.fromString(pathPrefix),
-      pathSuffixes.map(x => BIPPath.fromString(x, false)),
-      txn,
-    );
-    await sigPromise;
-    await ui.promptsPromise;
+    ]).concat([finalizePrompt]);
+
+    checkSignTransaction(pathPrefix, pathSuffixes, txn, prompts);
   });
 
   it('can sign a C-chain to X-chain export transaction', async function () {
@@ -141,18 +137,11 @@ describe("C-chain import and export tests", () => {
     const signPrompt = {header:"Sign",body:"Export"};
     const exportPrompt = {header:"C chain export",body:'0.001 AVAX to local1vmusmdsn0fu0w6ekj0ml90zs09td4etrp5d6p7'};
     const feePrompt = {header:"Fee",body:"0.001 AVAX"};
-    const prompts = chunkPrompts([
+    const prompts = chunkPrompts2([
       signPrompt, exportPrompt, feePrompt
-    ]).concat([[finalizePrompt]]);
+    ]).concat([finalizePrompt]);
 
-    const ui = await flowMultiPrompt(this.speculos, prompts);
-    const sigPromise = this.ava.signTransaction(
-      BIPPath.fromString(pathPrefix),
-      pathSuffixes.map(x => BIPPath.fromString(x, false)),
-      txn,
-    );
-    await sigPromise;
-    await ui.promptsPromise;
+    checkSignTransaction(pathPrefix, pathSuffixes, txn, prompts);
   });
 
   it('can sign a C-chain to P-chain export transaction', async function() {
@@ -163,18 +152,11 @@ describe("C-chain import and export tests", () => {
     const signPrompt = {header:"Sign",body:"Export"};
     const exportPrompt = {header:"C chain export",body:'47473250 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'};
     const feePrompt = {header:"Fee",body:"2526750 AVAX"};
-    const prompts = chunkPrompts([
+    const prompts = chunkPrompts2([
       signPrompt, exportPrompt, feePrompt
-    ]).concat([[finalizePrompt]]);
+    ]).concat([finalizePrompt]);
 
-    const ui = await flowMultiPrompt(this.speculos, prompts);
-    const sigPromise = this.ava.signTransaction(
-      BIPPath.fromString(pathPrefix),
-      pathSuffixes.map(x => BIPPath.fromString(x, false)),
-      txn,
-    );
-    await sigPromise;
-    await ui.promptsPromise;
+    checkSignTransaction(pathPrefix, pathSuffixes, txn, prompts);
   });
 
   it('can sign an P-chain to C-chain import transaction', async function() {
@@ -185,18 +167,10 @@ describe("C-chain import and export tests", () => {
     const signPrompt = {header:"Sign",body:"Import"};
     const importPrompt = {header:"Importing",body:"27473249 AVAX to local13kuhcl8vufyu9wvtmspzdnzv9ftm75hunmtqe9"};
     const feePrompt = {header:"Fee",body:"2526750 AVAX"};
-    const prompts = chunkPrompts([
+    const prompts = chunkPrompts2([
       signPrompt, importPrompt, feePrompt
-    ]).concat([[finalizePrompt]]);
+    ]).concat([finalizePrompt]);
 
-    const ui = await flowMultiPrompt(this.speculos, prompts);
-    const sigPromise = this.ava.signTransaction(
-      BIPPath.fromString(pathPrefix),
-      pathSuffixes.map(x => BIPPath.fromString(x, false)),
-      txn,
-    );
-    await sigPromise;
-    await ui.promptsPromise;
+    checkSignTransaction(pathPrefix, pathSuffixes, txn, prompts);
   });
 });
-*/
