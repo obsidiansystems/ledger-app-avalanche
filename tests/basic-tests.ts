@@ -559,7 +559,7 @@ describe("Basic Tests", () => {
 
   describe("X-chain Import and Export", function() {
     const pathPrefix = "44'/9000'/0'";
-    const pathSuffixes = ["0/0", "0/1", "100/100"];
+    const pathSuffixes = ["0/0", "0/1", "1/100"];
     const fujiAssetId = [
       0x3d, 0x9b, 0xda, 0xc0, 0xed, 0x1d, 0x76, 0x13,
       0x30, 0xcf, 0x68, 0x0e, 0xfd, 0xeb, 0x1a, 0x42,
