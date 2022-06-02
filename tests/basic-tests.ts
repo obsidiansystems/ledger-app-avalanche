@@ -2,19 +2,24 @@ import {
   APP_VERSION,
   Screen,
   automationStart,
+  baseUrl,
   checkSignHash,
   checkSignTransaction,
-  chunkPrompts,
   chunkPrompts2,
+  deleteEvents,
   finalizePrompt,
   flowAccept,
   flowMultiPrompt,
+  getEvents,
   ignoredScreens,
   makeAva,
+  pressAndReleaseBothButtons,
+  pressAndReleaseSingleButton,
   recover,
   sendCommand,
   sendCommandAndAccept,
   setAcceptAutomationRules,
+  setAutomationRules,
   transportOpen,
 } from "./common";
 
@@ -26,19 +31,17 @@ import Axios from 'axios';
 import Transport from "./transport";
 import Ava from "hw-app-avalanche";
 
-let deleteEvents = async () => await Axios.delete("http://localhost:5000/events");
-
 describe("Basic Tests", () => {
   before( async function() {
-    let transport = await Transport.open("http://localhost:5000/apdu");
+    let transport = await Transport.open(`${baseUrl}/apdu`);
     //let version_string = (await transport.send(0,0xfe,0,0,Buffer.alloc(0))).slice(0,-2).toString();
     //ignoredScreens.push(version_string);
   })
 
   afterEach( async function() {
     console.log("Clearing settings");
-    await Axios.post("http://localhost:5000/automation", {version: 1, rules: []});
-    await Axios.delete("http://localhost:5000/events");
+    await Axios.post(`${baseUrl}/automation`, {version: 1, rules: []});
+    await Axios.delete(`${baseUrl}/events`);
   });
 
   context('Basic APDUs', function () {
@@ -161,30 +164,69 @@ describe("Basic Tests", () => {
       }
     });
 
-    it.skip('rejects signing hash when disallowed in settings', async function () {
-      let flipHashPolicy = async (target) => {return await automationStart(this.speculos, async (speculos, screens) => {
-        speculos.button("Rr");
-        while((await screens.next()).body != "Configuration") speculos.button("Rr");
-        speculos.button("RLrl");
-        let policy;
-        while((policy = await screens.next()).header != "Sign hash policy") {
-          speculos.button("Rr");
-        }
-        while(policy.body != target) {
-          speculos.button("RLrl");
-          policy = await screens.next();
-        }
-        do { speculos.button("Rr") } while((await screens.next()).body != "Main menu");
-        speculos.button("RLrl");
-
-        return { promptsMatch: true };
-
-      })};
-      await (await flipHashPolicy("Disallow")).promptsPromise;
+    it('rejects signing hash when disallowed in settings', async function () {
+      await deleteEvents();
+      let flipHashPolicy = async (target) => {
+        const setting = (called) => ({
+          "y": 17,
+          "text": called,
+          "actions": called === target
+            ? pressAndReleaseSingleButton(2)
+            : pressAndReleaseBothButtons,
+        });
+        await setAutomationRules([
+          setting("Allow"),
+          setting("Allow with warning"),
+          setting("Disallow"),
+          {
+            "y": 3,
+            "text": "Sign hash policy",
+            "actions": [], // wait for the policy
+          },
+          {
+            "text": "Configuration",
+            "actions": pressAndReleaseBothButtons,
+          },
+          {
+            "text": "Main menu",
+            "actions": pressAndReleaseBothButtons,
+          },
+          {
+            "text": "Avalanche",
+            "actions": [], // we made it home!
+          },
+          {
+            "y": 17,
+            "actions": []
+          },
+          {
+            // wild card, match any screen if we get this far
+            "actions": pressAndReleaseSingleButton(2),
+          },
+        ]);
+        await Axios.post(`${baseUrl}/button/right`, {"action":"press-and-release"});
+        const doneEvents = [
+          {"text": "Main menu", "x": 33, "y": 3},
+          {"text": "Avalanche", "x": 34, "y": 3},
+          {"text": APP_VERSION, "x": 52, "y": 17},
+        ];
+        // Don't know how to do any better than polling :(
+        while (true) {
+          const events = (await getEvents()).slice(-3);
+          //console.log(events);
+          try {
+            expect(events).to.deep.equal(doneEvents);
+            break;
+		  } catch {
+		  }
+		}
+      };
+      let ava = await makeAva();
+      await flipHashPolicy("Disallow");
 
       try {
         // we could have a signHashExpectFailure, but it's just this line anyways.
-        await this.ava.signHash(
+        await ava.signHash(
           BIPPath.fromString("44'/9000'/1'"),
           [BIPPath.fromString("0/0", false)],
           Buffer.from("111122223333444455556666777788889999aaaabbbbccccddddeeeeffff0000", "hex"));
@@ -193,7 +235,8 @@ describe("Basic Tests", () => {
         expect(e).has.property('statusCode', 0x6985); // REJECT
         expect(e).has.property('statusText', 'CONDITIONS_OF_USE_NOT_SATISFIED');
       } finally {
-        await (await flipHashPolicy("Allow w/ warning")).promptsPromise;
+        await flipHashPolicy("Allow with warning");
+        await setAutomationRules([]);
       }
     });
 

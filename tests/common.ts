@@ -12,8 +12,10 @@ import Ava from "hw-app-avalanche";
 import Axios from 'axios';
 export const { recover } = secp256k1;
 
+export const baseUrl = "http://localhost:5000";
+
 export const transportOpen = async () => {
-  return await Transport.open("http://localhost:5000/apdu");
+  return await Transport.open(`${baseUrl}/apdu`);
 }
 
 export const makeAva = async () => {
@@ -29,21 +31,55 @@ export const ignoredScreens: string[] = [
   "Avalanche", APP_VERSION,
 ]
 
-export const setAcceptAutomationRules = async function() {
-    await Axios.post("http://localhost:5000/automation", {
-      version: 1,
-      rules: [
-        ... ignoredScreens.map(txt => { return { "text": txt, "actions": [] } }),
-        { "y": 17, "actions": [] },
-        { "text": "Next", "actions": [ [ "button", 1, true ], [ "button", 2, true ], [ "button", 2, false ], [ "button", 1, false ] ]},
-        { "text": "Accept", "actions": [ [ "button", 1, true ], [ "button", 2, true ], [ "button", 2, false ], [ "button", 1, false ] ]},
-        { "text": "Confirm", "actions": [ [ "button", 1, true ], [ "button", 2, true ], [ "button", 2, false ], [ "button", 1, false ] ]},
-        { "actions": [ [ "button", 2, true ], [ "button", 2, false ] ]}
-      ]
-    });
+export const setAcceptAutomationRules =
+  async () => await setAutomationRules(defaultAcceptAutomationRules);
+
+export const setAutomationRules = async function(rules) {
+  await Axios.post(`${baseUrl}/automation`, {
+    version: 1,
+    rules: rules,
+  });
 }
 
-let processPrompts = function(prompts: [any]): Screen[] {
+export const pressAndReleaseBothButtons = [
+  [ "button", 1, true ],
+  [ "button", 2, true ],
+  [ "button", 2, false ],
+  [ "button", 1, false ],
+];
+
+export const pressAndReleaseSingleButton = (button) => [
+  [ "button", button, true ],
+  [ "button", button, false ],
+];
+
+export const defaultAcceptAutomationRules = [
+  ... ignoredScreens.map(txt => { return { "text": txt, "actions": [] } }),
+  {
+    "y": 17,
+    "actions": []
+  },
+  {
+    "text": "Next",
+    "actions": pressAndReleaseBothButtons,
+  },
+  {
+    "text": "Accept",
+    "actions": pressAndReleaseBothButtons,
+  },
+  {
+    "text": "Confirm",
+    "actions": pressAndReleaseBothButtons,
+  },
+  {
+    // wild card, match any screen if we get this far
+    "actions": pressAndReleaseSingleButton(2),
+  },
+];
+
+type Event = { x: number, y: number, text: string };
+
+const processPrompts = function(prompts: Event[]): Screen[] {
   let i = prompts.filter((a : any) => !ignoredScreens.includes(a["text"])).values();
   let {done, value} = i.next();
   let header = "";
@@ -79,7 +115,7 @@ let processPrompts = function(prompts: [any]): Screen[] {
 }
 
 
-const deleteEvents = async () => await Axios.delete("http://localhost:5000/events");
+export const deleteEvents = async () => await Axios.delete(`${baseUrl}/events`);
 
 export const sendCommand = async function<A>(command : (Ava) => Promise<A>): Promise<A> {
   await setAcceptAutomationRules();
@@ -104,6 +140,9 @@ export const sendCommand = async function<A>(command : (Ava) => Promise<A>): Pro
   }
 }
 
+export const getEvents = async (): Promise<Event[]> =>
+  (await Axios.get(`${baseUrl}/events`)).data["events"];
+
 export const sendCommandAndAccept = async <A>(command: (Ava) => A, prompts: undefined | Screen[]): Promise<A> => {
   await setAcceptAutomationRules();
   await deleteEvents();
@@ -122,9 +161,9 @@ export const sendCommandAndAccept = async <A>(command: (Ava) => A, prompts: unde
   //await new Promise(resolve => setTimeout(resolve, 100));
 
 
-  // expect(((await Axios.get("http://localhost:5000/events")).data["events"] as [any]).filter((a : any) => !ignoredScreens.includes(a["text"]))).to.deep.equal(prompts);
+  // expect(((await Axios.get(`${baseUrl}/events`)).data["events"] as [any]).filter((a : any) => !ignoredScreens.includes(a["text"]))).to.deep.equal(prompts);
   if (prompts) {
-    expect(processPrompts((await Axios.get("http://localhost:5000/events")).data["events"] as [any])).to.deep.equal(prompts);
+    expect(processPrompts(await getEvents())).to.deep.equal(prompts);
   }
 
   if(err) {
