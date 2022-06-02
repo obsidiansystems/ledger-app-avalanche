@@ -3,8 +3,10 @@ import {
   expect,
   finalizePrompt,
   flowMultiPrompt,
+  transportOpen,
 } from "./common";
 
+import Eth from '@ledgerhq/hw-app-eth';
 import { Transaction } from "@ethereumjs/tx";
 import { FeeMarketEIP1559Transaction as EIP1559Transaction } from "@ethereumjs/tx";
 import Common from "@ethereumjs/common";
@@ -31,6 +33,11 @@ const rawUnsignedLegacyTransaction = (chainId, unsignedTxParams) => {
         Buffer.from([]),
     ]);
 
+};
+
+const makeEth = async () => {
+  const transport = await transportOpen();
+  return new Eth(transport);
 };
 
 const rawUnsignedEIP1559Transaction = (chainId, unsignedTxParams) => {
