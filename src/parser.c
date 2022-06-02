@@ -269,13 +269,6 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                             output_prompt_to_string
                             );
                         break;
-                    case TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR:
-                        /*ADD_PROMPT(
-                            "Subnet ID",
-                            &output_prompt, sizeof(output_prompt),
-                            output_prompt_to_string
-                            );*/
-                        break;
                     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR:
                     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR:
 
@@ -1352,26 +1345,20 @@ enum parse_rv parse_AddSNValidatorTransaction(
     case 0: //ChainID
       CALL_SUBPARSER(validatorState, Validator);
       state->state++;
-      INIT_SUBPARSER(outputsState, TransferableOutputs);
-      fallthrough;
-    case 1: {//Value
-      meta->swap_output = true;
-      CALL_SUBPARSER(outputsState, TransferableOutputs);
-      state->state++;
       INIT_SUBPARSER(id32State, Id32);
-    } fallthrough;
-    case 2: {
+      fallthrough;
+    case 1: {//Subnet ID
       CALL_SUBPARSER(id32State, Id32);
       PRINTF("Subnet ID: %.*h\n", 32, state->id32State.buf);
-      //potentially need to add a check_subnet_id function here
+      // potentially need check_subnet_id function??
       state->state++;
       INIT_SUBPARSER(subnetauthState, SubnetAuth);
     } fallthrough;
-    case 3: {
+    case 2: {
       CALL_SUBPARSER(subnetauthState, SubnetAuth);
       state->state++;
     } fallthrough;
-    case 4:
+    case 3:
       sub_rv = PARSE_RV_DONE;
   }
   return sub_rv;

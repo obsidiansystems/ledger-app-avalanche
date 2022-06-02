@@ -301,10 +301,8 @@ struct AddValidatorTransactionState {
 struct AddSNValidatorTransactionState {
   int state;
   union {
-        struct Id32_state id32State;
-        struct TransferableOutputs_state outputsState;
-
         struct Validator_state validatorState;
+        struct Id32_state id32State;
         struct SubnetAuth_state subnetauthState;
   };
 };
