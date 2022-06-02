@@ -6,8 +6,7 @@ chai.config.truncateThreshold = 0;
 
 import fc from 'fast-check';
 
-/*
-describe("APDU protocol integrity generative tests", function () {
+describe.skip("APDU protocol integrity generative tests", function () {
   context('Generative tests', function () {
     it('rejects incorrect APDU numbers', async function () {
       return await fc.assert(fc.asyncProperty(fc.integer(6, 255), fc.hexaString(), async (apdu, hashHex) => {
@@ -72,4 +71,3 @@ describe("APDU protocol integrity generative tests", function () {
     });
   });
 });
-*/

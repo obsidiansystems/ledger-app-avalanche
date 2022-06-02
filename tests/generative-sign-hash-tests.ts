@@ -19,10 +19,9 @@ const bipHardened = bipNotHardened.map(a => a + 0x80000000);
 const account = bip.fromPathArray(prefix.concat([0 + 0x80000000]));
 const subAddressGen = fc.tuple(fc.integer(0,1), fc.integer(0,2147483648)).map(([a, b]) => bip.fromPathArray([a,b]));
 
-/*
-describe("Sign Hash tests", () => {
-  context('Generative tests', function () {
-    it('can sign a hash-sized sequence of bytes', async function () { // Need 'function' to get 'this' for mocha.
+describe.skip("Sign Hash tests", () => {
+  context('Generative tests', function (this: Mocha.Suite) {
+    it('can sign a hash-sized sequence of bytes', async function (this: Mocha.Context) { // Need 'function' to get 'this' for mocha.
       return await fc.assert(fc.asyncProperty(fc.array(subAddressGen,1,10), fc.hexaString(64, 64), async (subAccts, hashHex) => {
         let ui: PromptsPromise<{ promptsMatch: true }> = {
           promptsPromise: (async () => ({ promptsMatch: true }))(),
@@ -102,4 +101,3 @@ describe("Sign Hash tests", () => {
     });
   });
 });
-*/
