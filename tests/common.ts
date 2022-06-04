@@ -79,7 +79,7 @@ export const defaultAcceptAutomationRules = [
 
 type Event = { x: number, y: number, text: string };
 
-const processPrompts = function(prompts: Event[]): Screen[] {
+export const processPrompts = function(prompts: Event[]): Screen[] {
   let i = prompts.filter((a : any) => !ignoredScreens.includes(a["text"])).values();
   let {done, value} = i.next();
   let header = "";
@@ -209,7 +209,6 @@ export async function automationStart<A>(speculos, interactionFunc: InteractionF
 {
   // If this doesn't exist, we're running against a hardware ledger; just call
   // interactionFunc with no events iterator.
-  console.log("!speculos.automationEvents", speculos.automationEvents);
   if(!speculos.automationEvents) {
     return new Promise(r=>r({ promptsPromise: interactionFunc(speculos), cancel: () => {} }));
   }
