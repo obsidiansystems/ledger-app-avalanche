@@ -1,7 +1,7 @@
 import {
   BIPPath,
   checkSignTransaction,
-  chunkPrompts2,
+  chunkPrompts,
   finalizePrompt,
 } from "./common";
 
@@ -76,7 +76,7 @@ describe("C-chain import and export tests", () => {
     ]);
     const pathPrefix = "44'/60'/0'";
     const pathSuffixes = ["0/0", "0/1", "1/100"];
-    const prompts = chunkPrompts2([
+    const prompts = chunkPrompts([
       {header:"Sign", body:"Import"},
       {header:"Importing",body:"0.268435456 AVAX to local1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqljssag"},
       {header:"Fee", body:"0 AVAX"},
@@ -134,7 +134,7 @@ describe("C-chain import and export tests", () => {
     const signPrompt = {header:"Sign",body:"Export"};
     const exportPrompt = {header:"C chain export",body:'0.001 AVAX to local1vmusmdsn0fu0w6ekj0ml90zs09td4etrp5d6p7'};
     const feePrompt = {header:"Fee",body:"0.001 AVAX"};
-    const prompts = chunkPrompts2([
+    const prompts = chunkPrompts([
       signPrompt, exportPrompt, feePrompt
     ]).concat([finalizePrompt]);
 
@@ -149,7 +149,7 @@ describe("C-chain import and export tests", () => {
     const signPrompt = {header:"Sign",body:"Export"};
     const exportPrompt = {header:"C chain export",body:'47473250 AVAX to local18jma8ppw3nhx5r4ap8clazz0dps7rv5u00z96u'};
     const feePrompt = {header:"Fee",body:"2526750 AVAX"};
-    const prompts = chunkPrompts2([
+    const prompts = chunkPrompts([
       signPrompt, exportPrompt, feePrompt
     ]).concat([finalizePrompt]);
 
@@ -164,7 +164,7 @@ describe("C-chain import and export tests", () => {
     const signPrompt = {header:"Sign",body:"Import"};
     const importPrompt = {header:"Importing",body:"27473249 AVAX to local13kuhcl8vufyu9wvtmspzdnzv9ftm75hunmtqe9"};
     const feePrompt = {header:"Fee",body:"2526750 AVAX"};
-    const prompts = chunkPrompts2([
+    const prompts = chunkPrompts([
       signPrompt, importPrompt, feePrompt
     ]).concat([finalizePrompt]);
 

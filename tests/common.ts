@@ -420,7 +420,7 @@ export function acceptPrompts(expectedPrompts: undefined | Screen[], selectPromp
 
 const chunkSize = 2;
 
-export const chunkPrompts2 = (prompts: Screen[] ): Screen[] => {
+export const chunkPrompts = (prompts: Screen[] ): Screen[] => {
   let chunked: Screen[] = [];
   for (let i = 0; i < prompts.length; i += chunkSize) {
     chunked = chunked.concat(prompts.slice(i, i + chunkSize));

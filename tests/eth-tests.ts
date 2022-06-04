@@ -1,6 +1,6 @@
 import {
   checkSignTransaction,
-  chunkPrompts2,
+  chunkPrompts,
   expect,
   finalizePrompt,
   transportOpen,
@@ -55,17 +55,17 @@ const rawUnsignedEIP1559Transaction = (chainId, unsignedTxParams) => {
   return unsignedTx.getMessageToSign(false);
 };
 
-const transferPrompts = (address, amount, fee) => chunkPrompts2([
+const transferPrompts = (address, amount, fee) => chunkPrompts([
   {header: "Transfer",    body: amount + " to " + address},
   {header: "Fee",          body: fee},
 ]).concat([finalizePrompt]);
 
-const assetCallTransferPrompts = (assetID, address, amount) => chunkPrompts2([
+const assetCallTransferPrompts = (assetID, address, amount) => chunkPrompts([
   {header: "Transfer",    body: amount + " of " + assetID + " to " + address},
   {header: "Maximum Fee", body: "47000000 GWEI"},
 ]).concat([finalizePrompt]);
 
-const assetCallDepositPrompts = (assetID, address, amount) => chunkPrompts2([
+const assetCallDepositPrompts = (assetID, address, amount) => chunkPrompts([
   {header: "Deposit",     body: amount + " of " + assetID + " to " + address},
   {header: "Maximum Fee", body: "47000000 GWEI"},
 ]).concat([finalizePrompt]);
@@ -74,7 +74,7 @@ const contractCallPrompts = (method, argumentPrompts) => {
     const methodPrompt   = {header: "Contract Call", body: method};
     const maxFeePrompt   = {header: "Maximum Fee",   body: "10229175 GWEI"};
 
-    return chunkPrompts2([methodPrompt, ...argumentPrompts, maxFeePrompt])
+    return chunkPrompts([methodPrompt, ...argumentPrompts, maxFeePrompt])
        .concat([finalizePrompt]);
 };
 
@@ -84,7 +84,7 @@ const contractDeployPrompts = (amount, fee, gas) => {
   const fundingPrompt  = {header: "Funding Contract",  body: amount};
   const dataPrompt     = {header: "Data",              body: "0x60806040523480156200001157600080fd5b5060..."};
   const feePrompt      = {header: "Maximum Fee",       body: fee};
-  return chunkPrompts2(amount
+  return chunkPrompts(amount
     ? [creationPrompt, gasPrompt, fundingPrompt, dataPrompt, feePrompt]
     : [creationPrompt, gasPrompt, dataPrompt, feePrompt]
   )
@@ -206,7 +206,7 @@ const testUnrecognizedCalldataTx = (chainId, gasPrice, gasLimit, amountPrompt, a
     const dataPrompt = {header: "Contract Data", body: "Is Present (unsafe)"};
     const maxFeePrompt = {header: "Maximum Fee",   body: fee};
 
-    const prompts = chunkPrompts2([transferPrompt, dataPrompt, maxFeePrompt])
+    const prompts = chunkPrompts([transferPrompt, dataPrompt, maxFeePrompt])
       .concat([finalizePrompt]);
     const eth = await makeEth();
 
@@ -307,7 +307,7 @@ describe("Eth app compatibility tests", async function () {
       const transferPrompt = {header: "Transfer",     body: '0.000004096 nAVAX' + " to " + '0x' + '0102030400000000000000000000000000000002'};
       const dataPrompt = {header: "Contract Data", body: "Is Present (unsafe)"};
       const maxFeePrompt = {header: "Maximum Fee",   body: "0.002293452 GWEI"};
-      const prompts = chunkPrompts2([transferPrompt, dataPrompt, maxFeePrompt])
+      const prompts = chunkPrompts([transferPrompt, dataPrompt, maxFeePrompt])
         .concat([finalizePrompt]);
 
       await testEIP1559Signing(this, chainId, prompts, tx);
@@ -332,7 +332,7 @@ describe("Eth app compatibility tests", async function () {
 
       const transferPrompt = {header: "Transfer",     body: '0.000004096 nAVAX' + " to " + '0x' + '0102030400000000000000000000000000000002'};
       const feePrompt = {header: "Fee",   body: "0.002293452 GWEI"};
-      const prompts = chunkPrompts2([transferPrompt, feePrompt])
+      const prompts = chunkPrompts([transferPrompt, feePrompt])
         .concat([finalizePrompt]);
 
       await testEIP1559Signing(this, chainId, prompts, tx);
@@ -348,7 +348,7 @@ describe("Eth app compatibility tests", async function () {
     const gasLimitPrompt = { header: 'Gas Limit', body: '1500000' };
     const dataPrompt = { header: 'Data', body: '0x608060405234801561001057600080fd5b506101...' };
     const maxFeePrompt = { header: 'Maximum Fee', body: '90000000 GWEI' };
-    const prompts = chunkPrompts2([contractCreationPrompt, gasLimitPrompt, dataPrompt, maxFeePrompt])
+    const prompts = chunkPrompts([contractCreationPrompt, gasLimitPrompt, dataPrompt, maxFeePrompt])
       .concat([finalizePrompt]);
     await testEIP1559Signing(this, chainId, prompts, tx);
   });

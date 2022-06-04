@@ -5,7 +5,7 @@ import {
   baseUrl,
   checkSignHash,
   checkSignTransaction,
-  chunkPrompts2,
+  chunkPrompts,
   deleteEvents,
   finalizePrompt,
   getEvents,
@@ -244,7 +244,7 @@ describe("Basic Tests", () => {
       const signPrompt = {header:"Sign",body:"Transaction"};
       const transferPrompt = {header:"Transfer",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"};
       const feePrompt = {header:"Fee",body:"0.123444444 AVAX"};
-      const prompts = chunkPrompts2([signPrompt, transferPrompt, feePrompt])
+      const prompts = chunkPrompts([signPrompt, transferPrompt, feePrompt])
         .concat([finalizePrompt]);
 
       const pathPrefix = "44'/9000'/0'";
@@ -261,7 +261,7 @@ describe("Basic Tests", () => {
       const signPrompt = {header:"Sign",body:"Transaction"};
       const transferPrompt = {header:"Transfer",body:"0.123456789 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"};
       const feePrompt = {header:"Fee",body:"0.876543211 AVAX"};
-      const prompts = chunkPrompts2([signPrompt, transferPrompt, feePrompt])
+      const prompts = chunkPrompts([signPrompt, transferPrompt, feePrompt])
         .concat([finalizePrompt]);
 
       const pathPrefix = "44'/9000'/0'";
@@ -278,7 +278,7 @@ describe("Basic Tests", () => {
       const signPrompt = {header:"Sign",body:"Transaction"};
       const transferPrompt = {header:"Transfer",body:"1 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"};
       const feePrompt = {header:"Fee",body:"1 AVAX"};
-      const prompts = chunkPrompts2([signPrompt, transferPrompt, feePrompt])
+      const prompts = chunkPrompts([signPrompt, transferPrompt, feePrompt])
         .concat([finalizePrompt]);
 
       const pathPrefix = "44'/9000'/0'";
@@ -367,7 +367,7 @@ describe("Basic Tests", () => {
       const transferPromptOne = {header:"Transfer",body:"0.000001 AVAX to fuji10an3cucdfqru984pnvv6y0rspvvclz634xwwhs"};
       const transferPromptTwo = {header:"Transfer",body:"0.006999 AVAX to fuji15jh6hlessx2jtxvs48jnr0vzxrg34x32vuc7jc"};
       const feePrompt = {header:"Fee",body:"0.001 AVAX"};
-      const prompts = chunkPrompts2([signPrompt, transferPromptOne, transferPromptTwo, feePrompt])
+      const prompts = chunkPrompts([signPrompt, transferPromptOne, transferPromptTwo, feePrompt])
         .concat([finalizePrompt]);
 
       const pathPrefix = "44'/9000'/0'";
@@ -456,7 +456,7 @@ describe("Basic Tests", () => {
       const transferPromptOne = {header:"Transfer",body:"0.000001 AVAX to fuji10an3cucdfqru984pnvv6y0rspvvclz634xwwhs"};
       const transferPromptTwo = {header:"Transfer",body:"0.006999 AVAX to fuji179xfr036ym3uuv8ewrv8y4la97ealwmlfg8yrr"};
       const feePrompt = {header:"Fee",body:"0.001 AVAX"};
-      const prompts = chunkPrompts2([signPrompt, transferPromptOne, transferPromptTwo, feePrompt])
+      const prompts = chunkPrompts([signPrompt, transferPromptOne, transferPromptTwo, feePrompt])
         .concat([finalizePrompt]);
 
       const pathPrefix = "44'/9000'/0'";
@@ -469,7 +469,7 @@ describe("Basic Tests", () => {
         const signPrompt = {header:"Sign",body:"Transaction"};
         const transferPrompt = {header:"Transfer",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"};
         const feePrompt = {header:"Fee",body:"0.123444444 AVAX"};
-        const prompts = chunkPrompts2([signPrompt, transferPrompt, feePrompt])
+        const prompts = chunkPrompts([signPrompt, transferPrompt, feePrompt])
 
         const txn = buildTransaction({
           "extraEndBytes": Buffer.from([0x00]),
@@ -507,7 +507,7 @@ describe("Basic Tests", () => {
 
     it('rejects an unrecognized output type ID', async function () {
       const signPrompt = {header:"Sign",body:"Transaction"};
-      const prompts = chunkPrompts2([signPrompt]);
+      const prompts = chunkPrompts([signPrompt]);
       await expectSignFailure(
         { outputTypeId: Buffer.from([0x01, 0x00, 0x00, 0x00]) },
         prompts,
@@ -516,7 +516,7 @@ describe("Basic Tests", () => {
 
     it('rejects a different unrecognized output type ID', async function () {
       const signPrompt = {header:"Sign",body:"Transaction"};
-      const prompts = chunkPrompts2([signPrompt]);
+      const prompts = chunkPrompts([signPrompt]);
       await expectSignFailure(
         { outputTypeId: Buffer.from([0x00, 0x00, 0xf0, 0x00]) },
         prompts,
@@ -526,7 +526,7 @@ describe("Basic Tests", () => {
     it('rejects an unrecognized input type ID', async function () {
       await expectSignFailure(
         { inputTypeId: Buffer.from([0x01, 0x00, 0x00, 0x00]) },
-        chunkPrompts2([
+        chunkPrompts([
           {header:"Sign",body:"Transaction"},
           {header:"Transfer",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"},
         ]),
@@ -535,7 +535,7 @@ describe("Basic Tests", () => {
 
     it('rejects unsupported asset IDs', async function () {
       const signPrompt = {header:"Sign",body:"Transaction"};
-      const prompts = chunkPrompts2([signPrompt]);
+      const prompts = chunkPrompts([signPrompt]);
 
       const assetId = Buffer.from([
         0x3d, 0x9b, 0xda, 0xc0, 0xed, 0x1d, 0x76, 0x13,
@@ -555,7 +555,7 @@ describe("Basic Tests", () => {
 
     it('rejects an AVAX asset ID from a different network', async function () {
       const signPrompt = {header:"Sign",body:"Transaction"};
-      const prompts = chunkPrompts2([signPrompt]);
+      const prompts = chunkPrompts([signPrompt]);
 
       const assetId = Buffer.from([
         0x21, 0xe6, 0x73, 0x17, 0xcb, 0xc4, 0xbe, 0x2a,
@@ -575,7 +575,7 @@ describe("Basic Tests", () => {
 
     it('rejects multi-address outputs', async function () {
       const signPrompt = {header:"Sign",body:"Transaction"};
-      const prompts = chunkPrompts2([signPrompt]);
+      const prompts = chunkPrompts([signPrompt]);
 
      const output = Buffer.from([
        0x3d, 0x9b, 0xda, 0xc0, 0xed, 0x1d, 0x76, 0x13,
@@ -672,7 +672,7 @@ describe("Basic Tests", () => {
       const transferPrompt = {header:"Sending",body: "0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3"};
       const sourceChainPrompt = {header:"From",body: "P-chain"};
       const feePrompt = {header:"Fee",body:"0.246901233 AVAX"};
-      const prompts = chunkPrompts2([
+      const prompts = chunkPrompts([
         signPrompt, transferPrompt, sourceChainPrompt, feePrompt
       ]).concat([finalizePrompt]);
 
@@ -684,7 +684,7 @@ describe("Basic Tests", () => {
       const transferPrompt = {header:"Sending",body: "0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3"};
       const sourceChainPrompt = {header:"From",body: "C-chain"};
       const feePrompt = {header:"Fee",body:"0.246901233 AVAX"};
-      const prompts = chunkPrompts2([
+      const prompts = chunkPrompts([
         signPrompt, transferPrompt, sourceChainPrompt, feePrompt
       ]).concat([finalizePrompt]);
 
@@ -744,7 +744,7 @@ describe("Basic Tests", () => {
       const transferPrompt = {header:"Transfer",body: "0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3"};
       const exportPrompt = {header:"X to P chain",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"};
       const feePrompt = {header:"Fee",body:"0.123432099 AVAX"};
-      const prompts = chunkPrompts2([
+      const prompts = chunkPrompts([
         signPrompt, transferPrompt, exportPrompt, feePrompt
       ]).concat([finalizePrompt]);
 
@@ -756,7 +756,7 @@ describe("Basic Tests", () => {
       const transferPrompt = {header:"Transfer",body: "0.000012345 AVAX to fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3"};
       const exportPrompt = {header:"X to C chain",body:"0.000012345 AVAX to fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx"};
       const feePrompt = {header:"Fee",body:"0.123432099 AVAX"};
-      const prompts = chunkPrompts2([
+      const prompts = chunkPrompts([
         signPrompt, transferPrompt, exportPrompt, feePrompt
       ]).concat([finalizePrompt]);
 
