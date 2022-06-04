@@ -418,31 +418,7 @@ export function acceptPrompts(expectedPrompts: undefined | Screen[], selectPromp
   };
 }
 
-export async function flowMultiPrompt(speculos, prompts, nextPrompt="Next", finalPrompt="Accept"): Promise<{ promptsPromise: Promise<true> }> {
-  // We bounce off the home screen sometimes during this process
-  const isHomeScreen = p => p.header == "Avalanche" || p.body == "Configuration" || p.body == "Quit";
-  const appScreens = ps => ps.filter(p => !isHomeScreen(p));
-
-  return await automationStart(speculos, async (speculos, screens): Promise<true> => {
-    for (const p of prompts.slice(0,-1)) {
-      const rp = (await acceptPrompts(undefined, nextPrompt)(speculos, screens)).promptList;
-      expect(appScreens(rp)).to.deep.equal(p);
-    }
-    const rp = (await acceptPrompts(undefined, finalPrompt)(speculos, screens)).promptList;
-    expect(appScreens(rp)).to.deep.equal(prompts[prompts.length-1]);
-    return true;
-  });
-}
-
 const chunkSize = 2;
-
-export const chunkPrompts = <A>(prompts: A[] ): A[][] => {
-  let chunked: A[][] = [];
-  for (let i = 0; i < prompts.length; i += chunkSize) {
-    chunked.push(prompts.slice(i, i + chunkSize));
-  }
-  return chunked;
-}
 
 export const chunkPrompts2 = (prompts: Screen[] ): Screen[] => {
   let chunked: Screen[] = [];

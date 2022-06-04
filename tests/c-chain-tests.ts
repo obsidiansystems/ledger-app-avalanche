@@ -1,10 +1,8 @@
 import {
   BIPPath,
   checkSignTransaction,
-  chunkPrompts,
   chunkPrompts2,
   finalizePrompt,
-  flowMultiPrompt,
 } from "./common";
 
 const fujiAssetId = [

@@ -4,7 +4,6 @@ import {
   chunkPrompts2,
   expect,
   finalizePrompt,
-  flowMultiPrompt,
 } from "./common";
 
 const fujiAssetId = [

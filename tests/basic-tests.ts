@@ -8,8 +8,6 @@ import {
   chunkPrompts2,
   deleteEvents,
   finalizePrompt,
-  flowAccept,
-  flowMultiPrompt,
   getEvents,
   ignoredScreens,
   makeAva,
@@ -887,25 +885,5 @@ async function expectSignFailure(fields: FieldOverrides, prompts: Screen[] = und
   } catch (e) {
     expect(e).has.property('statusCode', 0x9405); // PARSE_ERROR
     expect(e).has.property('statusText', 'UNKNOWN_ERROR');
-  }
-}
-
-async function checkSignTransactionResult(ava, sig, pathPrefix, pathSuffixes) {
-  expect(sig).to.have.property('hash');
-  expect(sig).to.have.property('signatures');
-
-  expect(sig.hash).to.have.length(32);
-  expect(sig.signatures).to.have.length(pathSuffixes.length);
-  expect(sig.signatures).to.have.keys(pathSuffixes);
-
-  for (const suffix in sig.signatures) {
-    const sigs = sig.get(suffix);
-    expect(sigs).to.have.length(65);
-
-    const prompts = flowAccept(ava.this_.speculos);
-    const key = (await ava.getWalletExtendedPublicKey(pathPrefix + "/" + suffix)).public_key;
-    await prompts;
-    const recovered = recover(Buffer.from(sigs.hash, 'hex'), sigs.slice(0, 64), sigs[64], false);
-    expect(recovered).is.equalBytes(key);
   }
 }

@@ -1,10 +1,8 @@
 import {
   checkSignTransaction,
-  chunkPrompts,
   chunkPrompts2,
   expect,
   finalizePrompt,
-  flowMultiPrompt,
   transportOpen,
   setAcceptAutomationRules,
   deleteEvents,
