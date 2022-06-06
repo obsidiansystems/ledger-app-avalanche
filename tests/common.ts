@@ -162,12 +162,22 @@ export const sendCommandAndAccept = async <A>(command: (Ava) => A, prompts: unde
 
 
   // expect(((await Axios.get(`${baseUrl}/events`)).data["events"] as [any]).filter((a : any) => !ignoredScreens.includes(a["text"]))).to.deep.equal(prompts);
+  let err2 = null;
   if (prompts) {
-    expect(processPrompts(await getEvents())).to.deep.equal(prompts);
+    try {
+      expect(processPrompts(await getEvents())).to.deep.equal(prompts);
+    } catch (e) {
+      err2 = e;
+    }
   }
 
-  if(err) {
+  if (err && !err2) {
     throw(err);
+  } else if (!err && err2) {
+    throw(err2);
+  } else if (err && err2) {
+    //throw(AggregateError([err, err2]))
+    throw(`Failed and incorrect prompts\n${err.stack}: ${err}\n${err2.stack}: ${err2}`);
   } else {
     return ret;
   }
@@ -328,16 +338,25 @@ async function readMultiScreenPrompt(speculos, source): Promise<Screen> {
   }
 }
 
-export async function checkSignHash(this_, pathPrefix, pathSuffixes, hash) {
+export async function checkSignHash(this_, pathPrefix: string, pathSuffixes: string[], hash: string) {
+  return await checkSignHash0(
+    this_,
+    BIPPath.fromString(pathPrefix),
+    pathSuffixes.map(x => BIPPath.fromString(x, false)),
+    hash,
+  );
+}
+
+export async function checkSignHash0(this_, pathPrefix: BIPPath, pathSuffixes: BIPPath[], hash) {
   const sigs = await sendCommandAndAccept(async (ava : Ava) => {
     return await ava.signHash(
-      BIPPath.fromString(pathPrefix),
-      pathSuffixes.map(x => BIPPath.fromString(x, false)),
+      pathPrefix,
+      pathSuffixes,
       Buffer.from(hash, "hex"),
     );
   }, signHashPrompts(hash.toUpperCase(), pathPrefix));
 
-  expect(sigs).to.have.keys(pathSuffixes);
+  expect(sigs).to.have.keys(pathSuffixes.map(x => x.toString().slice(2)));
 
   for (const [suffix, sig] of sigs.entries()) {
     expect(sig).to.have.length(65);
@@ -437,13 +456,28 @@ const fcConfig = {
 
 fc.configureGlobal(fcConfig);
 
-export const signHashPrompts = (hash, pathPrefix): Screen[] => {
+export const signHashPrompts = (hash: string, pathPrefix: BIPPath): Screen[] => {
   return [
-    {header:"Sign",body:"Hash"},
-    {header:"DANGER!",body:"YOU MUST verify this manually!!!"},
-    {header:"Derivation Prefix",body:pathPrefix},
-    {header:"Hash",body:hash},
-    {header:"Are you sure?",body:"This is very dangerous!"},
+    {
+      header:"Sign",
+      body: "Hash"
+    },
+    {
+      header:"DANGER!",
+      body: "YOU MUST verify this manually!!!"
+    },
+    {
+      header:"Derivation Prefix",
+      body: pathPrefix.toString().slice(2) // avoid m/
+    },
+    {
+      header:"Hash",
+      body: hash
+    },
+    {
+      header:"Are you sure?",
+      body: "This is very dangerous!"
+    },
   ];
 };
 

@@ -215,9 +215,9 @@ describe("Basic Tests", () => {
           try {
             expect(events).to.deep.equal(doneEvents);
             break;
-		  } catch {
-		  }
-		}
+          } catch {
+          }
+        }
       };
       let ava = await makeAva();
       await flipHashPolicy("Disallow");
