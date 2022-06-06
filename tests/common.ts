@@ -183,18 +183,6 @@ export const sendCommandAndAccept = async <A>(command: (Ava) => A, prompts: unde
   }
 }
 
-export async function flowAccept(command, expectedPrompts?, acceptPrompt="Accept") {
-  return {
-    promptsPromise: sendCommandAndAccept(
-      command,
-      expectedPrompts,
-    ).then(r => ({
-      promptsMatch: true
-    }))
-  };
-  //return await automationStart(speculos, acceptPrompts(expectedPrompts, acceptPrompt));
-}
-
 // A couple of our screens use "bn" formatting for only one line of text and we
 // don't have an icon so don't want "pn"; we need to know that there isn't
 // going to be a body in those cases so we should send the screen.

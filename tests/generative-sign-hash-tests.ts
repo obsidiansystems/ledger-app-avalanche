@@ -1,7 +1,6 @@
 import {
   makeAva,
   PromptsPromise,
-  flowAccept,
   transportOpen,
   checkSignHash0,
 } from "./common";
@@ -35,7 +34,6 @@ describe("Sign Hash tests", () => {
       return await fc.assert(fc.asyncProperty(fc.array(subAddressGen), fc.hexaString(64, 64), async (subAccts, hashHex) => {
         //this.flushStderr();
         if (subAccts.length == 0) return;
-        //const ui = await flowAccept(this.speculos, expectedPrompts, "Reject");
         try {
           await checkSignHash0(this, account, subAccts, hashHex);
           throw "Rejected prompts should reject";
