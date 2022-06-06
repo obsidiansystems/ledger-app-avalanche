@@ -95,6 +95,15 @@ struct SECP256K1OutputOwners_state {
     };
 };
 
+struct SubnetAuth_state {
+  int state;
+  uint32_t sigindices_i;
+  uint32_t sigindices_n;
+  union {
+      NUMBER_STATES;
+  };
+};
+
 struct StakeableLockOutput_state {
     int state;
     uint64_t locktime;
@@ -289,6 +298,15 @@ struct AddValidatorTransactionState {
   };
 };
 
+struct AddSNValidatorTransactionState {
+  int state;
+  union {
+        struct Validator_state validatorState;
+        struct Id32_state id32State;
+        struct SubnetAuth_state subnetauthState;
+  };
+};
+
 struct AddDelegatorTransactionState {
   int state;
   union {
@@ -310,6 +328,7 @@ struct TransactionState {
     struct ImportTransactionState importTxState;
     struct ExportTransactionState exportTxState;
     struct AddValidatorTransactionState addValidatorTxState;
+    struct AddSNValidatorTransactionState addSNValidatorTxState;
     struct AddDelegatorTransactionState addDelegatorTxState;
     struct CChainImportTransactionState cChainImportState;
     struct CChainExportTransactionState cChainExportState;
@@ -376,10 +395,11 @@ enum transaction_x_chain_type_id_t {
 };
 
 enum transaction_p_chain_type_id_t {
-    TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR   = 0x0c,
-    TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR   = 0x0e,
-    TRANSACTION_P_CHAIN_TYPE_ID_IMPORT          = 0x11,
-    TRANSACTION_P_CHAIN_TYPE_ID_EXPORT          = 0x12
+    TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR    = 0x0c,
+    TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR    = 0x0e,
+    TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR = 0x0d,
+    TRANSACTION_P_CHAIN_TYPE_ID_IMPORT           = 0x11,
+    TRANSACTION_P_CHAIN_TYPE_ID_EXPORT           = 0x12
 };
 
 enum transaction_c_chain_type_id_t {
