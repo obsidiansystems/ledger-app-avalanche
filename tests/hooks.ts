@@ -11,6 +11,45 @@ const AUTOMATION_PORT = 8899;
 let stdoutVal: string = "";
 let stderrVal: string = "";
 
+const legacyConnect = async () => {
+  let speculos;
+  while (speculos === undefined) { // Let the test timeout handle the bad case
+    try {
+      speculos = await SpeculosTransport.open({
+        apduPort: APDU_PORT,
+        buttonPort: BUTTON_PORT,
+        automationPort: AUTOMATION_PORT,
+      });
+      if (process.env.MANUAL_BUTTON) {
+        speculos.button = console.log;
+      } else if (process.env.DEBUG_BUTTONS) {
+        const subButton = speculos.button;
+        speculos.button = btns => {
+          console.log("Speculos Buttons: " + btns);
+          return subButton(btns);
+        };
+      }
+      if (process.env.DEBUG_SENDS) {
+        speculos.subExchange = speculos.exchange;
+        speculos.exchange = buff => {
+          console.log("Speculos send: " + buff.toString('hex'));
+          return speculos.subExchange(buff);
+        };
+      }
+    } catch(e) {
+      await new Promise(r => setTimeout(r, 500));
+    }
+  }
+  return speculos;
+}
+
+const flushStdio = (proc, n) => () => {
+  if (proc && proc.stdio[n])
+    return proc.stdio[n].read();
+  else
+    return "";
+};
+
 export const mochaHooks = {
   beforeAll: async function (this: Mocha.Context) { // Need 'function' to get 'this'
     this.timeout(10000); // We'll let this wait for up to 10 seconds to get a speculos instance.
@@ -31,47 +70,15 @@ export const mochaHooks = {
         ], speculosProcessOptions);
         console.log("Speculos started");
       }
-      while (this.speculos === undefined) { // Let the test timeout handle the bad case
-        try {
-          this.speculos = await SpeculosTransport.open({
-            apduPort: APDU_PORT,
-            buttonPort: BUTTON_PORT,
-            automationPort: AUTOMATION_PORT,
-          });
-          if (process.env.MANUAL_BUTTON) {
-            this.speculos.button = console.log;
-          } else if (process.env.DEBUG_BUTTONS) {
-            const subButton = this.speculos.button;
-            this.speculos.button = btns => {
-              console.log("Speculos Buttons: " + btns);
-              return subButton(btns);
-            };
-          }
-          if (process.env.DEBUG_SENDS) {
-            this.speculos.subExchange = this.speculos.exchange;
-            this.speculos.exchange = buff => {
-              console.log("Speculos send: " + buff.toString('hex'));
-              return this.speculos.subExchange(buff);
-            };
-          }
-        } catch(e) {
-          await new Promise(r => setTimeout(r, 500));
-        }
-      }
+      this.speculos = await legacyConnect();
     }
     this.speculos.handlerNum=0;
     this.speculos.waitingQueue=[];
     this.ava = new Avalanche(this.speculos, "Avalanche", _ => { return; });
     this.eth = new Eth(this.speculos);
 
-    this.flushStdio = (n) => () => {
-        if (this.speculosProcess && this.speculosProcess.stdio[n])
-            return this.speculosProcess.stdio[n].read();
-        else
-            return "";
-    };
-    this.flushStdout = this.flushStdio(1);
-    this.flushStderr = this.flushStdio(2);
+    this.flushStdout = flushStdio(this.speculosProcess, 1);
+    this.flushStderr = flushStdio(this.speculosProcess, 2);
     this.readBuffers = () => {
         stdoutVal += (this.flushStdout() || "");
         stderrVal += (this.flushStderr() || "");
