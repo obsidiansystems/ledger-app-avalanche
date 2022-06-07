@@ -77,6 +77,26 @@ export const defaultAcceptAutomationRules = [
   },
 ];
 
+export const defaultRejectAutomationRules = [
+  ... ignoredScreens.map(txt => { return { "text": txt, "actions": [] } }),
+  {
+    "y": 17,
+    "actions": []
+  },
+  {
+    "text": "Next",
+    "actions": pressAndReleaseBothButtons,
+  },
+  {
+    "text": "Reject",
+    "actions": pressAndReleaseBothButtons,
+  },
+  {
+    // wild card, match any screen if we get this far
+    "actions": pressAndReleaseSingleButton(2),
+  },
+];
+
 type Event = { x: number, y: number, text: string };
 
 export const processPrompts = function(prompts: Event[]): Screen[] {
@@ -138,7 +158,7 @@ export const sendCommand = async function<A>(command : (Ava) => Promise<A>): Pro
   } else {
     return res;
   }
-}
+};
 
 export const getEvents = async (): Promise<Event[]> =>
   (await Axios.get(`${baseUrl}/events`)).data["events"];
