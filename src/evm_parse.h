@@ -107,6 +107,7 @@ struct EVM_RLP_txn_state {
     uint64_t remaining;
     uint8_t len_len;
     uint8_t item_index;
+    uint8_t per_item_prompt;
     bool hasTo;
     bool hasData;
     uint64_t gasLimit;
