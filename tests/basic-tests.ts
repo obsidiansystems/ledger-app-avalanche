@@ -1,7 +1,6 @@
 import {
   APP_VERSION,
   Screen,
-  automationStart,
   baseUrl,
   checkSignHash,
   checkSignTransaction,

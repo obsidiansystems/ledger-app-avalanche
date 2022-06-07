@@ -1,6 +1,5 @@
 import {
   makeAva,
-  PromptsPromise,
   transportOpen,
   checkSignHash0,
 } from "./common";
