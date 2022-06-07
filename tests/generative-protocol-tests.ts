@@ -21,7 +21,7 @@ describe("APDU protocol integrity generative tests", function () {
           await transport.send(ava.CLA, apdu, 0x00, 0x00, body);
           throw("Expected error");
         } catch (e) {
-          //this.flushStderr();
+          this.flushStderr();
           expect(e).has.property('statusCode', 0x6D00); // INS_NOT_SUPPORTED
         }
       }), { examples: [[9, '']] });
@@ -37,7 +37,7 @@ describe("APDU protocol integrity generative tests", function () {
           await transport.send(ava.CLA, apdu, p1, 0x00, body);
           throw "Expected error";
         } catch (e) {
-          //this.flushStderr();
+          this.flushStderr();
           expect(e).has.property('statusCode');
         }
       }));
@@ -50,7 +50,7 @@ describe("APDU protocol integrity generative tests", function () {
         const body = Buffer.from(hashHex, 'hex');
         const rv = await transport.exchange(body);
         expect(rv).to.not.equalBytes("9000");
-        //this.flushStderr();
+        this.flushStderr();
       }));
     });
 
@@ -67,7 +67,7 @@ describe("APDU protocol integrity generative tests", function () {
         }
 
         expect(rv).to.not.equalBytes("9000");
-        //this.flushStderr();
+        this.flushStderr();
       }));
     });
 

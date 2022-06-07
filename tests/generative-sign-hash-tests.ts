@@ -24,14 +24,14 @@ describe("Sign Hash tests", () => {
     it('can sign a hash-sized sequence of bytes', async function (this: Mocha.Context) {
       // Need 'function' to get 'this' for mocha.
       return await fc.assert(fc.asyncProperty(fc.array(subAddressGen,1,10), fc.hexaString(64, 64), async (subAccts: string[], hashHex: string) => {
-        //this.flushStderr();
+        this.flushStderr();
         await checkSignHash0(this, account, subAccts, hashHex);
       }));
     });
 
     it.skip('does not produce signatures when prompt is rejected', async function () { // Need 'function' to get 'this' for mocha.
       return await fc.assert(fc.asyncProperty(fc.array(subAddressGen), fc.hexaString(64, 64), async (subAccts, hashHex) => {
-        //this.flushStderr();
+        this.flushStderr();
         if (subAccts.length == 0) return;
         try {
           await checkSignHash0(this, account, subAccts, hashHex);
@@ -49,7 +49,7 @@ describe("Sign Hash tests", () => {
         const transport = await transportOpen();
         const ava = await makeAva();
 
-        //this.flushStderr();
+        this.flushStderr();
         const hash = Buffer.from(hashHex, "hex");
         const firstMessage = Buffer.concat([
           ava.uInt8Buffer(subAccts.length),
