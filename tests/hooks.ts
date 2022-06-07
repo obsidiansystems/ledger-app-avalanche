@@ -5,6 +5,13 @@ import { SpawnOptions, spawn } from 'child_process';
 let stdoutVal: string = "";
 let stderrVal: string = "";
 
+const flushStdio = (proc, n) => () => {
+  if (proc && proc.stdio[n])
+    return proc.stdio[n].read();
+  else
+    return "";
+};
+
 export const mochaHooks = {
   beforeAll: async function (this: Mocha.Context) { // Need 'function' to get 'this'
     this.timeout(10000); // We'll let this wait for up to 10 seconds to get a speculos instance.
@@ -23,6 +30,12 @@ export const mochaHooks = {
         console.log("Speculos started");
       }
     }
+    this.flushStdout = flushStdio(this.speculosProcess, 1);
+    this.flushStderr = flushStdio(this.speculosProcess, 2);
+    this.readBuffers = () => {
+        stdoutVal += (this.flushStdout() || "");
+        stderrVal += (this.flushStderr() || "");
+    };
   },
 
   afterAll: async function () {
@@ -30,4 +43,23 @@ export const mochaHooks = {
       this.speculosProcess.kill();
     }
   },
+
+  beforeEach: async function () {
+    stdoutVal = "";
+    stderrVal = "";
+    this.flusher = setInterval(this.readBuffers, 100);
+  },
+
+  afterEach: async function () {
+    clearInterval(this.flusher);
+    this.readBuffers();
+    const maxOutput = 5000;
+    if (this.currentTest.state === 'failed') {
+      console.log("SPECULOS STDOUT" + ":\n" + stdoutVal);
+      console.log("SPECULOS STDERR" +
+                  (stderrVal.length <= maxOutput
+                   ? ":\n" + stderrVal
+                   : (" (showing last " + maxOutput + " characters)" + ":\n" + stderrVal.slice(-maxOutput))));
+    }
+  }
 };
