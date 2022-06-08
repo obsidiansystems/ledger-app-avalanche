@@ -196,8 +196,7 @@ export const sendCommandAndAccept = async <A>(command: (Ava) => A, prompts: unde
   } else if (!err && err2) {
     throw(err2);
   } else if (err && err2) {
-    //throw(AggregateError([err, err2]))
-    throw(`Failed and incorrect prompts\n${err.stack}: ${err}\n${err2.stack}: ${err2}`);
+    throw(new AggregateError([err, err2]));
   } else {
     return ret;
   }
