@@ -56,9 +56,9 @@ let
           });
         };
 
-        "usb@1.6.3" = {
-          inherit (super."usb@1.6.3") key;
-          drv = super."usb@1.6.3".drv.overrideAttrs (attrs: {
+        "usb@1.8.8" = {
+          inherit (super."usb@1.8.8") key;
+          drv = super."usb@1.8.8".drv.overrideAttrs (attrs: {
             nativeBuildInputs = [ pkgs.python3 pkgs.systemd pkgs.v8_5_x nodejs pkgs.libusb1 ];
             dontBuild = false;
             buildPhase = ''
