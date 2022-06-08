@@ -11,8 +11,8 @@ GIT_DESCRIBE ?= $(shell git describe --tags --abbrev=8 --always --long --dirty 2
 
 VERSION_TAG ?= $(shell echo "$(GIT_DESCRIBE)" | cut -f1 -d-)
 APPVERSION_M=0
-APPVERSION_N=5
-APPVERSION_P=9
+APPVERSION_N=6
+APPVERSION_P=0
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 
 # Only warn about version tags if specified/inferred
@@ -133,7 +133,7 @@ CC       := $(CLANGPATH)clang
 AS       := $(GCCPATH)$(TOOL_PREFIX)gcc
 endif
 
-CFLAGS   += -O3 -Os -Wall -Wextra
+CFLAGS   += -O3 -Os -Wall -Wextra -Wimplicit-fallthrough
 ifneq ($(USE_NIX),)
 CFLAGS   += -mcpu=sc000
 endif
@@ -179,12 +179,12 @@ dep/%.d: %.c Makefile
 .PHONY: test test-no-nix watch
 
 watch:
-	ls src/*.c src/*.h tests/*.js tests/hw-app-avalanche/src/*.js | entr -cr make test
+	ls src/*.c src/*.h tests/*.ts tests/deps/hw-app-avalanche/src/*.ts | entr -cr make test
 
-test: tests/*.js tests/package.json bin/app.elf
-	LEDGER_APP=bin/app.elf run-ledger-tests.sh tests/
+test: tests/*.ts tests/package.json bin/app.elf
+	LEDGER_APP=bin/app.elf mocha-wrapper tests
 
-test-no-nix: tests/node_packages tests/*.js tests/package.json bin/app.elf
+test-no-nix: tests/node_packages tests/*.ts tests/package.json bin/app.elf
 	(cd tests; yarn test)
 
 tests/node_packages: tests/package.json

@@ -73,38 +73,39 @@ let
     ".c" ".h" ".gif" "Makefile" ".sh" ".json" ".js" ".bats" ".txt" ".der"
   ];
 
-  tests = import ./tests { inherit pkgs; };
+  tests = import ./tests {
+    inherit pkgs;
+    nodejs = pkgs.nodejs-14_x;
+  };
 
   build = bolos:
     let
       app = ledgerPkgs.lldClangStdenv.mkDerivation {
         name = "ledger-app-avalanche-nano-${bolos.name}";
         inherit src;
+        shellHook = ''
+          export USE_NIX=1
+        '';
         postConfigure = ''
-          PATH="$BOLOS_ENV/clang-arm-fropi/bin:$PATH"
           patchShebangs test.sh
           # hack to get around no tests for cross logic
           doCheck=${toString (if runTest then bolos.test else false)};
+          export USE_NIX=1
         '';
-        hardeningDisable = [ "all" ];
-        prehook = ledger-platform.gccLibsPreHook;
         nativeBuildInputs = [
           (pkgs.python3.withPackages (ps: [ps.pillow ps.ledgerblue]))
-          pkgs.bats
-          pkgs.entr
-          pkgs.gdb
-          pkgs.jq
-          pkgs.libusb
-          pkgs.nodejs-12_x
-          pkgs.openssl
-          pkgs.pkg-config
-          pkgs.xxd
-          pkgs.yarn
+          ledgerPkgs.buildPackages.bats
+          ledgerPkgs.buildPackages.entr
+          ledgerPkgs.buildPackages.gdb
+          ledgerPkgs.buildPackages.jq
+          ledgerPkgs.buildPackages.libusb
+          ledgerPkgs.buildPackages.openssl
+          ledgerPkgs.buildPackages.pkg-config
+          ledgerPkgs.buildPackages.xxd
           speculos.speculos
-          tests
+          tests.testScript
           # usbtool
         ];
-        makeFlags = [ "USE_NIX=1" ];
         TARGET = bolos.target;
         GIT_DESCRIBE = gitDescribe;
         BOLOS_SDK = bolos.sdk;

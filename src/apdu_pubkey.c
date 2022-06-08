@@ -13,68 +13,20 @@
 
 #define G global.apdu.u.pubkey
 
-static bool address_ok(void) {
+static size_t address_ok(void) {
     switch(G.type) {
       case PUBKEY_STATE_AVM:
-        delayed_send(provide_address(G_io_apdu_buffer, &G.pkh));
-        break;
+        return provide_address(G_io_apdu_buffer, &G.pkh);
       case PUBKEY_STATE_EVM:
-        delayed_send(provide_evm_address(G_io_apdu_buffer, &G.ext_public_key, &G.pkh, true));
-        break;
+        return provide_evm_address(G_io_apdu_buffer, &G.ext_public_key, &G.pkh, true);
     }
-    return true;
 }
 
-static bool ext_pubkey_ok(void) {
-    delayed_send(provide_ext_pubkey(G_io_apdu_buffer, &G.ext_public_key));
-    return true;
+static size_t ext_pubkey_ok(void) {
+    return provide_ext_pubkey(G_io_apdu_buffer, &G.ext_public_key);
 }
 
-static void apdu_pubkey_state_to_string
-   (char *out, size_t out_size,
-    const apdu_pubkey_state_t *const payload) {
-  switch (payload->type) {
-    case PUBKEY_STATE_AVM:
-      pkh_to_string(out, out_size, payload->hrp, payload->hrp_len, &payload->pkh);
-      break;
-    case PUBKEY_STATE_EVM:
-      bin_to_hex_lc(out, out_size, &payload->pkh, 20);
-      break;
-  }
-}
-
-__attribute__((noreturn)) static void prompt_address(void) {
-    static size_t const TYPE_INDEX = 0;
-    static size_t const ADDRESS_INDEX = 1;
-    static size_t const DRV_PATH_INDEX = 2;
-
-    static const char *const pubkey_labels[] = {
-        PROMPT("Provide"),
-        PROMPT("Address"),
-        PROMPT("Derivation Path"),
-        NULL,
-    };
-    REGISTER_STATIC_UI_VALUE(TYPE_INDEX, "Public Key");
-    register_ui_callback(ADDRESS_INDEX, apdu_pubkey_state_to_string, &G);
-    register_ui_callback(DRV_PATH_INDEX, bip32_path_to_string, &G.bip32_path);
-    ui_prompt(pubkey_labels, address_ok, delay_reject);
-}
-
-__attribute__((noreturn)) static void prompt_ext_pubkey(void) {
-    static size_t const TYPE_INDEX = 0;
-    static size_t const DRV_PATH_INDEX = 1;
-
-    static const char *const pubkey_labels[] = {
-        PROMPT("Provide"),
-        PROMPT("Derivation Path"),
-        NULL,
-    };
-    REGISTER_STATIC_UI_VALUE(TYPE_INDEX, "Extended Public Key");
-    register_ui_callback(DRV_PATH_INDEX, bip32_path_to_string, &G.bip32_path);
-    ui_prompt(pubkey_labels, ext_pubkey_ok, delay_reject);
-}
-
-__attribute__((noreturn)) size_t handle_apdu_get_public_key_impl(bool const prompt_ext) {
+size_t handle_apdu_get_public_key_impl(bool const prompt_ext) {
     const uint8_t *const buffer = G_io_apdu_buffer;
 
     const uint8_t p1 = buffer[OFFSET_P1];
@@ -107,19 +59,18 @@ __attribute__((noreturn)) size_t handle_apdu_get_public_key_impl(bool const prom
 
     if (prompt_ext) {
         check_bip32(&G.bip32_path, false);
-        prompt_ext_pubkey();
+        return ext_pubkey_ok();
     } else {
         check_bip32(&G.bip32_path, true);
-        prompt_address();
+        return address_ok();
     }
 }
 
-
-__attribute__((noreturn)) size_t handle_apdu_get_public_key(void) {
-    handle_apdu_get_public_key_impl(false);
+size_t handle_apdu_get_public_key(void) {
+    return handle_apdu_get_public_key_impl(false);
 }
 
-__attribute__((noreturn)) size_t handle_apdu_evm_get_address(void) {
+size_t handle_apdu_evm_get_address(void) {
     const uint8_t *const buffer = G_io_apdu_buffer;
 
     const uint8_t p1 = buffer[OFFSET_P1];
@@ -138,9 +89,9 @@ __attribute__((noreturn)) size_t handle_apdu_evm_get_address(void) {
     G.type = PUBKEY_STATE_EVM;
 
     check_bip32(&G.bip32_path, false);
-    prompt_address();
+    return address_ok();
 }
 
-__attribute__((noreturn)) size_t handle_apdu_get_public_key_ext(void) {
-    handle_apdu_get_public_key_impl(true);
+size_t handle_apdu_get_public_key_ext(void) {
+    return handle_apdu_get_public_key_impl(true);
 }

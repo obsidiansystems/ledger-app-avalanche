@@ -2,6 +2,7 @@
 
 #include "bolos_target.h"
 #include "parser.h"
+#include "evm_parse.h"
 #include "types.h"
 
 // Zeros out all globals that can keep track of APDU instruction state.

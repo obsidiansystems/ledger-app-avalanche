@@ -25,7 +25,10 @@ static inline network_id_t parse_network_id(uint32_t const val) {
 #define BLOCKCHAIN_ID_SIZE 32
 #define ASSET_ID_SIZE 32
 
-typedef uint8_t blockchain_id_t[BLOCKCHAIN_ID_SIZE] ;
+typedef struct blockchain_id {
+  uint8_t bytes[BLOCKCHAIN_ID_SIZE];
+} blockchain_id_t;
+
 typedef uint8_t asset_id_t[ASSET_ID_SIZE];
 typedef char hrp_t[MAX_HRP_SIZE];
 typedef char network_name_t[MAX_NETWORK_NAME_SIZE];
@@ -59,15 +62,15 @@ static inline network_info_t const *network_info_from_network_id_not_null(networ
   }
 }
 
-static inline network_info_t const *network_info_from_blockchain_id(const blockchain_id_t blockchain_id) {
+static inline network_info_t const *network_info_from_blockchain_id(const blockchain_id_t *blockchain_id) {
   if (blockchain_id == NULL) return NULL;
   for (int i = 0; i < NETWORK_INFO_SIZE; i++)
-    if (memcmp(blockchain_id, network_info[i].x_blockchain_id, sizeof(*blockchain_id)) == 0)
+    if (memcmp(blockchain_id, &network_info[i].x_blockchain_id, sizeof(*blockchain_id)) == 0)
       return &network_info[i];
   return NULL;
 }
 
-static inline network_info_t const *network_info_from_blockchain_id_not_null(const blockchain_id_t blockchain_id) {
+static inline network_info_t const *network_info_from_blockchain_id_not_null(const blockchain_id_t *blockchain_id) {
   network_info_t const *res = network_info_from_blockchain_id(blockchain_id);
   if (res == NULL) {
     THROW(EXC_PARSE_ERROR);
