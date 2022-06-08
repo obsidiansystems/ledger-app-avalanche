@@ -486,8 +486,10 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
             PARSE_ITEM(EVM_LEGACY_TXN_DATA, _data);
             // Instead of waiting for a complete item parse, do some of the
             // actions below every time.
+            PRINTF("HI %d %d\n", state->rlpItem_state.state, sub_rv);
             if(state->rlpItem_state.state < 2)
               return sub_rv;
+            const enum parse_rv item_rv = sub_rv;
             //
 
             check_whether_has_calldata(state);
@@ -496,12 +498,20 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
             if(state->hasTo) {
               if(meta->known_destination) {
                 if(state->rlpItem_state.do_init && meta->known_destination->init_data)
-                  PIC(meta->known_destination->init_data)(&(state->rlpItem_state.endpoint_state), state->rlpItem_state.length);
+                  PIC(meta->known_destination->init_data)(
+                    &state->rlpItem_state.endpoint_state,
+                    state->rlpItem_state.length);
                 PRINTF("INIT: %u\n", state->rlpItem_state.do_init);
-                PRINTF("Chunk: [%u] %.*h\n", state->rlpItem_state.chunk.length, state->rlpItem_state.chunk.length, state->rlpItem_state.chunk.src);
+                PRINTF("Chunk: [%u] %.*h\n",
+                  state->rlpItem_state.chunk.length,
+                  state->rlpItem_state.chunk.length, state->rlpItem_state.chunk.src);
                 if(meta->known_destination->handle_data) {
                   PRINTF("HANDLING DATA\n");
-                  sub_rv = PIC(meta->known_destination->handle_data)(&(state->rlpItem_state.endpoint_state), &(state->rlpItem_state.chunk), meta);
+                  sub_rv = PIC(meta->known_destination->handle_data)(
+                    &state->rlpItem_state.endpoint_state,
+                    &state->rlpItem_state.chunk,
+                    meta);
+                  RET_IF_NOT_DONE;
                 }
                 PRINTF("PARSER CALLED [sub_rv: %u]\n", sub_rv);
               }
@@ -511,7 +521,7 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
                 if(item_state->do_init)
                   init_abi_call_data(abi_state, item_state->length);
 
-                PRINTF("DATA LEN %d", abi_state->data_length);
+                PRINTF("DATA LEN %d\n", abi_state->data_length);
                 if(abi_state->data_length == 0) {
                   ADD_ACCUM_PROMPT("Transfer", output_evm_prompt_to_string);
                 } else {
@@ -520,9 +530,18 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
                     &item_state->chunk,
                     meta,
                     !zero256(&state->value));
+                  RET_IF_NOT_DONE;
                 }
               }
-            } else {
+            }
+
+            // At this point we are longer doing *per* chunk work, but back to
+            // the usual case of just doing itmes after the parse before has
+            // completed.
+            if (item_rv != PARSE_RV_DONE)
+              return item_rv;
+
+            if (!state->hasTo) {
               prompt_calldata_preview(state, meta);
               ADD_ACCUM_PROMPT("Data", output_evm_calldata_preview_to_string);
             }
@@ -747,7 +766,38 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
             // actions below every time.
             if(state->rlpItem_state.state < 2)
               return sub_rv;
+            const enum parse_rv item_rv = sub_rv;
             //
+
+            enum TxnDataStep {
+              TXN_DATA_UNSET,
+              TXN_DATA_CONTRACT_CALL,
+              TXN_DATA_DEPLOY,
+              TXN_DATA_PLAIN_TRANSFER,
+              TXN_DATA_AFTER,
+            };
+            enum TxnDataStep step = TXN_DATA_UNSET;
+
+            if (step == TXN_DATA_UNSET) {
+              if(state->hasTo) {
+                if(meta->known_destination)
+                  step = TXN_DATA_CONTRACT_CALL;
+                else {
+                   // state has To but the destination is not known
+                  struct EVM_RLP_item_state *const item_state = &state->rlpItem_state;
+                  struct EVM_ABI_state *const abi_state = &item_state->endpoint_state.abi_state;
+                  if(item_state->do_init)
+                    init_abi_call_data(abi_state, item_state->length);
+                  if(abi_state->data_length == 0)
+                    step = TXN_DATA_PLAIN_TRANSFER;
+                  else {
+                    // step
+                  }
+                }
+              } else {
+                step = TXN_DATA_DEPLOY;
+              }
+            }
 
             check_whether_has_calldata(state);
 
@@ -758,12 +808,17 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
                 if(meta->known_destination) {
                   // state has To and the destination is known
                   if(state->rlpItem_state.do_init && meta->known_destination->init_data)
-                    PIC(meta->known_destination->init_data)(&(state->rlpItem_state.endpoint_state), state->rlpItem_state.length);
+                    PIC(meta->known_destination->init_data)(
+                      &state->rlpItem_state.endpoint_state,
+                      state->rlpItem_state.length);
                   PRINTF("INIT: %u\n", state->rlpItem_state.do_init);
                   PRINTF("Chunk: [%u] %.*h\n", state->rlpItem_state.chunk.length, state->rlpItem_state.chunk.length, state->rlpItem_state.chunk.src);
                   if(meta->known_destination->handle_data) {
                     PRINTF("HANDLING DATA\n");
-                    sub_rv = PIC(meta->known_destination->handle_data)(&(state->rlpItem_state.endpoint_state), &(state->rlpItem_state.chunk), meta);
+                    sub_rv = PIC(meta->known_destination->handle_data)(
+                      &state->rlpItem_state.endpoint_state,
+                      &state->rlpItem_state.chunk,
+                      meta);
                   }
                   PRINTF("PARSER CALLED [sub_rv: %u]\n", sub_rv);
                 } // end path where state has To and the destination is known
@@ -774,11 +829,17 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
                   if(item_state->do_init)
                     init_abi_call_data(abi_state, item_state->length);
 
-                  PRINTF("DATA LEN %d", abi_state->data_length);
+                  PRINTF("DATA LEN %d\n", abi_state->data_length);
                   if(abi_state->data_length == 0) {
+                    if (item_rv != PARSE_RV_DONE) {
+                      // If the item state is at least 2, then it has parsed
+                      // this number. There is nothing else to parse so the sub
+                      // parse must have suceeded.
+                      REJECT("invariant broken, should never get here");
+                    }
                     FINISH_ITEM_CHUNK();
                     ADD_ACCUM_PROMPT("Transfer", output_evm_prompt_to_string);
-                    RET_IF_NOT_DONE;
+                    RET_IF_PROMPT_FLUSH;
                   }
                   else {
                     sub_rv = parse_abi_call_data(abi_state,
@@ -787,9 +848,15 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
                                                  !zero256(&state->value));
                   }
                 } // end path where state has To but the destination is not known
-              } // end path where state has To
-              else
-              {
+              } // end path where
+
+              // At this point we are longer doing *per* chunk work, but back to
+              // the usual case of just doing itmes after the parse before has
+              // completed.
+              if (item_rv != PARSE_RV_DONE)
+                return item_rv;
+
+              if (!state->hasTo) {
                 prompt_calldata_preview(state, meta);
                 ADD_ACCUM_PROMPT("Data", output_evm_calldata_preview_to_string);
               }
