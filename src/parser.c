@@ -758,35 +758,6 @@ enum parse_rv parse_TransferableInput(struct TransferableInput_state *const stat
     return sub_rv;
 }
 
-#define IMPL_ARRAY(name) \
-    void init_ ## name ## s (struct name ## s_state *const state) { \
-        state->state = 0; \
-        state->i = 0; \
-        init_uint32_t(&state->len_state); \
-    } \
-    enum parse_rv parse_ ## name ## s (struct name ## s_state *const state, parser_meta_state_t *const meta) { \
-        enum parse_rv sub_rv = PARSE_RV_INVALID; \
-        switch (state->state) { \
-            case 0: \
-                CALL_SUBPARSER(len_state, uint32_t); \
-                state->len = READ_UNALIGNED_BIG_ENDIAN(uint32_t, state->len_state.buf); \
-                state->state++; \
-                if(state->len == 0) break; \
-                init_ ## name(&state->item); \
-                fallthrough; /* NOTE! */ \
-            case 1: \
-                while (true) { \
-                    PRINTF(#name " %d\n", state->i + 1); \
-                    CALL_SUBPARSER(item, name); \
-                    state->i++; \
-                    if (state->i == state->len) return PARSE_RV_DONE; \
-                    init_ ## name(&state->item); \
-                } \
-                break; \
-        } \
-        return sub_rv; \
-    }
-
 IMPL_ARRAY(TransferableOutput);
 IMPL_ARRAY(TransferableInput);
 

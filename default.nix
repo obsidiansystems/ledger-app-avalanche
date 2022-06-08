@@ -75,7 +75,7 @@ let
 
   tests = import ./tests {
     inherit pkgs;
-    nodejs = pkgs.nodejs-14_x;
+    nodejs = pkgs.nodejs-16_x;
   };
 
   build = bolos:
