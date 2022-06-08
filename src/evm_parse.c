@@ -484,25 +484,24 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
 
             //
             PARSE_ITEM(EVM_LEGACY_TXN_DATA, _data);
-            RET_IF_NOT_DONE;
+            // Instead of waiting for a complete item parse, do some of the
+            // actions below every time.
+            if(state->rlpItem_state.state < 2)
+              return sub_rv;
             //
 
             check_whether_has_calldata(state);
             checkDataFieldLengthFitsTransaction(state);
 
-            // If we exhaust the apdu while parsing the length, there's nothing yet to hand to the subparser
-            if(state->rlpItem_state.state < 2)
-              return sub_rv;
-
             if(state->hasTo) {
               if(meta->known_destination) {
                 if(state->rlpItem_state.do_init && meta->known_destination->init_data)
-                  ((known_destination_init)PIC(meta->known_destination->init_data))(&(state->rlpItem_state.endpoint_state), state->rlpItem_state.length);
+                  PIC(meta->known_destination->init_data)(&(state->rlpItem_state.endpoint_state), state->rlpItem_state.length);
                 PRINTF("INIT: %u\n", state->rlpItem_state.do_init);
                 PRINTF("Chunk: [%u] %.*h\n", state->rlpItem_state.chunk.length, state->rlpItem_state.chunk.length, state->rlpItem_state.chunk.src);
                 if(meta->known_destination->handle_data) {
                   PRINTF("HANDLING DATA\n");
-                  sub_rv = ((known_destination_parser)PIC(meta->known_destination->handle_data))(&(state->rlpItem_state.endpoint_state), &(state->rlpItem_state.chunk), meta);
+                  sub_rv = PIC(meta->known_destination->handle_data)(&(state->rlpItem_state.endpoint_state), &(state->rlpItem_state.chunk), meta);
                 }
                 PRINTF("PARSER CALLED [sub_rv: %u]\n", sub_rv);
               }
@@ -512,6 +511,7 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
                 if(item_state->do_init)
                   init_abi_call_data(abi_state, item_state->length);
 
+                PRINTF("DATA LEN %d", abi_state->data_length);
                 if(abi_state->data_length == 0) {
                   ADD_ACCUM_PROMPT("Transfer", output_evm_prompt_to_string);
                 } else {
@@ -743,16 +743,13 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
 
             //
             PARSE_ITEM(EVM_EIP1559_TXN_DATA, _data);
-            // NO RET_IF_NOT_DONE, SPECIAL
+            // Instead of waiting for a complete item parse, do some of the
+            // actions below every time.
+            if(state->rlpItem_state.state < 2)
+              return sub_rv;
             //
 
             check_whether_has_calldata(state);
-
-            enum parse_rv actual_sub_rv = sub_rv;
-
-            // If we exhaust the apdu while parsing the length, there's nothing yet to hand to the subparser
-            if(state->rlpItem_state.state < 2)
-              return sub_rv;
 
             switch (state->per_item_prompt) {
 
@@ -761,12 +758,12 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
                 if(meta->known_destination) {
                   // state has To and the destination is known
                   if(state->rlpItem_state.do_init && meta->known_destination->init_data)
-                    ((known_destination_init)PIC(meta->known_destination->init_data))(&(state->rlpItem_state.endpoint_state), state->rlpItem_state.length);
+                    PIC(meta->known_destination->init_data)(&(state->rlpItem_state.endpoint_state), state->rlpItem_state.length);
                   PRINTF("INIT: %u\n", state->rlpItem_state.do_init);
                   PRINTF("Chunk: [%u] %.*h\n", state->rlpItem_state.chunk.length, state->rlpItem_state.chunk.length, state->rlpItem_state.chunk.src);
                   if(meta->known_destination->handle_data) {
                     PRINTF("HANDLING DATA\n");
-                    sub_rv = ((known_destination_parser)PIC(meta->known_destination->handle_data))(&(state->rlpItem_state.endpoint_state), &(state->rlpItem_state.chunk), meta);
+                    sub_rv = PIC(meta->known_destination->handle_data)(&(state->rlpItem_state.endpoint_state), &(state->rlpItem_state.chunk), meta);
                   }
                   PRINTF("PARSER CALLED [sub_rv: %u]\n", sub_rv);
                 } // end path where state has To and the destination is known
@@ -777,6 +774,7 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
                   if(item_state->do_init)
                     init_abi_call_data(abi_state, item_state->length);
 
+                  PRINTF("DATA LEN %d", abi_state->data_length);
                   if(abi_state->data_length == 0) {
                     FINISH_ITEM_CHUNK();
                     ADD_ACCUM_PROMPT("Transfer", output_evm_prompt_to_string);
