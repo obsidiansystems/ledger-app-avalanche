@@ -486,7 +486,7 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
             PARSE_ITEM(EVM_LEGACY_TXN_DATA, _data);
             // Instead of waiting for a complete item parse, do some of the
             // actions below every time.
-            PRINTF("HI %d %d\n", state->rlpItem_state.state, sub_rv);
+            checkDataFieldLengthFitsTransaction(state);
             if(state->rlpItem_state.state < 2)
               return sub_rv;
             const enum parse_rv item_rv = sub_rv;
@@ -502,7 +502,6 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
             enum TxnDataSort sort = TXN_DATA_UNSET;
 
             check_whether_has_calldata(state);
-            checkDataFieldLengthFitsTransaction(state);
 
             if (sort == TXN_DATA_UNSET) {
               if(state->hasTo) {
