@@ -131,7 +131,7 @@ static size_t next_parse(bool const is_reentry) {
     enum parse_rv rv = PARSE_RV_INVALID;
     BEGIN_TRY {
       TRY {
-        set_next_batch_size(&G.meta_state.prompt, TRANSACTION_PROMPT_MAX_BATCH_SIZE);
+        set_next_batch_size(&G.meta_state.prompt, PROMPT_MAX_BATCH_SIZE);
         rv = parse_evm_txn(&G.state, &G.meta_state);
       }
       FINALLY {
