@@ -1,7 +1,7 @@
 {
   "url": "ssh://git@gitlab.com/obsidian.systems/ledger-nanox-sdk",
-  "rev": "b6027585fa35cdd4f8f091d6db320cc14ccb1dc8",
-  "sha256": "0wlms525yx8ns16aj7xpz3297110mqv35fx3ad1c4m77ifabqw5y",
+  "rev": "afaa9cb3af2391965e6ddfdbfe85dc30a6db4876",
+  "sha256": "0rkxdnib9wvfif4cz945yh39cl60jd9zz0ls1iqzn8vgdsxqgisp",
   "private": true,
   "fetchSubmodules": false,
   "branch": "allow-custom-cc-1.2.4-1.5"
