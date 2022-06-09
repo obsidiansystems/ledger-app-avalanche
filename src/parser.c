@@ -783,6 +783,7 @@ enum parse_rv parse_Memo(struct Memo_state *const state, parser_meta_state_t *co
             size_t to_consume = available > needed ? needed : available;
             state->i += to_consume;
             PRINTF("Memo bytes: %.*h\n", to_consume, &meta->input.src[meta->input.consumed]);
+            PRINTF("consumed in parse_Memo 786 ----\n");
             meta->input.consumed += to_consume;
             sub_rv = state->i == state->n ? PARSE_RV_DONE : PARSE_RV_NEED_MORE;
         }

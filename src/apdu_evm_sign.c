@@ -77,13 +77,16 @@ static bool continue_parsing(void) {
     BEGIN_TRY {
         TRY {
           // Call next_parse, which calls this function recursively...
+            PRINTF("---------b4 next_parse\n");
             next_parse(true);
+            PRINTF("---AFTER next_parse\n");
         }
         CATCH(ASYNC_EXCEPTION) {
             // requested another prompt
             PRINTF("Caught nested ASYNC exception\n");
         }
         CATCH_OTHER(e) {
+            PRINTF("_________CAUGHT AN Error\n");
             THROW(e);
         }
         FINALLY {}
@@ -129,14 +132,20 @@ static void empty_prompt_queue(void) {
 static size_t next_parse(bool const is_reentry) {
     PRINTF("Next parse\n");
     enum parse_rv rv = PARSE_RV_INVALID;
+    PRINTF("---- INITIAL RV: %d\n", rv);
     BEGIN_TRY {
       TRY {
+        PRINTF("------before set_next_batch_size\n");
         set_next_batch_size(&G.meta_state.prompt, PROMPT_MAX_BATCH_SIZE);
+        PRINTF("------before parse_evm_txn\n");
         rv = parse_evm_txn(&G.state, &G.meta_state);
+        PRINTF("------After parse_evm_txn\n");
       }
       FINALLY {
+        PRINTF("---- finally RV: %d\n", rv);
         switch (rv) {
         case PARSE_RV_NEED_MORE:
+          PRINTF("---- NEEEEED MORE\n");
           break;
         case PARSE_RV_INVALID:
           //peek_prompt_queue_reject();
@@ -196,13 +205,14 @@ size_t handle_apdu_sign_evm_transaction(void) {
       fallthrough;
       case 0x80: {
           G.meta_state.input.src = in+ix;
+          PRINTF("SSSSSSSSSSetting consumed 0, value b4: %d\n", G.meta_state.input.consumed);
           G.meta_state.input.consumed=0;
           G.meta_state.input.length=in_size-ix;
           if(G.meta_state.input.length == 0) return finalize_successful_send(0);
 
           PRINTF("HASH BUFFER %.*h\n", G.meta_state.input.length, G.meta_state.input.src);
           cx_hash((cx_hash_t *)&G.tx_hash_state, 0, G.meta_state.input.src, G.meta_state.input.length, NULL, 0);
-
+          PRINTF("---BEFORE handle_apdu_sign_evm_transaction(void) {\n");
           return next_parse(false);
       }
     }
