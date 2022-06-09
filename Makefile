@@ -179,6 +179,9 @@ dep/%.d: %.c Makefile
 .PHONY: test test-no-nix watch
 
 watch:
+	ls src/*.c src/*.h | entr -cr make
+
+watch-test:
 	ls src/*.c src/*.h tests/*.ts tests/deps/hw-app-avalanche/src/*.ts | entr -cr make test
 
 test: tests/*.ts tests/package.json bin/app.elf
