@@ -577,7 +577,6 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
 
             case TXN_DATA_PLAIN_TRANSFER: {
               ADD_ACCUM_PROMPT("Transfer", output_evm_prompt_to_string);
-              RET_IF_PROMPT_FLUSH;
               break;
             }
 
