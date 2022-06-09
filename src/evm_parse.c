@@ -492,47 +492,78 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
             const enum parse_rv item_rv = sub_rv;
             //
 
+            enum TxnDataSort {
+              TXN_DATA_UNSET,
+              TXN_DATA_CONTRACT_CALL_KNOWN_DEST,
+              TXN_DATA_CONTRACT_CALL_UNKNOWN_DEST,
+              TXN_DATA_DEPLOY,
+              TXN_DATA_PLAIN_TRANSFER,
+            };
+            enum TxnDataSort sort = TXN_DATA_UNSET;
+
             check_whether_has_calldata(state);
             checkDataFieldLengthFitsTransaction(state);
 
-            if(state->hasTo) {
-              if(meta->known_destination) {
-                if(state->rlpItem_state.do_init && meta->known_destination->init_data)
-                  PIC(meta->known_destination->init_data)(
-                    &state->rlpItem_state.endpoint_state,
-                    state->rlpItem_state.length);
-                PRINTF("INIT: %u\n", state->rlpItem_state.do_init);
-                PRINTF("Chunk: [%u] %.*h\n",
-                  state->rlpItem_state.chunk.length,
-                  state->rlpItem_state.chunk.length, state->rlpItem_state.chunk.src);
-                if(meta->known_destination->handle_data) {
-                  PRINTF("HANDLING DATA\n");
-                  sub_rv = PIC(meta->known_destination->handle_data)(
-                    &state->rlpItem_state.endpoint_state,
-                    &state->rlpItem_state.chunk,
-                    meta);
-                  RET_IF_NOT_DONE;
-                }
-                PRINTF("PARSER CALLED [sub_rv: %u]\n", sub_rv);
-              }
-              else {
-                struct EVM_RLP_item_state *const item_state = &state->rlpItem_state;
-                struct EVM_ABI_state *const abi_state = &item_state->endpoint_state.abi_state;
-                if(item_state->do_init)
-                  init_abi_call_data(abi_state, item_state->length);
-
-                PRINTF("DATA LEN %d\n", abi_state->data_length);
-                if(abi_state->data_length == 0) {
-                  ADD_ACCUM_PROMPT("Transfer", output_evm_prompt_to_string);
+            if (sort == TXN_DATA_UNSET) {
+              if(state->hasTo) {
+                if(meta->known_destination) {
+                  sort = TXN_DATA_CONTRACT_CALL_KNOWN_DEST;
                 } else {
-                  sub_rv = parse_abi_call_data(
-                    abi_state,
-                    &item_state->chunk,
-                    meta,
-                    !zero256(&state->value));
-                  RET_IF_NOT_DONE;
+                  if (state->hasData)
+                    sort = TXN_DATA_CONTRACT_CALL_UNKNOWN_DEST;
+                  else {
+                    sort = TXN_DATA_PLAIN_TRANSFER;
+                  }
                 }
+              } else {
+                sort = TXN_DATA_DEPLOY;
               }
+            }
+
+            switch (sort) {
+            case TXN_DATA_UNSET:
+              REJECT("should be known by now");
+
+            case TXN_DATA_CONTRACT_CALL_KNOWN_DEST: {
+              if(state->rlpItem_state.do_init && meta->known_destination->init_data)
+                PIC(meta->known_destination->init_data)(
+                  &state->rlpItem_state.endpoint_state,
+                  state->rlpItem_state.length);
+              PRINTF("INIT: %u\n", state->rlpItem_state.do_init);
+              PRINTF("Chunk: [%u] %.*h\n",
+                state->rlpItem_state.chunk.length,
+                state->rlpItem_state.chunk.length, state->rlpItem_state.chunk.src);
+              if(meta->known_destination->handle_data) {
+                PRINTF("HANDLING DATA\n");
+                sub_rv = PIC(meta->known_destination->handle_data)(
+                  &state->rlpItem_state.endpoint_state,
+                  &state->rlpItem_state.chunk,
+                  meta);
+                RET_IF_NOT_DONE;
+              }
+              PRINTF("PARSER CALLED [sub_rv: %u]\n", sub_rv);
+              break;
+            }
+
+            case TXN_DATA_CONTRACT_CALL_UNKNOWN_DEST: {
+              struct EVM_RLP_item_state *const item_state = &state->rlpItem_state;
+              struct EVM_ABI_state *const abi_state = &item_state->endpoint_state.abi_state;
+              if(item_state->do_init)
+                init_abi_call_data(abi_state, item_state->length);
+
+              sub_rv = parse_abi_call_data(
+                abi_state,
+                &item_state->chunk,
+                meta,
+                !zero256(&state->value));
+              RET_IF_NOT_DONE;
+              break;
+            }
+
+            case TXN_DATA_DEPLOY:
+            case TXN_DATA_PLAIN_TRANSFER:
+              // Nothing to do each parse
+              break;
             }
 
             // At this point we are longer doing *per* chunk work, but back to
@@ -541,9 +572,24 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
             if (item_rv != PARSE_RV_DONE)
               return item_rv;
 
-            if (!state->hasTo) {
+            switch (sort) {
+            case TXN_DATA_UNSET:
+              REJECT("should be known by now");
+
+            case TXN_DATA_PLAIN_TRANSFER: {
+              ADD_ACCUM_PROMPT("Transfer", output_evm_prompt_to_string);
+              RET_IF_PROMPT_FLUSH;
+              break;
+            }
+
+            case TXN_DATA_DEPLOY: {
               prompt_calldata_preview(state, meta);
               ADD_ACCUM_PROMPT("Data", output_evm_calldata_preview_to_string);
+              break;
+            }
+
+            default:
+              break;
             }
 
             FINISH_ITEM_CHUNK();
