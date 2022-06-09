@@ -319,6 +319,7 @@ void init_evm_txn(struct EVM_txn_state *const state) {
   } (void)0
 
 #define ITEM_ADVANCE                                         \
+  PRINTF("Getting ready to advance to next item\n");         \
   state->item_index++;                                       \
   state->per_item_prompt = 0
 
@@ -968,6 +969,8 @@ enum parse_rv impl_parse_rlp_item(
 {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
     state->do_init = false;
+ rebranch:
+    PRINTF("impl_parse_rlp_item %d\n", state->state);
     switch(state->state) {
       case 0: {
           if(meta->input.consumed >= meta->input.length) return PARSE_RV_NEED_MORE;
@@ -999,50 +1002,54 @@ enum parse_rv impl_parse_rlp_item(
               state->len_len = first - 0xf7;
               state->state = 1;
           }
-      } fallthrough;
-      case 1:
-        if(state->state == 1) {
-            sub_rv = parseFixed(fs(&state->uint64_state), &meta->input, state->len_len);
-            BREAK_IF_NOT_DONE;
-            for(size_t i = 0; i < state->len_len; i++) {
-                ((uint8_t*)(&state->length))[i] = state->uint64_state.buf[state->len_len-i-1];
-            }
+          goto rebranch;
+      };
+      case 1: {
+        sub_rv = parseFixed(fs(&state->uint64_state), &meta->input, state->len_len);
+        BREAK_IF_NOT_DONE;
+        for(size_t i = 0; i < state->len_len; i++) {
+            ((uint8_t*)(&state->length))[i] = state->uint64_state.buf[state->len_len-i-1];
         }
+        state->state++;
+      } fallthrough;
+      case 2:
         if(max_bytes_to_buffer) {
           if(MIN(state->length, max_bytes_to_buffer) > NUM_ELEMENTS(state->buffer)) REJECT("RLP field too large for buffer");
         }
-
         state->do_init = !max_bytes_to_buffer;
-        state->state = 2;
+        state->state++;
         fallthrough;
-      case 2: {
-          uint64_t
-            remaining = state->length-state->current,
-            available = meta->input.length - meta->input.consumed,
-            consumable = MIN(remaining, available),
-            bufferable = MIN(state->length, max_bytes_to_buffer),
-            unbuffered = MAX(0, (int64_t)bufferable - (int64_t)state->current);
+      case 3: {
+        uint64_t
+          remaining = state->length-state->current,
+          available = meta->input.length - meta->input.consumed,
+          consumable = MIN(remaining, available),
+          bufferable = MIN(state->length, max_bytes_to_buffer),
+          unbuffered = MAX(0, (int64_t)bufferable - (int64_t)state->current);
 
-          if(max_bytes_to_buffer)
-            memcpy(state->buffer+state->current, meta->input.src + meta->input.consumed, MIN(consumable, unbuffered));
-          else {
-            if(state->chunk.consumed >= state->chunk.length) {
-              state->chunk.src=&meta->input.src[meta->input.consumed];
-              state->chunk.consumed = 0;
-              state->chunk.length = consumable;
-            }
+        if(max_bytes_to_buffer) {
+          memcpy(state->buffer+state->current, meta->input.src + meta->input.consumed, MIN(consumable, unbuffered));
+        } else {
+          if(state->chunk.consumed >= state->chunk.length) {
+            state->chunk.src=&meta->input.src[meta->input.consumed];
+            state->chunk.consumed = 0;
+            state->chunk.length = consumable;
           }
+        }
 
-          meta->input.consumed += consumable;
-          state->current += consumable;
+        meta->input.consumed += consumable;
+        state->current += consumable;
 
-          if(remaining <= available) {
-            state->state = 3;
-            return PARSE_RV_DONE;
-          } else {
-            return PARSE_RV_NEED_MORE;
-          }
+        if(remaining <= available) {
+          state->state = 4;
+          sub_rv = PARSE_RV_DONE;
+        } else {
+          sub_rv = PARSE_RV_NEED_MORE;
+        }
+        break;
       }
+    default:
+      REJECT("should not happen, already finished parsing RLP\n");
     }
     return sub_rv;
 }
