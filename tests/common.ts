@@ -213,8 +213,14 @@ export async function flowMultiPrompt(speculos, prompts, nextPrompt="Next", fina
   });
 }
 
+const chunkSize: number | null =
+  process.env.PROMPT_MAX_BATCH_SIZE
+  ? parseInt(process.env.PROMPT_MAX_BATCH_SIZE)
+  : null;
+
 export const chunkPrompts = <A>(prompts: A[] ): A[][] => {
-  const chunkSize = 5;
+  if (chunkSize == null)
+    throw "PROMPT_MAX_BATCH_SIZE not set!";
   let chunked = [];
   for (let i = 0; i < prompts.length; i += chunkSize) {
     chunked.push(prompts.slice(i, i + chunkSize));
