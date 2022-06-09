@@ -264,9 +264,14 @@ export async function checkSignTransaction(
   }
 }
 
-const chunkSize = 2;
+const chunkSize: number | null =
+  process.env.PROMPT_MAX_BATCH_SIZE
+  ? parseInt(process.env.PROMPT_MAX_BATCH_SIZE)
+  : null;
 
 export const chunkPrompts = (prompts: Screen[] ): Screen[] => {
+  if (chunkSize == null)
+    throw "PROMPT_MAX_BATCH_SIZE not set!";
   let chunked: Screen[] = [];
   for (let i = 0; i < prompts.length; i += chunkSize) {
     chunked = chunked.concat(prompts.slice(i, i + chunkSize));
