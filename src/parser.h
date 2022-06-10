@@ -55,6 +55,17 @@ struct FixedState0 {
         }; \
     };
 
+#define DEFINE_ARRAY_HW(name) \
+    struct name ## s_state { \
+        int state; \
+        uint16_t len; \
+        uint16_t i; \
+        union { \
+            struct uint16_t_state len_state;\
+            struct name ## _state item; \
+        }; \
+    };
+
 DEFINE_FIXED(uint8_t);
 DEFINE_FIXED_BE(uint16_t);
 DEFINE_FIXED_BE(uint32_t);
@@ -72,6 +83,18 @@ typedef struct {
 } Address;
 
 DEFINE_FIXED(Address);
+
+typedef struct {
+    uint8_t val;
+} Bufferhw;
+
+DEFINE_ARRAY_HW(Bufferhw);
+
+typedef struct {
+    uint8_t val;
+} Buffer;
+
+DEFINE_ARRAY(Buffer);
 
 #define NUMBER_STATES struct uint32_t_state uint32State; struct uint64_t_state uint64State
 
@@ -103,6 +126,7 @@ struct SubnetAuth_state {
       NUMBER_STATES;
   };
 };
+
 
 struct StakeableLockOutput_state {
     int state;
@@ -313,6 +337,18 @@ struct AddDelegatorTransactionState {
         struct uint32_t_state uint32State;
         struct Id32_state id32State;
         struct TransferableOutputs_state outputsState;
+  };
+};
+
+struct CreateChainTransactionState {
+  int state;
+  uint32_t fxid_n;
+  uint32_t fxid_i;
+  union {
+        struct Id32_state id32State;
+        struct Bufferhws bufferhwsState;
+        struct uint32_t_state uint32State;
+        struct Buffers buffersState;  
   };
 };
 

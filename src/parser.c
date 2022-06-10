@@ -149,9 +149,16 @@ enum parse_rv skipBytes(struct FixedState *const state, parser_input_meta_state_
 IMPL_FIXED_BE(uint16_t);
 IMPL_FIXED_BE(uint32_t);
 IMPL_FIXED_BE(uint64_t);
+IMPL_FIXED(uint8_t);
 IMPL_FIXED(Id32);
 IMPL_FIXED(blockchain_id_t);
 IMPL_FIXED(Address);
+IMPL_ARRAY(TransferableOutput);
+IMPL_ARRAY(TransferableInput);
+IMPL_ARRAY(EVMOutput);
+IMPL_ARRAY(EVMInput);
+IMPL_ARRAY_HW(Bufferhw);
+IMPL_ARRAY(Buffer);
 
 void init_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const state) {
     state->state = 0;
@@ -758,8 +765,6 @@ enum parse_rv parse_TransferableInput(struct TransferableInput_state *const stat
     return sub_rv;
 }
 
-IMPL_ARRAY(TransferableOutput);
-IMPL_ARRAY(TransferableInput);
 
 void init_Memo(struct Memo_state *const state) {
     state->state = 0;
@@ -1089,7 +1094,7 @@ enum parse_rv parse_EVMOutput(struct EVMOutput_state *const state, parser_meta_s
     return sub_rv;
 }
 
-IMPL_ARRAY(EVMOutput);
+
 
 void init_EVMInput(struct EVMInput_state *const state) {
   state->state = 0;
@@ -1125,7 +1130,6 @@ enum parse_rv parse_EVMInput(struct EVMInput_state *const state, parser_meta_sta
     return sub_rv;
 }
 
-IMPL_ARRAY(EVMInput);
 
 void init_CChainImportTransaction(struct CChainImportTransactionState *const state) {
   state->state = 0;
@@ -1330,6 +1334,87 @@ enum parse_rv parse_AddSNValidatorTransaction(
       state->state++;
     } fallthrough;
     case 3:
+      sub_rv = PARSE_RV_DONE;
+  }
+  return sub_rv;
+}
+
+void init_CreateChainTransaction(struct CreateChainTransactionState *const state) {
+  state->state = 0;
+  INIT_SUBPARSER(id32State, Id32);
+}
+
+enum parse_rv parse_CreateChainTransaction(
+  struct CreateChainTransactionState *const state,
+  parser_meta_state_t *const meta)
+{
+  enum parse_rv sub_rv = PARSE_RV_INVALID;
+  switch(state->state)
+  {
+    case 0: // Subnet ID
+      CALL_SUBPARSER(id32State, Id32);
+      PRINTF("Subnet ID: %.*h\n", 32, state->id32State.buf);
+      state->state++;
+      INIT_SUBPARSER(bufferhwsState, Bufferhws);
+      fallthrough;
+    case 1: {// chain name
+      CALL_SUBPARSER(bufferhwsState, Bufferhws);
+      PRINTF("Done with Chain Name\n");
+      state->state++;
+      INIT_SUBPARSER(uint32State, uint32_t);
+    } fallthrough;
+    case 2: {
+      CALL _SUBPARSER(uint32State, uint32_t);
+      PRINTF("Num of fxids");
+      state->fxid_n = uint32State.val; 
+      state->state++;
+      INIT_SUBPARSER(id32State, Id32); 
+    } fallthrough;
+    case 3: {
+      if(state->fxid_i == state->fxid_n)
+      {
+        state->state++;
+        INIT_SUBPARSER(buffersState, Buffers);
+        break;
+      }
+      do
+      {
+        // loop invariant
+        if(state->fxid_i == state->fxid_n)
+        {
+          THROW(EXC_MEMORY_ERROR);
+        }
+        
+        CALL_SUBPARSER(id32State, Id32);
+        
+        PRINTF("FX ID: %.*h\n", 32, state->id32State.buf);
+        
+        state->fxid_i++;
+        if(state->fxid_i < state->fxid_n)
+        {
+          INIT_SUBPARSER(id32State, Id32);
+          RET_IF_PROMPT_FLUSH;
+          continue;
+        }
+        else
+        {
+          state->state++;
+          INIT_SUBPARSER(buffersState, Buffers);
+          RET_IF_PROMPT_FLUSH
+          break;
+        } 
+      } while(false);
+    } fallthrough;
+    case 4: {
+      CALL_SUBPARSER(buffersState, Buffers);
+      state->state++;
+      INIT_SUBPARSER(subnetauthState, SubnetAuth);
+    } fallthrough;
+    case 5: {
+      CALL_SUBPARSER(subnetauthState, SubnetAuth);
+      state->state++;
+    } fallthrough;
+    case 6:
       sub_rv = PARSE_RV_DONE;
   }
   return sub_rv;
