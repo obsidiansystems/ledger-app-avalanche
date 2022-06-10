@@ -170,15 +170,19 @@ static size_t next_parse(bool const is_reentry) {
         PRINTF("Need more\n");
         return reply_maybe_delayed(is_reentry, finalize_successful_send(0));
     }
-
+    PRINTF("------------------------------------------------------------------here\n");
     if (rv == PARSE_RV_DONE) {
         PRINTF("Parser signaled done; sending final prompt\n");
         cx_hash((cx_hash_t *const)&G.tx_hash_state, CX_LAST, NULL, 0, G.final_hash, sizeof(G.final_hash));
         PRINTF("G.final_hash: %.*h\n", sizeof(G.final_hash), G.final_hash);
         transaction_complete_prompt();
     }
+    PRINTF("------------------------------------------------------------------here\n");
 
-    PRINTF("Parse error: %d %d %d\n", rv, G.meta_state.input.consumed, G.meta_state.input.length);
+    PRINTF("Parse error: rv=%d consumed=%d length=%d\n",
+      rv,
+      G.meta_state.input.consumed,
+      G.meta_state.input.length);
     THROW(EXC_PARSE_ERROR);
 }
 

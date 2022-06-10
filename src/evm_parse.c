@@ -566,7 +566,6 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
                     &state->rlpItem_state.endpoint_state,
                     &state->rlpItem_state.chunk,
                     meta);
-                  RET_IF_NOT_DONE;
                 }
                 PRINTF("PARSER CALLED [sub_rv: %u]\n", sub_rv);
                 break;
@@ -584,9 +583,6 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
                   &item_state->chunk,
                   meta,
                   !zero256(&state->value));
-                PRINTF("---BEFORE RET_IF_NOT_DONE\n");
-                RET_IF_NOT_DONE;
-                PRINTF("--- AFTER RET_IF_NOT_DONE\n");
                 break;
               }
 
@@ -602,10 +598,18 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
             // At this point we are longer doing *per* chunk work, but back to
             // the usual case of just doing itmes after the parse before has
             // completed.
-            if (item_rv != PARSE_RV_DONE) {
+            if (item_rv == PARSE_RV_NEED_MORE) {
               PRINTF("THERE IS MORE TO PARSE %d %d\n", state->per_item_prompt, item_rv);
               state->per_item_prompt = 0;
-              return item_rv;
+              return PARSE_RV_NEED_MORE;
+            } else if (sub_rv == PARSE_RV_NEED_MORE) {
+              PRINTF("THERE ALSO IS MORE TO PARSE %d %d\n", state->per_item_prompt, sub_rv);
+              // DON'T reset per_item_prompt;
+              return PARSE_RV_NEED_MORE;
+            } else if (item_rv == PARSE_RV_PROMPT || sub_rv == PARSE_RV_PROMPT) {
+              PRINTF("THERE NEED PROMPT %d %d\n", state->per_item_prompt, item_rv);
+              // DON'T reset per_item_prompt;
+              return PARSE_RV_PROMPT;
             }
 
             switch (sort) {

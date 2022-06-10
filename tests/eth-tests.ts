@@ -190,7 +190,7 @@ const testData = {
   }
 };
 
-describe("Eth app compatibility tests", async function () {
+describe.only("Eth app compatibility tests", async function () {
   //this.timeout(3000);
   it('can get a key from the app with the ethereum ledgerjs module', async function() {
     const dat = await this.eth.getAddress("44'/60'/0'/0/0", false, true);
@@ -303,7 +303,7 @@ describe("Eth app compatibility tests", async function () {
      testUnrecognizedCalldata('90000102030405060708090a0b0c0d0e0f')
     );
 
-  it.only('can sign unrecognized calldata (borrow)',
+  it('can sign unrecognized calldata (borrow)',
      testUnrecognizedCalldata('a415bcad000000000000000000000000d3896bdd73e61a4275e27f660ddf095522f0a1d30000000000000000000000000000000000000000000000000de0b6b3a7640000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000006f0f6da1852857d7789f68a28bba866671f3880d')
     );
 
