@@ -70,6 +70,7 @@ void initFixed(struct FixedState *const state, size_t const len) {
     /**/ TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR: \
     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR: \
     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR: \
+    case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_CHAIN \
     case TRANSACTION_P_CHAIN_TYPE_ID_IMPORT: \
     case TRANSACTION_P_CHAIN_TYPE_ID_EXPORT
 
@@ -1470,6 +1471,7 @@ static char const importLabel[] = "Import";
 static char const exportLabel[] = "Export";
 static char const validateLabel[] = "Add Validator";
 static char const validatesnLabel[] = "Add Subnet Validator";
+static char const createchainLabel[] = "Create Chain";
 static char const delegateLabel[] = "Add Delegator";
 
 typedef struct { char const* label; size_t label_size; } label_t;
@@ -1492,6 +1494,7 @@ static label_t type_id_to_label(union transaction_type_id_t type_id, enum chain_
     case TRANSACTION_P_CHAIN_TYPE_ID_EXPORT: return LABEL(export);
     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR: return LABEL(validate);
     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR: return LABEL(validatesn);
+    case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_CHAIN: return LABEL(createchain);
     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR: return LABEL(delegate);
     default:; // throws below
     };
@@ -1589,6 +1592,9 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
               case TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR:
                 INIT_SUBPARSER(addSNValidatorTxState, AddSNValidatorTransaction);
                 break;
+              case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_CHAIN:
+                INIT_SUBPARSER(createChainTxState, CreateChainTransaction);
+                break;
               case TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR:
               case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR:
                 INIT_SUBPARSER(addValidatorTxState, AddValidatorTransaction);
@@ -1635,6 +1641,9 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
               switch (meta->type_id.p) {
               case TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR:
                 CALL_SUBPARSER_BREAK(addSNValidatorTxState, AddSNValidatorTransaction);
+                break;
+              case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_CHAIN:
+                CALL_SUBPARSER_BREAK(createChainTxState, CreateChainTransaction);
                 break;
               case TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR:
               case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR:
