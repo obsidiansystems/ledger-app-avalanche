@@ -66,6 +66,7 @@ static inline struct FixedState * fixed_state_con(struct FixedState0 * p) {
     \
     ASSERT_FIXED(name)
 
+IMPL_FIXED(uint8_t);
 
 #define IMPL_ARRAY(name) \
     void init_ ## name ## s (struct name ## s_state *const state) { \

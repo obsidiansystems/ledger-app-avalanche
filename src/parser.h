@@ -84,18 +84,6 @@ typedef struct {
 
 DEFINE_FIXED(Address);
 
-typedef struct {
-    uint8_t val;
-} Bufferhw;
-
-DEFINE_ARRAY_HW(Bufferhw);
-
-typedef struct {
-    uint8_t val;
-} Buffer;
-
-DEFINE_ARRAY(Buffer);
-
 #define NUMBER_STATES struct uint32_t_state uint32State; struct uint64_t_state uint64State
 
 struct SECP256K1TransferOutput_state {
@@ -148,6 +136,24 @@ struct Output_state {
 };
 
 DEFINE_FIXED(blockchain_id_t);
+
+struct Bufferhw_state {
+  int state;
+  union {
+      struct uint8_t_state uint8State;
+  };
+};
+
+DEFINE_ARRAY_HW(Bufferhw);
+
+struct Buffer_state{
+  int state;
+  union {
+      struct uint8_t_state uint8State;
+  };
+};
+
+DEFINE_ARRAY(Buffer);
 
 struct TransferableOutput_state {
     int state;
@@ -345,10 +351,11 @@ struct CreateChainTransactionState {
   uint32_t fxid_n;
   uint32_t fxid_i;
   union {
+	NUMBER_STATES;
         struct Id32_state id32State;
-        struct Bufferhws bufferhwsState;
-        struct uint32_t_state uint32State;
-        struct Buffers buffersState;  
+        struct Bufferhws_state  bufferhwsState;
+        struct Buffers_state buffersState; 
+        struct SubnetAuth_state subnetauthState;	
   };
 };
 

@@ -149,16 +149,9 @@ enum parse_rv skipBytes(struct FixedState *const state, parser_input_meta_state_
 IMPL_FIXED_BE(uint16_t);
 IMPL_FIXED_BE(uint32_t);
 IMPL_FIXED_BE(uint64_t);
-IMPL_FIXED(uint8_t);
 IMPL_FIXED(Id32);
 IMPL_FIXED(blockchain_id_t);
 IMPL_FIXED(Address);
-IMPL_ARRAY(TransferableOutput);
-IMPL_ARRAY(TransferableInput);
-IMPL_ARRAY(EVMOutput);
-IMPL_ARRAY(EVMInput);
-IMPL_ARRAY_HW(Bufferhw);
-IMPL_ARRAY(Buffer);
 
 void init_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const state) {
     state->state = 0;
@@ -765,6 +758,8 @@ enum parse_rv parse_TransferableInput(struct TransferableInput_state *const stat
     return sub_rv;
 }
 
+IMPL_ARRAY(TransferableOutput);
+IMPL_ARRAY(TransferableInput);
 
 void init_Memo(struct Memo_state *const state) {
     state->state = 0;
@@ -1094,7 +1089,7 @@ enum parse_rv parse_EVMOutput(struct EVMOutput_state *const state, parser_meta_s
     return sub_rv;
 }
 
-
+IMPL_ARRAY(EVMOutput);
 
 void init_EVMInput(struct EVMInput_state *const state) {
   state->state = 0;
@@ -1130,6 +1125,7 @@ enum parse_rv parse_EVMInput(struct EVMInput_state *const state, parser_meta_sta
     return sub_rv;
 }
 
+IMPL_ARRAY(EVMInput);
 
 void init_CChainImportTransaction(struct CChainImportTransactionState *const state) {
   state->state = 0;
@@ -1339,8 +1335,56 @@ enum parse_rv parse_AddSNValidatorTransaction(
   return sub_rv;
 }
 
+void init_Buffer(struct Buffer_state *const state)
+{
+  state->state = 0;
+  INIT_SUBPARSER(uint8State, uint8_t);
+}
+
+enum parse_rv parse_Buffer(struct Buffer_state *const state, parser_meta_state_t *const meta)
+{
+  enum parse_rv sub_rv = PARSE_RV_INVALID;
+  switch(state->state)
+  {
+    case 0:
+      CALL_SUBPARSER(uint8State, uint8_t);
+      state->state++;
+      fallthrough;
+    case 1:
+      sub_rv = PARSE_RV_DONE;
+      break;
+  }
+  return sub_rv;
+}
+
+void init_Bufferhw(struct Bufferhw_state *const state)
+{
+  state->state = 0;
+  INIT_SUBPARSER(uint8State, uint8_t);
+}
+
+enum parse_rv parse_Bufferhw(struct Bufferhw_state *const state, parser_meta_state_t *const meta)
+{
+  enum parse_rv sub_rv = PARSE_RV_INVALID;
+  switch(state->state)
+  {
+    case 0:
+      CALL_SUBPARSER(uint8State, uint8_t);
+      state->state++;
+      fallthrough;
+    case 1:
+      sub_rv = PARSE_RV_DONE;
+      break;
+  }
+  return sub_rv;
+}
+
+IMPL_ARRAY_HW(Bufferhw);
+IMPL_ARRAY(Buffer);
+
 void init_CreateChainTransaction(struct CreateChainTransactionState *const state) {
   state->state = 0;
+  state->fxid_i = 0;
   INIT_SUBPARSER(id32State, Id32);
 }
 
@@ -1364,9 +1408,9 @@ enum parse_rv parse_CreateChainTransaction(
       INIT_SUBPARSER(uint32State, uint32_t);
     } fallthrough;
     case 2: {
-      CALL _SUBPARSER(uint32State, uint32_t);
+      CALL_SUBPARSER(uint32State, uint32_t);
       PRINTF("Num of fxids");
-      state->fxid_n = uint32State.val; 
+      state->fxid_n = state->uint32State.val; 
       state->state++;
       INIT_SUBPARSER(id32State, Id32); 
     } fallthrough;
@@ -1400,7 +1444,7 @@ enum parse_rv parse_CreateChainTransaction(
         {
           state->state++;
           INIT_SUBPARSER(buffersState, Buffers);
-          RET_IF_PROMPT_FLUSH
+          RET_IF_PROMPT_FLUSH;
           break;
         } 
       } while(false);
@@ -1419,6 +1463,7 @@ enum parse_rv parse_CreateChainTransaction(
   }
   return sub_rv;
 }
+
 
 static char const transactionLabel[] = "Transaction";
 static char const importLabel[] = "Import";
