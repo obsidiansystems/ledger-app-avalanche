@@ -190,7 +190,7 @@ const testData = {
   }
 };
 
-describe("Eth app compatibility tests", async function () {
+describe.only("Eth app compatibility tests", async function () {
   this.timeout(3000);
   it('can get a key from the app with the ethereum ledgerjs module', async function() {
     const dat = await this.eth.getAddress("44'/60'/0'/0/0", false, true);

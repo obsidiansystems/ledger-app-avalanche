@@ -270,8 +270,8 @@ enum parse_rv parse_evm_txn(struct EVM_txn_state *const state, evm_parser_meta_s
           if (meta->input.consumed < 1) {
             REJECT("a byte was consumed but this was not reflected in the \"input consumed bytes\" counter") // should be impossible
           }
-          meta->input.consumed--; 
-        } 
+          meta->input.consumed--;
+        }
         state->state++;
       } fallthrough;
       case 1: {
@@ -287,7 +287,7 @@ enum parse_rv parse_evm_txn(struct EVM_txn_state *const state, evm_parser_meta_s
             break;
           }
         } // end switch state->type
-      } 
+      }
     } // end switch state->state
     return sub_rv;
 }
@@ -304,7 +304,11 @@ void init_evm_txn(struct EVM_txn_state *const state) {
 
 // No fallthrough, so we don't get warning
 #define PARSE_ITEM_FIRST(ITEM, save)                         \
-  case ITEM: {                                               \
+  case ITEM:                                                 \
+  JUST_PARSE_ITEM(ITEM, save)
+
+#define JUST_PARSE_ITEM(ITEM, save)                          \
+  {                                                          \
     itemStartIdx = meta->input.consumed;                     \
     PRINTF("Entering " #ITEM "\n");                          \
     sub_rv = parse_rlp_item ## save(state, meta);            \
@@ -409,7 +413,7 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
             //
 
             uint64_t gasLimit = enforceParsedScalarFits64Bits(&state->rlpItem_state);
-            size_t gasLimitLength = state->rlpItem_state.length; 
+            size_t gasLimitLength = state->rlpItem_state.length;
             state->gasLimit = gasLimit;
             // TODO: We don't currently support the C-chain gas limit of 100 million,
             // which would have a fee larger than what fits in a word
@@ -484,14 +488,11 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
             RET_IF_PROMPT_FLUSH;
 
             //
-            PARSE_ITEM(EVM_LEGACY_TXN_DATA, _data);
-            // Instead of waiting for a complete item parse, do some of the
-            // actions below every time.
-            checkDataFieldLengthFitsTransaction(state);
-            if(state->rlpItem_state.state < 2)
-              return sub_rv;
-            const enum parse_rv item_rv = sub_rv;
+          fallthrough;
+          case EVM_LEGACY_TXN_DATA: {
             //
+
+            enum parse_rv item_rv = PARSE_RV_INVALID;
 
             enum TxnDataSort {
               TXN_DATA_UNSET,
@@ -502,75 +503,95 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
             };
             enum TxnDataSort sort = TXN_DATA_UNSET;
 
-            check_whether_has_calldata(state);
+            switch (state->per_item_prompt) {
+            case 0:
+              JUST_PARSE_ITEM(EVM_LEGACY_TXN_DATA, _data);
+              item_rv = sub_rv;
+              state->per_item_prompt++;
+              fallthrough;
+            case 1:
+              // Instead of waiting for a complete item parse, do some of the
+              // actions below every time.
+              checkDataFieldLengthFitsTransaction(state);
+              if(state->rlpItem_state.state < 2)
+                return sub_rv;
+              //
 
-            if (sort == TXN_DATA_UNSET) {
-              if(state->hasTo) {
-                if(meta->known_destination) {
-                  sort = TXN_DATA_CONTRACT_CALL_KNOWN_DEST;
-                } else {
-                  if (state->hasData)
-                    sort = TXN_DATA_CONTRACT_CALL_UNKNOWN_DEST;
-                  else {
-                    sort = TXN_DATA_PLAIN_TRANSFER;
+              check_whether_has_calldata(state);
+
+              if (sort == TXN_DATA_UNSET) {
+                if(state->hasTo) {
+                  if(meta->known_destination) {
+                    sort = TXN_DATA_CONTRACT_CALL_KNOWN_DEST;
+                  } else {
+                    if (state->hasData)
+                      sort = TXN_DATA_CONTRACT_CALL_UNKNOWN_DEST;
+                    else {
+                      sort = TXN_DATA_PLAIN_TRANSFER;
+                    }
                   }
+                } else {
+                  sort = TXN_DATA_DEPLOY;
                 }
-              } else {
-                sort = TXN_DATA_DEPLOY;
               }
-            }
 
-            switch (sort) {
-            case TXN_DATA_UNSET:
-              REJECT("should be known by now");
+              switch (sort) {
+              case TXN_DATA_UNSET:
+                REJECT("should be known by now");
 
-            case TXN_DATA_CONTRACT_CALL_KNOWN_DEST: {
-              if(state->rlpItem_state.do_init && meta->known_destination->init_data)
-                PIC(meta->known_destination->init_data)(
-                  &state->rlpItem_state.endpoint_state,
-                  state->rlpItem_state.length);
-              PRINTF("INIT: %u\n", state->rlpItem_state.do_init);
-              PRINTF("Chunk: [%u] %.*h\n",
-                state->rlpItem_state.chunk.length,
-                state->rlpItem_state.chunk.length, state->rlpItem_state.chunk.src);
-              if(meta->known_destination->handle_data) {
-                PRINTF("HANDLING DATA\n");
-                sub_rv = PIC(meta->known_destination->handle_data)(
-                  &state->rlpItem_state.endpoint_state,
-                  &state->rlpItem_state.chunk,
-                  meta);
-                RET_IF_NOT_DONE;
+              case TXN_DATA_CONTRACT_CALL_KNOWN_DEST: {
+                if(state->rlpItem_state.do_init && meta->known_destination->init_data)
+                  PIC(meta->known_destination->init_data)(
+                    &state->rlpItem_state.endpoint_state,
+                    state->rlpItem_state.length);
+                PRINTF("INIT: %u\n", state->rlpItem_state.do_init);
+                PRINTF("Chunk: [%u] %.*h\n",
+                  state->rlpItem_state.chunk.length,
+                  state->rlpItem_state.chunk.length, state->rlpItem_state.chunk.src);
+                if(meta->known_destination->handle_data) {
+                  PRINTF("HANDLING DATA\n");
+                  sub_rv = PIC(meta->known_destination->handle_data)(
+                    &state->rlpItem_state.endpoint_state,
+                    &state->rlpItem_state.chunk,
+                    meta);
+                }
+                break;
               }
-              PRINTF("PARSER CALLED [sub_rv: %u]\n", sub_rv);
-              break;
-            }
 
-            case TXN_DATA_CONTRACT_CALL_UNKNOWN_DEST: {
-              struct EVM_RLP_item_state *const item_state = &state->rlpItem_state;
-              struct EVM_ABI_state *const abi_state = &item_state->endpoint_state.abi_state;
-              if(item_state->do_init)
-                init_abi_call_data(abi_state, item_state->length);
+              case TXN_DATA_CONTRACT_CALL_UNKNOWN_DEST: {
+                struct EVM_RLP_item_state *const item_state = &state->rlpItem_state;
+                struct EVM_ABI_state *const abi_state = &item_state->endpoint_state.abi_state;
+                if(item_state->do_init)
+                  init_abi_call_data(abi_state, item_state->length);
 
-              sub_rv = parse_abi_call_data(
-                abi_state,
-                &item_state->chunk,
-                meta,
-                !zero256(&state->value));
-              RET_IF_NOT_DONE;
-              break;
-            }
+                sub_rv = parse_abi_call_data(
+                  abi_state,
+                  &item_state->chunk,
+                  meta,
+                  !zero256(&state->value));
+                break;
+              }
 
-            case TXN_DATA_DEPLOY:
-            case TXN_DATA_PLAIN_TRANSFER:
-              // Nothing to do each parse
-              break;
+              case TXN_DATA_DEPLOY:
+              case TXN_DATA_PLAIN_TRANSFER:
+                // Nothing to do each parse
+                break;
+              }
             }
 
             // At this point we are longer doing *per* chunk work, but back to
             // the usual case of just doing itmes after the parse before has
             // completed.
-            if (item_rv != PARSE_RV_DONE)
-              return item_rv;
+            if (item_rv == PARSE_RV_NEED_MORE) {
+              state->per_item_prompt = 0;
+              return PARSE_RV_NEED_MORE;
+            } else if (sub_rv == PARSE_RV_NEED_MORE) {
+              // DON'T reset per_item_prompt;
+              return PARSE_RV_NEED_MORE;
+            } else if (item_rv == PARSE_RV_PROMPT || sub_rv == PARSE_RV_PROMPT) {
+              // DON'T reset per_item_prompt;
+              return PARSE_RV_PROMPT;
+            }
 
             switch (sort) {
             case TXN_DATA_UNSET:
@@ -593,6 +614,7 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
 
             FINISH_ITEM_CHUNK();
             RET_IF_PROMPT_FLUSH;
+          }
 
             //
             PARSE_ITEM(EVM_LEGACY_TXN_CHAINID, _to_buffer);
@@ -802,13 +824,13 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
             RET_IF_PROMPT_FLUSH;
 
             //
-            PARSE_ITEM(EVM_EIP1559_TXN_DATA, _data);
+            fallthrough;
+          case EVM_EIP1559_TXN_DATA: {
             // Instead of waiting for a complete item parse, do some of the
             // actions below every time.
-            if(state->rlpItem_state.state < 2)
-              return sub_rv;
-            const enum parse_rv item_rv = sub_rv;
             //
+
+            enum parse_rv item_rv = PARSE_RV_INVALID;
 
             enum TxnDataSort {
               TXN_DATA_UNSET,
@@ -819,23 +841,35 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
             };
             enum TxnDataSort sort = TXN_DATA_UNSET;
 
-            check_whether_has_calldata(state);
+            switch (state->per_item_prompt) {
+            case 0:
+              JUST_PARSE_ITEM(EVM_EIP1559_TXN_DATA, _data);
+              item_rv = sub_rv;
+              PRINTF("adsf %d\n", item_rv);
+              if(state->rlpItem_state.state < 2)
+                return sub_rv;
 
-            if (sort == TXN_DATA_UNSET) {
-              if(state->hasTo) {
-                if(meta->known_destination) {
-                  sort = TXN_DATA_CONTRACT_CALL_KNOWN_DEST;
-                } else {
-                  if (state->hasData)
-                    sort = TXN_DATA_CONTRACT_CALL_UNKNOWN_DEST;
-                  else {
-                    sort = TXN_DATA_PLAIN_TRANSFER;
+              check_whether_has_calldata(state);
+
+              if (sort == TXN_DATA_UNSET) {
+                if(state->hasTo) {
+                  if(meta->known_destination) {
+                    sort = TXN_DATA_CONTRACT_CALL_KNOWN_DEST;
+                  } else {
+                    if (state->hasData)
+                      sort = TXN_DATA_CONTRACT_CALL_UNKNOWN_DEST;
+                    else {
+                      sort = TXN_DATA_PLAIN_TRANSFER;
+                    }
                   }
+                } else {
+                  sort = TXN_DATA_DEPLOY;
                 }
-              } else {
-                sort = TXN_DATA_DEPLOY;
               }
-            }
+
+              state->per_item_prompt++;
+              fallthrough;
+            case 1:
 
             switch (sort) {
             case TXN_DATA_UNSET:
@@ -880,8 +914,14 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
             // At this point we are longer doing *per* chunk work, but back to
             // the usual case of just doing itmes after the parse before has
             // completed.
+            RET_IF_NEED_MORE;
             if (item_rv != PARSE_RV_DONE)
               return item_rv;
+            state->per_item_prompt++;
+            RET_IF_PROMPT_FLUSH;
+
+            fallthrough;
+            case 2:
 
 #           define CALC_FEE { \
               uint64_t feeDummy = 0; \
@@ -894,44 +934,50 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
               REJECT("should be known by now");
 
             case TXN_DATA_PLAIN_TRANSFER: {
-              // state has To but the destination is not known, and no data
-              switch (state->per_item_prompt) {
-              case 0:
-                ADD_ACCUM_PROMPT("Transfer", output_evm_prompt_to_string);
-                state->per_item_prompt++;
-                RET_IF_PROMPT_FLUSH;
-                fallthrough;
-              case 1:
-                CALC_FEE
-                ADD_ACCUM_PROMPT("Fee", output_evm_fee_to_string);
-              }
+              ADD_ACCUM_PROMPT("Transfer", output_evm_prompt_to_string);
               break;
             }
 
             case TXN_DATA_DEPLOY: {
-              switch (state->per_item_prompt) {
-              case 0:
-                prompt_calldata_preview(state, meta);
-                ADD_ACCUM_PROMPT("Data", output_evm_calldata_preview_to_string);
-                state->per_item_prompt++;
-                RET_IF_PROMPT_FLUSH;
-                fallthrough;
-              case 1:
-                CALC_FEE
-                ADD_ACCUM_PROMPT("Maximum Fee", output_evm_fee_to_string);
-              }
+              prompt_calldata_preview(state, meta);
+              ADD_ACCUM_PROMPT("Data", output_evm_calldata_preview_to_string);
               break;
             }
 
+            default:
+              break;
+            }
+
+            state->per_item_prompt++;
+            RET_IF_PROMPT_FLUSH;
+            fallthrough;
+            case 3:
+
+            switch (sort) {
+            case TXN_DATA_UNSET:
+              REJECT("should be known by now");
+
+            case TXN_DATA_PLAIN_TRANSFER: {
+              CALC_FEE
+              ADD_ACCUM_PROMPT("Fee", output_evm_fee_to_string);
+              break;
+            }
+
+            case TXN_DATA_DEPLOY:
             case TXN_DATA_CONTRACT_CALL_KNOWN_DEST:
-            case TXN_DATA_CONTRACT_CALL_UNKNOWN_DEST:
+            case TXN_DATA_CONTRACT_CALL_UNKNOWN_DEST: {
               CALC_FEE
               ADD_ACCUM_PROMPT("Maximum Fee", output_evm_fee_to_string);
+              break;
+            }
+            }
+
             }
 
             FINISH_ITEM_CHUNK();
             RET_IF_PROMPT_FLUSH;
 
+          }
             //
             PARSE_ITEM(EVM_EIP1559_TXN_ACCESS_LIST, );
             RET_IF_NOT_DONE;
