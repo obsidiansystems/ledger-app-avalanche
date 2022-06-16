@@ -271,8 +271,8 @@ enum parse_rv parse_evm_txn(struct EVM_txn_state *const state, evm_parser_meta_s
             REJECT("a byte was consumed but this was not reflected in the \"input consumed bytes\" counter") // should be impossible
           }
           PRINTF("== B4 subract meta->input.consumed: %d \n", meta->input.consumed);
-          meta->input.consumed--; 
-        } 
+          meta->input.consumed--;
+        }
         state->state++;
       } fallthrough;
       case 1: {
@@ -292,7 +292,7 @@ enum parse_rv parse_evm_txn(struct EVM_txn_state *const state, evm_parser_meta_s
             break;
           }
         } // end switch state->type
-      } 
+      }
     } // end switch state->state
     return sub_rv;
 }
@@ -421,7 +421,7 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
             //
 
             uint64_t gasLimit = enforceParsedScalarFits64Bits(&state->rlpItem_state);
-            size_t gasLimitLength = state->rlpItem_state.length; 
+            size_t gasLimitLength = state->rlpItem_state.length;
             state->gasLimit = gasLimit;
             // TODO: We don't currently support the C-chain gas limit of 100 million,
             // which would have a fee larger than what fits in a word
@@ -640,12 +640,6 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
             RET_IF_NOT_DONE;
             //
 
-            if(state->rlpItem_state.length != 2
-               || state->rlpItem_state.buffer[0] != 0xa8
-               || (state->rlpItem_state.buffer[1] != 0x68
-                   && state->rlpItem_state.buffer[1] != 0x69
-                   && state->rlpItem_state.buffer[1] != 0x6a))
-                REJECT("Chain ID incorrect for the Avalanche C chain");
             meta->chainIdLowByte = state->rlpItem_state.buffer[state->rlpItem_state.length-1];
             PRINTF("Chain ID low byte: %x\n", meta->chainIdLowByte);
 
@@ -850,15 +844,13 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
 
             //
             fallthrough;
-          case EVM_EIP1559_TXN_DATA:
-            JUST_PARSE_ITEM(EVM_EIP1559_TXN_DATA, _data);
-            const enum parse_rv item_rv = sub_rv;
-            PRINTF("adsf %d\n", item_rv);
+          case EVM_EIP1559_TXN_DATA: {
             // Instead of waiting for a complete item parse, do some of the
             // actions below every time.
-            if(state->rlpItem_state.state < 2)
-              return sub_rv;
             //
+
+            enum parse_rv item_rv = PARSE_RV_INVALID;
+
 
             enum TxnDataSort {
               TXN_DATA_UNSET,
@@ -869,23 +861,35 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
             };
             enum TxnDataSort sort = TXN_DATA_UNSET;
 
-            check_whether_has_calldata(state);
+            switch (state->per_item_prompt) {
+            case 0:
+              JUST_PARSE_ITEM(EVM_EIP1559_TXN_DATA, _data);
+              item_rv = sub_rv;
+              PRINTF("adsf %d\n", item_rv);
+              if(state->rlpItem_state.state < 2)
+                return sub_rv;
 
-            if (sort == TXN_DATA_UNSET) {
-              if(state->hasTo) {
-                if(meta->known_destination) {
-                  sort = TXN_DATA_CONTRACT_CALL_KNOWN_DEST;
-                } else {
-                  if (state->hasData)
-                    sort = TXN_DATA_CONTRACT_CALL_UNKNOWN_DEST;
-                  else {
-                    sort = TXN_DATA_PLAIN_TRANSFER;
+              check_whether_has_calldata(state);
+
+              if (sort == TXN_DATA_UNSET) {
+                if(state->hasTo) {
+                  if(meta->known_destination) {
+                    sort = TXN_DATA_CONTRACT_CALL_KNOWN_DEST;
+                  } else {
+                    if (state->hasData)
+                      sort = TXN_DATA_CONTRACT_CALL_UNKNOWN_DEST;
+                    else {
+                      sort = TXN_DATA_PLAIN_TRANSFER;
+                    }
                   }
+                } else {
+                  sort = TXN_DATA_DEPLOY;
                 }
-              } else {
-                sort = TXN_DATA_DEPLOY;
               }
-            }
+
+              state->per_item_prompt++;
+              fallthrough;
+            case 1:
 
             switch (sort) {
             case TXN_DATA_UNSET:
@@ -935,8 +939,14 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
             // At this point we are longer doing *per* chunk work, but back to
             // the usual case of just doing itmes after the parse before has
             // completed.
+            RET_IF_NEED_MORE;
             if (item_rv != PARSE_RV_DONE)
               return item_rv;
+            state->per_item_prompt++;
+            RET_IF_PROMPT_FLUSH;
+
+            fallthrough;
+            case 2:
 
 #           define CALC_FEE { \
               uint64_t feeDummy = 0; \
@@ -951,44 +961,51 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
               REJECT("should be known by now");
 
             case TXN_DATA_PLAIN_TRANSFER: {
-              // state has To but the destination is not known, and no data
-              switch (state->per_item_prompt) {
-              case 0:
-                ADD_ACCUM_PROMPT("Transfer", output_evm_prompt_to_string);
-                state->per_item_prompt++;
-                RET_IF_PROMPT_FLUSH;
-                fallthrough;
-              case 1:
-                CALC_FEE
-                ADD_ACCUM_PROMPT("Fee", output_evm_fee_to_string);
-              }
+              ADD_ACCUM_PROMPT("Transfer", output_evm_prompt_to_string);
               break;
             }
+
             PRINTF("2 Here WE ARE\n");
             case TXN_DATA_DEPLOY: {
-              switch (state->per_item_prompt) {
-              case 0:
-                prompt_calldata_preview(state, meta);
-                ADD_ACCUM_PROMPT("Data", output_evm_calldata_preview_to_string);
-                state->per_item_prompt++;
-                RET_IF_PROMPT_FLUSH;
-                fallthrough;
-              case 1:
-                CALC_FEE
-                ADD_ACCUM_PROMPT("Maximum Fee", output_evm_fee_to_string);
-              }
+              prompt_calldata_preview(state, meta);
+              ADD_ACCUM_PROMPT("Data", output_evm_calldata_preview_to_string);
               break;
             }
-            PRINTF("3 Here WE ARE\n");
+
+            default:
+              break;
+            }
+
+            state->per_item_prompt++;
+            RET_IF_PROMPT_FLUSH;
+            fallthrough;
+            case 3:
+
+            switch (sort) {
+            case TXN_DATA_UNSET:
+              REJECT("should be known by now");
+
+            case TXN_DATA_PLAIN_TRANSFER: {
+              CALC_FEE
+              ADD_ACCUM_PROMPT("Fee", output_evm_fee_to_string);
+              break;
+            }
+
+            case TXN_DATA_DEPLOY:
             case TXN_DATA_CONTRACT_CALL_KNOWN_DEST:
-            case TXN_DATA_CONTRACT_CALL_UNKNOWN_DEST:
+            case TXN_DATA_CONTRACT_CALL_UNKNOWN_DEST: {
               CALC_FEE
               ADD_ACCUM_PROMPT("Maximum Fee", output_evm_fee_to_string);
+              break;
+            }
+            }
+
             }
 
             FINISH_ITEM_CHUNK();
             RET_IF_PROMPT_FLUSH;
 
+          }
             //
             PARSE_ITEM(EVM_EIP1559_TXN_ACCESS_LIST, );
             RET_IF_NOT_DONE;
@@ -1088,6 +1105,7 @@ enum parse_rv impl_parse_rlp_item(
             state->chunk.length = consumable;
           }
         }
+
         PRINTF("consumed in parse_rv 1082 ----\n");
         meta->input.consumed += consumable;
         state->current += consumable;
