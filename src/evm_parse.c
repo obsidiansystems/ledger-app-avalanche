@@ -599,12 +599,6 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
             RET_IF_NOT_DONE;
             //
 
-            // if(state->rlpItem_state.length != 2
-            //    || state->rlpItem_state.buffer[0] != 0xa8
-            //    || (state->rlpItem_state.buffer[1] != 0x68
-            //        && state->rlpItem_state.buffer[1] != 0x69
-            //        && state->rlpItem_state.buffer[1] != 0x6a))
-            //     REJECT("Chain ID incorrect for the Avalanche C chain");
             meta->chainIdLowByte = state->rlpItem_state.buffer[state->rlpItem_state.length-1];
             PRINTF("Chain ID low byte: %x\n", meta->chainIdLowByte);
 
