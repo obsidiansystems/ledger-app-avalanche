@@ -524,8 +524,11 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
             case 1:
               // Only continue if the initial parse got sufficiently far.
               checkDataFieldLengthFitsTransaction(state);
-              if(state->rlpItem_state.state < 2)
+              PRINTF("SUBSTATE %d", state->rlpItem_state.state);
+              if (state->rlpItem_state.state < 2) {
+                state->per_item_prompt = 0;
                 return sub_rv;
+              }
 
               check_whether_has_calldata(state);
 
@@ -877,8 +880,11 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
               fallthrough;
             case 1:
               // Only continue if the initial parse got sufficiently far.
-              if(state->rlpItem_state.state < 2)
+              PRINTF("SUBSTATE %d", state->rlpItem_state.state);
+              if (state->rlpItem_state.state < 2) {
+                state->per_item_prompt = 0;
                 return sub_rv;
+              }
 
               check_whether_has_calldata(state);
 
