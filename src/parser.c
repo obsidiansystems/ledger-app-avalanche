@@ -70,7 +70,7 @@ void initFixed(struct FixedState *const state, size_t const len) {
     /**/ TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR: \
     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR: \
     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR: \
-    case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_CHAIN \
+    case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_CHAIN: \
     case TRANSACTION_P_CHAIN_TYPE_ID_IMPORT: \
     case TRANSACTION_P_CHAIN_TYPE_ID_EXPORT
 
@@ -1402,20 +1402,26 @@ enum parse_rv parse_CreateChainTransaction(
       state->state++;
       INIT_SUBPARSER(bufferhwsState, Bufferhws);
       fallthrough;
-    case 1: {// chain name
+    case 1: { // chain name
       CALL_SUBPARSER(bufferhwsState, Bufferhws);
       PRINTF("Done with Chain Name\n");
       state->state++;
-      INIT_SUBPARSER(uint32State, uint32_t);
+      INIT_SUBPARSER(id32State, Id32);
     } fallthrough;
     case 2: {
+      CALL_SUBPARSER(id32State, Id32);
+      PRINTF("VM ID: %.*h\n", 32, state->id32State.buf);
+      state->state++;
+      INIT_SUBPARSER(uint32State, uint32_t);
+    } fallthrough;
+    case 3: {
       CALL_SUBPARSER(uint32State, uint32_t);
-      PRINTF("Num of fxids");
+      PRINTF("Num of fxids\n");
       state->fxid_n = state->uint32State.val; 
       state->state++;
       INIT_SUBPARSER(id32State, Id32); 
     } fallthrough;
-    case 3: {
+    case 4: {
       if(state->fxid_i == state->fxid_n)
       {
         state->state++;
@@ -1450,16 +1456,16 @@ enum parse_rv parse_CreateChainTransaction(
         } 
       } while(false);
     } fallthrough;
-    case 4: {
+    case 5: {
       CALL_SUBPARSER(buffersState, Buffers);
       state->state++;
       INIT_SUBPARSER(subnetauthState, SubnetAuth);
     } fallthrough;
-    case 5: {
+    case 6: {
       CALL_SUBPARSER(subnetauthState, SubnetAuth);
       state->state++;
     } fallthrough;
-    case 6:
+    case 7:
       sub_rv = PARSE_RV_DONE;
   }
   return sub_rv;
