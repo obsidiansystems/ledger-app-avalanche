@@ -430,47 +430,58 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
             FINISH_ITEM_CHUNK();
 
             //
-            PARSE_ITEM(EVM_LEGACY_TXN_TO, _to_buffer);
-            RET_IF_NOT_DONE;
+            fallthrough;
+          case EVM_LEGACY_TXN_TO: {
             //
 
-            switch (state->rlpItem_state.length) {
+            switch (state->per_item_prompt) {
+
             case 0:
-              state->hasTo = false;
-              break;
-            case ETHEREUM_ADDRESS_SIZE:
-              state->hasTo = true;
-              break;
-            default:
-              REJECT("When present, destination address must have exactly %u bytes", ETHEREUM_ADDRESS_SIZE);
+              JUST_PARSE_ITEM(EVM_LEGACY_TXN_TO, _to_buffer);
+              RET_IF_NEED_MORE;
+              state->per_item_prompt++;
+              RET_IF_PROMPT_FLUSH;
+              fallthrough;
+
+            case 1:
+              switch (state->rlpItem_state.length) {
+              case 0:
+                state->hasTo = false;
+                break;
+              case ETHEREUM_ADDRESS_SIZE:
+                state->hasTo = true;
+                break;
+              default:
+                REJECT("When present, destination address must have exactly %u bytes", ETHEREUM_ADDRESS_SIZE);
+              }
+
+              if(state->hasTo) {
+                for(size_t i = 0; i < NUM_ELEMENTS(precompiled); i++) {
+                  if(!memcmp(precompiled[i].to, state->rlpItem_state.buffer, ETHEREUM_ADDRESS_SIZE)) {
+                    meta->known_destination = &precompiled[i];
+                    break;
+                  }
+                }
+                if(!meta->known_destination)
+                  SET_PROMPT_VALUE(memcpy(entry->data.output_prompt.address.val, state->rlpItem_state.buffer, ETHEREUM_ADDRESS_SIZE));
+              } else {
+                static char const label []="Creation";
+                ADD_PROMPT("Contract", label, sizeof(label), strcpy_prompt);
+              }
+              state->per_item_prompt++;
+              RET_IF_PROMPT_FLUSH;
+              fallthrough;
+
+            case 2:
+              if (!state->hasTo) {
+                SET_PROMPT_VALUE(entry->data.output_prompt.start_gas = state->gasLimit);
+                ADD_ACCUM_PROMPT("Gas Limit", output_evm_gas_limit_to_string);
+              }
             }
 
-            if(state->hasTo) {
-              for(size_t i = 0; i < NUM_ELEMENTS(precompiled); i++) {
-                if(!memcmp(precompiled[i].to, state->rlpItem_state.buffer, ETHEREUM_ADDRESS_SIZE)) {
-                  meta->known_destination = &precompiled[i];
-                  break;
-                }
-              }
-              if(!meta->known_destination)
-                SET_PROMPT_VALUE(memcpy(entry->data.output_prompt.address.val, state->rlpItem_state.buffer, ETHEREUM_ADDRESS_SIZE));
-              FINISH_ITEM_CHUNK();
-            }
-            else {
-              static char const label []="Creation";
-              switch (state->per_item_prompt) {
-              case 0:
-                ADD_PROMPT("Contract", label, sizeof(label), strcpy_prompt);
-                SET_PROMPT_VALUE(entry->data.output_prompt.start_gas = state->gasLimit);
-                state->per_item_prompt++;
-                RET_IF_PROMPT_FLUSH;
-                fallthrough;
-              case 1:
-                ADD_ACCUM_PROMPT("Gas Limit", output_evm_gas_limit_to_string);
-                FINISH_ITEM_CHUNK();
-                RET_IF_PROMPT_FLUSH;
-              }
-            }
+            FINISH_ITEM_CHUNK();
+            RET_IF_PROMPT_FLUSH;
+          }
 
             //
             PARSE_ITEM(EVM_LEGACY_TXN_VALUE, _to_buffer);
@@ -496,7 +507,7 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
             RET_IF_PROMPT_FLUSH;
 
             //
-          fallthrough;
+            fallthrough;
           case EVM_LEGACY_TXN_DATA: {
             // Instead of waiting for a complete item parse, do some of the
             // actions below every time.
@@ -800,8 +811,9 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
             switch (state->per_item_prompt) {
             case 0:
               JUST_PARSE_ITEM(EVM_EIP1559_TXN_TO, _to_buffer);
-              RET_IF_NOT_DONE;
+              RET_IF_NEED_MORE;
               state->per_item_prompt++;
+              RET_IF_PROMPT_FLUSH;
               fallthrough;
             case 1:
               switch (state->rlpItem_state.length) {
