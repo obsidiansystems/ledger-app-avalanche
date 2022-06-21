@@ -187,10 +187,10 @@ dep/%.d: %.c Makefile
 .PHONY: test test-no-nix watch watch-test
 
 watch:
-	ls Makefile src/*.c src/*.h | entr -cr make
+	ls Makefile src/*.c src/*.h | entr -cr $(MAKE)
 
 watch-test:
-	ls Makefile src/*.c src/*.h tests/*.ts tests/deps/hw-app-avalanche/src/*.ts | entr -cr make test
+	ls Makefile src/*.c src/*.h tests/*.ts tests/deps/hw-app-avalanche/src/*.ts | entr -cr $(MAKE) test
 
 test: tests/*.ts tests/package.json bin/app.elf
 	LEDGER_APP=bin/app.elf \

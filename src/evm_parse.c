@@ -561,20 +561,22 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
                 REJECT("should be known by now");
 
               case TXN_DATA_CONTRACT_CALL_KNOWN_DEST: {
-                if(state->rlpItem_state.do_init && meta->known_destination->init_data)
+                struct EVM_RLP_item_state *const item_state = &state->rlpItem_state;
+                if(item_state->do_init && meta->known_destination->init_data) {
                   PIC(meta->known_destination->init_data)(
-                    &state->rlpItem_state.endpoint_state,
-                    state->rlpItem_state.length);
-                PRINTF("INIT: %u\n", state->rlpItem_state.do_init);
+                    &item_state->endpoint_state,
+                    item_state->length);
+                  item_state->do_init = false;
+                }
+                PRINTF("INIT: %u\n", item_state->do_init);
                 PRINTF("Chunk: [%u] %.*h\n",
-                  state->rlpItem_state.chunk.length,
-                  state->rlpItem_state.chunk.length, state->rlpItem_state.chunk.src);
+                  item_state->chunk.length,
+                  item_state->chunk.length, item_state->chunk.src);
                 if(meta->known_destination->handle_data) {
                   PRINTF("HANDLING DATA\n");
-                  PRINTF("TEMP 2 PER ITEM PROMPT %d\n", state->per_item_prompt);
                   sub_rv = PIC(meta->known_destination->handle_data)(
-                    &state->rlpItem_state.endpoint_state,
-                    &state->rlpItem_state.chunk,
+                    &item_state->endpoint_state,
+                    &item_state->chunk,
                     meta);
                 }
                 PRINTF("PARSER CALLED [sub_rv: %u]\n", sub_rv);
@@ -932,17 +934,20 @@ enum parse_rv parse_eip1559_rlp_txn(struct EVM_RLP_txn_state *const state, evm_p
 
               case TXN_DATA_CONTRACT_CALL_KNOWN_DEST: {
                 // state has To and the destination is known
-                if(state->rlpItem_state.do_init && meta->known_destination->init_data)
+                struct EVM_RLP_item_state *const item_state = &state->rlpItem_state;
+                if (item_state->do_init && meta->known_destination->init_data) {
                   PIC(meta->known_destination->init_data)(
-                    &state->rlpItem_state.endpoint_state,
-                    state->rlpItem_state.length);
-                PRINTF("INIT: %u\n", state->rlpItem_state.do_init);
-                PRINTF("Chunk: [%u] %.*h\n", state->rlpItem_state.chunk.length, state->rlpItem_state.chunk.length, state->rlpItem_state.chunk.src);
+                    &item_state->endpoint_state,
+                    item_state->length);
+                  item_state->do_init = false;
+                }
+                PRINTF("INIT: %u\n", item_state->do_init);
+                PRINTF("Chunk: [%u] %.*h\n", item_state->chunk.length, item_state->chunk.length, item_state->chunk.src);
                 if(meta->known_destination->handle_data) {
                   PRINTF("HANDLING DATA\n");
                   sub_rv = PIC(meta->known_destination->handle_data)(
-                    &state->rlpItem_state.endpoint_state,
-                    &state->rlpItem_state.chunk,
+                    &item_state->endpoint_state,
+                    &item_state->chunk,
                     meta);
                 }
                 PRINTF("PARSER CALLED [sub_rv: %u]\n", sub_rv);
@@ -1296,7 +1301,7 @@ rebranch:
 }
 
 enum parse_rv parse_assetCall_data(struct EVM_assetCall_state *const state, parser_input_meta_state_t *const input, evm_parser_meta_state_t *const meta) {
-    enum parse_rv sub_rv;
+    enum parse_rv sub_rv = PARSE_RV_INVALID;
     bool expectingDeposit = state->data_length > 0;
 
     PRINTF("AssetCall Data: %.*h\n", input->length, input->src);
