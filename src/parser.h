@@ -131,6 +131,7 @@ struct Genesis_state {
   uint32_t gen_n;
   uint32_t gen_i;
   union {
+      NUMBER_STATES;
       struct uint8_t_state uint8State;
   };
 };
@@ -140,6 +141,7 @@ struct ChainName_state{
   uint16_t chainN_n;
   uint16_t chainN_i;
   union {
+      struct uint16_t_state uint16State;
       struct uint8_t_state uint8State;
   };
 };
@@ -343,8 +345,8 @@ struct CreateChainTransactionState {
   union {
 	struct uint32_t_state uint32State;
         struct Id32_state id32State;
-        struct Bufferhws_state  bufferhwsState;
-        struct Buffers_state buffersState; 
+        struct ChainName_state  chainnameState;
+        struct Genesis_state genesisState; 
         struct SubnetAuth_state subnetauthState;	
   };
 };

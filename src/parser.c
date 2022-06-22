@@ -457,7 +457,7 @@ enum parse_rv parse_SubnetAuth(struct SubnetAuth_state *const state, parser_meta
     case 0:
       // Type ID
       CALL_SUBPARSER(uint32State, uint32_t);
-      PRINTF("SUBNET AUTH\n");
+      //PRINTF("SUBNET AUTH\n");
       state->state++;
       INIT_SUBPARSER(uint32State, uint32_t);
       fallthrough;
@@ -466,7 +466,7 @@ enum parse_rv parse_SubnetAuth(struct SubnetAuth_state *const state, parser_meta
       CALL_SUBPARSER(uint32State, uint32_t);
       state->state++;
       state->sigindices_n = state->uint32State.val;
-      PRINTF("Sigind Count\n");
+      //PRINTF("Sigind Count\n");
       INIT_SUBPARSER(uint32State, uint32_t);
     } fallthrough;
     case 2: {
@@ -1336,14 +1336,14 @@ enum parse_rv parse_AddSNValidatorTransaction(
   return sub_rv;
 }
 
-void init_Genesis(struct Buffer_state *const state)
+void init_Genesis(struct Genesis_state *const state)
 {
   state->state = 0;
   state->gen_i = 0;
   INIT_SUBPARSER(uint32State, uint32_t);
 }
 
-enum parse_rv parse_Genesis(struct Buffer_state *const state, parser_meta_state_t *const meta)
+enum parse_rv parse_Genesis(struct Genesis_state *const state, parser_meta_state_t *const meta)
 {
   enum parse_rv sub_rv = PARSE_RV_INVALID;
   switch(state->state)
@@ -1364,33 +1364,14 @@ enum parse_rv parse_Genesis(struct Buffer_state *const state, parser_meta_state_
         break;
       }
       uint8_t buf[state->gen_n];
-      do
+      while(state->gen_i < state->gen_n)
       {
-        // loop invariant
-        if (state->gen_i == state->gen_n)
-        {
-          THROW(EXC_MEMORY_ERROR);
-        }
-
         CALL_SUBPARSER(uint8State, uint8_t);
-
         buf[state->gen_i] = state->uint8State.val;
- 
-        state->gen_i++;
-        if (state->gen_i < state->gen_n)
-        {
-          INIT_SUBPARSER(uint8State, uint8_t);
-          RET_IF_PROMPT_FLUSH;
-          continue;
-        }
-        else
-        {
-          state->state++;
-          //ADD_PROMPT();
-          RET_IF_PROMPT_FLUSH;
-          break;
-        }
-      } while(false);
+	INIT_SUBPARSER(uint8State, uint8_t);
+	state->gen_i++;
+      }
+      //PRINTF("Genesis Data: %.*h\n", sizeof(buf), buf);
     } fallthrough;
     case 2:
       sub_rv = PARSE_RV_DONE;
@@ -1411,14 +1392,14 @@ enum parse_rv parse_ChainName(struct ChainName_state *const state, parser_meta_s
   enum parse_rv sub_rv = PARSE_RV_INVALID;
   switch(state->state)
   {
-    case 0: {
+    case 0:
       // Number of bytes in Chain Name
       CALL_SUBPARSER(uint16State, uint16_t);
       state->state++;
       state->chainN_n = state->uint16State.val;
-      PRINTF("Chain Name Length\n");
+      //PRINTF("Chain Name Length: %d\n", state->chainN_n);
       INIT_SUBPARSER(uint8State, uint8_t);
-    } fallthrough;
+      fallthrough;
     case 1: {
       //
       if (state->chainN_i == state->chainN_n)
@@ -1426,34 +1407,15 @@ enum parse_rv parse_ChainName(struct ChainName_state *const state, parser_meta_s
         state->state++;
         break;
       }
-      uint8_t buf[state->chainN_n];
-      do
+      //uint8_t buf[state->chainN_n];
+      while(state->chainN_i < state->chainN_n)
       {
-        // loop invariant
-        if (state->chainN_i == state->chainN_n)
-        {
-          THROW(EXC_MEMORY_ERROR);
-        }
-
         CALL_SUBPARSER(uint8State, uint8_t);
-
-        buf[state->chainN_i] = state->uint8State.val;
- 
-        state->chainN_i++;
-        if (state->chainN_i < state->chainN_n)
-        {
-          INIT_SUBPARSER(uint8State, uint8_t);
-          RET_IF_PROMPT_FLUSH;
-          continue;
-        }
-        else
-        {
-          state->state++;
-          //ADD_PROMPT();
-          RET_IF_PROMPT_FLUSH;
-          break;
-        }
-      } while(false);
+	//buf[state->chainN_i] = state->uint8State.val;
+	INIT_SUBPARSER(uint8State, uint8_t);
+	state->chainN_i++;
+      }
+      // ADD_PROMPT("Chain Name", &buf, sizeof(buf), );
     } fallthrough;
     case 2:
       sub_rv = PARSE_RV_DONE;
@@ -1479,10 +1441,10 @@ enum parse_rv parse_CreateChainTransaction(
       CALL_SUBPARSER(id32State, Id32);
       PRINTF("Subnet ID: %.*h\n", 32, state->id32State.buf);
       state->state++;
-      INIT_SUBPARSER(bufferhwsState, Bufferhws);
+      INIT_SUBPARSER(chainnameState, ChainName);
       fallthrough;
     case 1: { // chain name
-      CALL_SUBPARSER(bufferhwsState, Bufferhws);
+      CALL_SUBPARSER(chainnameState, ChainName);
       PRINTF("Done with Chain Name\n");
       state->state++;
       INIT_SUBPARSER(id32State, Id32);
@@ -1504,7 +1466,7 @@ enum parse_rv parse_CreateChainTransaction(
       if(state->fxid_i == state->fxid_n)
       {
         state->state++;
-        INIT_SUBPARSER(buffersState, Buffers);
+        INIT_SUBPARSER(genesisState, Genesis);
         break;
       }
       do
@@ -1529,14 +1491,14 @@ enum parse_rv parse_CreateChainTransaction(
         else
         {
           state->state++;
-          INIT_SUBPARSER(buffersState, Buffers);
+          INIT_SUBPARSER(genesisState, Genesis);
           RET_IF_PROMPT_FLUSH;
           break;
         } 
       } while(false);
     } fallthrough;
     case 5: {
-      CALL_SUBPARSER(buffersState, Buffers);
+      CALL_SUBPARSER(genesisState, Genesis);
       state->state++;
       INIT_SUBPARSER(subnetauthState, SubnetAuth);
     } fallthrough;
