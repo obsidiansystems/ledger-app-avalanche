@@ -28,6 +28,23 @@ size_t nodeid_to_string(
     return b58sz;
 }
 
+static const char subid_prefix[] = "SubnetID-";
+size_t subid_prefix(
+    char out[const],size_t const out_size, public_key_hash_t const *const payload)
+{
+    if (out_size < sizeof(subid_prefix) - 1)
+        THROW(EXC_MEMORY_ERROR);
+   
+    size_t ix = 0;
+    memcpy(&out[ix], subid_prefix, sizeof(subid_prefix) - 1);
+    ix += sizeof(subid_prefix) - 1;
+ 
+    size_t b58z = out_size - ix;
+    if (!cb58enc(&out[ix], &b58sz, (const void*)payload, sizeof(payload)))
+        THROW(EXC_MEMORY_ERROR);
+    return b58sz;
+}
+
 size_t pkh_to_string(
     char out[const], size_t const out_size,
     char const *const hrp, size_t const hrp_size,

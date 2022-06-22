@@ -186,6 +186,11 @@ static void validator_to_string(char *const out, size_t const out_size, address_
     nodeid_to_string(&out[ix], out_size - ix, &in->address.val);
 }
 
+static void subnetid_to_string(char *const out, size_t const out_size, Id32 const *const in) {
+    size_t ix = 0;
+    subid_to_string(&out[ix], out_size - ix, &in->val);
+} 
+
 enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
     switch (state->state) {
@@ -1320,8 +1325,7 @@ enum parse_rv parse_AddSNValidatorTransaction(
       fallthrough;
     case 1: {//Subnet ID
       CALL_SUBPARSER(id32State, Id32);
-      PRINTF("Subnet ID: %.*h\n", 32, state->id32State.buf);
-      // potentially need check_subnet_id function??
+      ADD_PROMPT("Subnet", &state->id32State.val, sizeof(Id32), subnetid_to_string);
       state->state++;
       INIT_SUBPARSER(subnetauthState, SubnetAuth);
     } fallthrough;
