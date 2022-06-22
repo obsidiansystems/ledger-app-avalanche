@@ -1336,52 +1336,131 @@ enum parse_rv parse_AddSNValidatorTransaction(
   return sub_rv;
 }
 
-void init_Buffer(struct Buffer_state *const state)
+void init_Genesis(struct Buffer_state *const state)
 {
   state->state = 0;
-  INIT_SUBPARSER(uint8State, uint8_t);
+  state->gen_i = 0;
+  INIT_SUBPARSER(uint32State, uint32_t);
 }
 
-enum parse_rv parse_Buffer(struct Buffer_state *const state, parser_meta_state_t *const meta)
+enum parse_rv parse_Genesis(struct Buffer_state *const state, parser_meta_state_t *const meta)
 {
   enum parse_rv sub_rv = PARSE_RV_INVALID;
   switch(state->state)
   {
-    case 0:
-      CALL_SUBPARSER(uint8State, uint8_t);
+    case 0: {
+      // Number of bytes of Genesis Data
+      CALL_SUBPARSER(uint32State, uint32_t);
       state->state++;
-      fallthrough;
-    case 1:
+      state->gen_n = state->uint32State.val;
+      PRINTF("Gen Data Count\n");
+      INIT_SUBPARSER(uint8State, uint8_t);
+    } fallthrough;
+    case 1: {
+      //
+      if (state->gen_i == state->gen_n)
+      {
+        state->state++;
+        break;
+      }
+      uint8_t buf[state->gen_n];
+      do
+      {
+        // loop invariant
+        if (state->gen_i == state->gen_n)
+        {
+          THROW(EXC_MEMORY_ERROR);
+        }
+
+        CALL_SUBPARSER(uint8State, uint8_t);
+
+        buf[state->gen_i] = state->uint8State.val;
+ 
+        state->gen_i++;
+        if (state->gen_i < state->gen_n)
+        {
+          INIT_SUBPARSER(uint8State, uint8_t);
+          RET_IF_PROMPT_FLUSH;
+          continue;
+        }
+        else
+        {
+          state->state++;
+          //ADD_PROMPT();
+          RET_IF_PROMPT_FLUSH;
+          break;
+        }
+      } while(false);
+    } fallthrough;
+    case 2:
       sub_rv = PARSE_RV_DONE;
       break;
   }
   return sub_rv;
 }
 
-void init_Bufferhw(struct Bufferhw_state *const state)
+void init_ChainName(struct ChainName_state *const state)
 {
   state->state = 0;
-  INIT_SUBPARSER(uint8State, uint8_t);
+  state->chainN_i = 0;
+  INIT_SUBPARSER(uint16State, uint16_t);
 }
 
-enum parse_rv parse_Bufferhw(struct Bufferhw_state *const state, parser_meta_state_t *const meta)
+enum parse_rv parse_ChainName(struct ChainName_state *const state, parser_meta_state_t *const meta)
 {
   enum parse_rv sub_rv = PARSE_RV_INVALID;
   switch(state->state)
   {
-    case 0:
-      CALL_SUBPARSER(uint8State, uint8_t);
+    case 0: {
+      // Number of bytes in Chain Name
+      CALL_SUBPARSER(uint16State, uint16_t);
       state->state++;
-      fallthrough;
-    case 1:
+      state->chainN_n = state->uint16State.val;
+      PRINTF("Chain Name Length\n");
+      INIT_SUBPARSER(uint8State, uint8_t);
+    } fallthrough;
+    case 1: {
+      //
+      if (state->chainN_i == state->chainN_n)
+      {
+        state->state++;
+        break;
+      }
+      uint8_t buf[state->chainN_n];
+      do
+      {
+        // loop invariant
+        if (state->chainN_i == state->chainN_n)
+        {
+          THROW(EXC_MEMORY_ERROR);
+        }
+
+        CALL_SUBPARSER(uint8State, uint8_t);
+
+        buf[state->chainN_i] = state->uint8State.val;
+ 
+        state->chainN_i++;
+        if (state->chainN_i < state->chainN_n)
+        {
+          INIT_SUBPARSER(uint8State, uint8_t);
+          RET_IF_PROMPT_FLUSH;
+          continue;
+        }
+        else
+        {
+          state->state++;
+          //ADD_PROMPT();
+          RET_IF_PROMPT_FLUSH;
+          break;
+        }
+      } while(false);
+    } fallthrough;
+    case 2:
       sub_rv = PARSE_RV_DONE;
       break;
   }
   return sub_rv;
 }
-
-IMPL_ARRAY_HW(Bufferhw);
-IMPL_ARRAY(Buffer);
 
 void init_CreateChainTransaction(struct CreateChainTransactionState *const state) {
   state->state = 0;

@@ -97,36 +97,6 @@ IMPL_FIXED(uint8_t);
         return sub_rv; \
     }
 
-
-#define IMPL_ARRAY_HW(name) \
-    void init_ ## name ## s (struct name ## s_state *const state) { \
-        state->state = 0; \
-        state->i = 0; \
-        init_uint16_t(&state->len_state); \
-    } \
-    enum parse_rv parse_ ## name ## s (struct name ## s_state *const state, parser_meta_state_t *const meta) { \
-        enum parse_rv sub_rv = PARSE_RV_INVALID; \
-        switch (state->state) { \
-            case 0: \
-                CALL_SUBPARSER(len_state, uint16_t); \
-                state->len = READ_UNALIGNED_BIG_ENDIAN(uint16_t, state->len_state.buf); \
-                state->state++; \
-                if(state->len == 0) break; \
-                init_ ## name(&state->item); \
-                fallthrough; /* NOTE! */ \
-            case 1: \
-                while (true) { \
-                    PRINTF(#name " %d\n", state->i + 1); \
-                    CALL_SUBPARSER(item, name); \
-                    state->i++; \
-                    if (state->i == state->len) return PARSE_RV_DONE; \
-                    init_ ## name(&state->item); \
-                } \
-                break; \
-        } \
-        return sub_rv; \
-    }
-
 #define RET_IF_NOT_DONE \
     if (sub_rv != PARSE_RV_DONE) return sub_rv
 

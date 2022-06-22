@@ -55,17 +55,6 @@ struct FixedState0 {
         }; \
     };
 
-#define DEFINE_ARRAY_HW(name) \
-    struct name ## s_state { \
-        int state; \
-        uint16_t len; \
-        uint16_t i; \
-        union { \
-            struct uint16_t_state len_state;\
-            struct name ## _state item; \
-        }; \
-    };
-
 DEFINE_FIXED(uint8_t);
 DEFINE_FIXED_BE(uint16_t);
 DEFINE_FIXED_BE(uint32_t);
@@ -137,23 +126,24 @@ struct Output_state {
 
 DEFINE_FIXED(blockchain_id_t);
 
-struct Bufferhw_state {
+struct Genesis_state {
   int state;
+  uint32_t gen_n;
+  uint32_t gen_i;
   union {
       struct uint8_t_state uint8State;
   };
 };
 
-DEFINE_ARRAY_HW(Bufferhw);
-
-struct Buffer_state{
+struct ChainName_state{
   int state;
+  uint16_t chainN_n;
+  uint16_t chainN_i;
   union {
       struct uint8_t_state uint8State;
   };
 };
 
-DEFINE_ARRAY(Buffer);
 
 struct TransferableOutput_state {
     int state;
