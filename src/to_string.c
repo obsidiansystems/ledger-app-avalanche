@@ -30,7 +30,7 @@ size_t nodeid_to_string(
 
 static const char subid_prefix[] = "SubnetID-";
 size_t subid_prefix(
-    char out[const],size_t const out_size, public_key_hash_t const *const payload)
+    char out[const],size_t const out_size, Id32 const *const payload)
 {
     if (out_size < sizeof(subid_prefix) - 1)
         THROW(EXC_MEMORY_ERROR);
@@ -39,7 +39,7 @@ size_t subid_prefix(
     memcpy(&out[ix], subid_prefix, sizeof(subid_prefix) - 1);
     ix += sizeof(subid_prefix) - 1;
  
-    size_t b58z = out_size - ix;
+    size_t b58sz = out_size - ix;
     if (!cb58enc(&out[ix], &b58sz, (const void*)payload, sizeof(payload)))
         THROW(EXC_MEMORY_ERROR);
     return b58sz;

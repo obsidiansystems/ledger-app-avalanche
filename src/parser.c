@@ -490,8 +490,8 @@ enum parse_rv parse_SubnetAuth(struct SubnetAuth_state *const state, parser_meta
 
         CALL_SUBPARSER(uint32State, uint32_t);
 
-        ADD_PROMPT("Address Index", &state->uint32State.val, sizeof(uint32_t), number_to_string_indirect32);
-
+        PRINTF("Address Index: %d\n", state->uint32State.val);
+  
         state->sigindices_i++;
         if (state->sigindices_i < state->sigindices_n)
         {
