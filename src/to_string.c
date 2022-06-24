@@ -40,7 +40,7 @@ size_t subid_to_string(
     ix += sizeof(subid_prefix) - 1;
  
     size_t b58sz = out_size - ix;
-    if (!cb58enc(&out[ix], &b58sz, (const void*)payload, sizeof(payload)))
+    if (!cb58enc(&out[ix], &b58sz, (const void*)payload, sizeof(*payload)))
         THROW(EXC_MEMORY_ERROR);
     return b58sz;
 }

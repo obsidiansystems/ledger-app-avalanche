@@ -368,7 +368,7 @@ describe('Staking tests', async function () {
       {header: 'Start time', body: '2020-07-29 22:07:25 UTC' },
       {header: 'End time', body: '2020-08-28 21:57:26 UTC' },
       {header: 'Weight', body: '0.000054321 AVAX' },
-      {header: 'Subnet', body: 'SubnetID-FqRJqZZXmU7' },
+      {header: 'Subnet', body: 'SubnetID-g4WNtLL98APX666NZGfjoDDsr6fsS27NsjhuCSTAeX5Dtx1Nb' },
       {header: 'Fee', body: '2000.001 AVAX'}
     ]).concat([[finalizePrompt]]);
     const ui = await flowMultiPrompt(this.speculos, prompts);
