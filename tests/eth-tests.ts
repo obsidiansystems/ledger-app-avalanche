@@ -267,7 +267,7 @@ describe("Eth app compatibility tests", async function () {
     expect(dat.chainCode).to.equal("428489ee70680fa137392bc8399c4da9e39e92f058eb9e790f736142bba7e9d6");
   });
 
-  it.skip('can sign a transaction via the ethereum ledgerjs module', async function() {
+  it('can sign a transaction via the ethereum ledgerjs module', async function() {
     await testLegacySigning(this, 43114,
       transferPrompts(
         '0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
@@ -277,7 +277,7 @@ describe("Eth app compatibility tests", async function () {
     );
   });
 
-  it.skip('can sign a larger transaction via the ethereum ledgerjs module', async function() {
+  it('can sign a larger transaction via the ethereum ledgerjs module', async function() {
     await testLegacySigning(this, 43114,
       transferPrompts(
         '0x28ee52a8f3d6e5d15f8b131996950d7f296c7952',
@@ -313,7 +313,7 @@ describe("Eth app compatibility tests", async function () {
       await testEIP1559Signing(this, chainId, prompts, tx);
     });
 
-    it.skip('can sign an EIP1559 transaction via the ethereum ledgerjs module without call data', async function() {
+    it('can sign an EIP1559 transaction via the ethereum ledgerjs module without call data', async function() {
       const chainId = 43112;
       const tx = rawUnsignedEIP1559Transaction(chainId, {
           // chainId: chainId is passed through,
@@ -368,7 +368,7 @@ describe("Eth app compatibility tests", async function () {
     }
   });
 
-  it.skip('can sign unrecognized calldata nonsense',
+  it('can sign unrecognized calldata nonsense',
      testUnrecognizedCalldata('90000102030405060708090a0b0c0d0e0f')
     );
 
@@ -438,7 +438,7 @@ describe("Eth app compatibility tests", async function () {
     );
   });
 
-  it.skip('can provide an ERC20 Token and sign with the ethereum ledgerjs module', async function() {
+  it('can provide an ERC20 Token and sign with the ethereum ledgerjs module', async function() {
     const zrxInfo = byContractAddressAndChainId("0xe41d2489571d322189246dafa5ebde1f4699f498", 43114);
     if (zrxInfo !== undefined)
     {
