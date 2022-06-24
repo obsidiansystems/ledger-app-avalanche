@@ -5,7 +5,7 @@ include $(BOLOS_SDK)/Makefile.defines
 
 APPNAME = "Avalanche"
 
-APP_LOAD_PARAMS= --appFlags 0 --curve secp216k1 --path "44'/9000'" --path "44'/60'" $(COMMON_LOAD_PARAMS)
+APP_LOAD_PARAMS= --appFlags 0 --curve secp256k1 --path "44'/9000'" --path "44'/60'" $(COMMON_LOAD_PARAMS)
 
 GIT_DESCRIBE ?= $(shell git describe --tags --abbrev=8 --always --long --dirty 2>/dev/null)
 
