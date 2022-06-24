@@ -1,8 +1,8 @@
 {
   "owner": "obsidiansystems",
   "repo": "nanos-secure-sdk",
-  "branch": "avalanche-1.6",
+  "branch": "avalanche-2",
   "private": false,
-  "rev": "2817637950fbdbf91bbe712b236d96cb96832904",
-  "sha256": "1q3ka18ix9rnn0xxs6lnhcf5fn9bh1hylgjravgng4h48g8vvsax"
+  "rev": "110fb09706ae3bd9dda6893e63b20482b8f8e7f0",
+  "sha256": "0nliac4548gvv0wwv679lb0zcidwqh22ml6jypyaiwzixhi0w3h9"
 }
