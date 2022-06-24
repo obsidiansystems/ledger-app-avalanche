@@ -321,6 +321,9 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                           output_prompt_to_string
                           );
                       break;
+		    case TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR:
+		      PRINTF("This is because there is not a function that conducts a transfer of funds\n");
+		      break;
                     default:
                       ADD_PROMPT(
                           "Transfer",

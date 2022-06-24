@@ -29,7 +29,7 @@ size_t nodeid_to_string(
 }
 
 static const char subid_prefix[] = "SubnetID-";
-size_t subid_prefix(
+size_t subid_to_string(
     char out[const],size_t const out_size, Id32 const *const payload)
 {
     if (out_size < sizeof(subid_prefix) - 1)

@@ -294,7 +294,7 @@ describe('Staking tests', async function () {
     await ui.promptsPromise;
   });
 
-  it('can sign an add subnet validator transaction', async function () {
+  it.only('can sign an add subnet validator transaction', async function () {
     const txn = Buffer.from([
       0x00, 0x00,
       0x00, 0x00, 0x00, 0x0d, 0x00, 0x00, 0x30, 0x39,
@@ -368,7 +368,7 @@ describe('Staking tests', async function () {
       {header: 'Start time', body: '2020-07-29 22:07:25 UTC' },
       {header: 'End time', body: '2020-08-28 21:57:26 UTC' },
       {header: 'Total Stake', body: '0.000054321 AVAX' },
-      {header: 'Subnet', body: 'SubnetID-' },
+      {header: 'Subnet', body: 'SubnetID-FqRJqZZXmU7' },
       {header: 'Fee', body: '2000.001 AVAX'}
     ]).concat([[finalizePrompt]]);
     const ui = await flowMultiPrompt(this.speculos, prompts);
