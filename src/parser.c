@@ -1248,7 +1248,7 @@ enum parse_rv parse_Validator(struct Validator_state *const state, parser_meta_s
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
       meta->staking_weight = state->uint64State.val;
-      ADD_PROMPT("Weight", &state->uint64State.val, sizeof(uint64_t), nano_avax_to_string_indirect64);
+      ADD_PROMPT("Weight", &state->uint64State.val, sizeof(uint64_t), nano_weight_to_string_indirect64);
       RET_IF_PROMPT_FLUSH;
       fallthrough; // NOTE
     case 4:

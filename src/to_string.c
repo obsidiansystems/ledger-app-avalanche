@@ -28,18 +28,14 @@ size_t nodeid_to_string(
     return b58sz;
 }
 
-static const char subid_prefix[] = "SubnetID-";
 size_t subid_to_string(
     char out[const],size_t const out_size, Id32 const *const payload)
 {
-    if (out_size < sizeof(subid_prefix) - 1)
+    if (out_size == 0)
         THROW(EXC_MEMORY_ERROR);
-   
-    size_t ix = 0;
-    memcpy(&out[ix], subid_prefix, sizeof(subid_prefix) - 1);
-    ix += sizeof(subid_prefix) - 1;
- 
-    size_t b58sz = out_size - ix;
+    
+    size_t ix = 0; 
+    size_t b58sz = out_size;
     if (!cb58enc(&out[ix], &b58sz, (const void*)payload, sizeof(*payload)))
         THROW(EXC_MEMORY_ERROR);
     return b58sz;
@@ -276,6 +272,15 @@ size_t nano_avax_to_string(
   ix += sizeof(unit) - 1;
   return ix;
 }
+
+size_t nano_weight_to_string(
+    char dest[const], size_t const buff_size,
+    uint64_t const nano_avax)
+{
+  size_t ix = subunit_to_unit_string(dest, buff_size, nano_avax, NANO_AVAX_SCALE);
+  return ix;
+}
+
 size_t wei_to_gwei_string(
     char dest[const], size_t const buff_size,
     uint64_t const wei)
@@ -345,6 +350,14 @@ void nano_avax_to_string_indirect64(
 {
     check_null(number);
     nano_avax_to_string(dest, buff_size, *number);
+}
+
+void nano_weight_to_string_indirect64(
+    char dest[const], size_t const buff_size,
+    uint64_t const *const number)
+{
+    check_null(number);
+    nano_weight_to_string(dest, buff_size, *number);
 }
 
 void copy_string(
