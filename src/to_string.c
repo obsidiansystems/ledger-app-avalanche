@@ -273,14 +273,6 @@ size_t nano_avax_to_string(
   return ix;
 }
 
-size_t nano_weight_to_string(
-    char dest[const], size_t const buff_size,
-    uint64_t const nano_avax)
-{
-  size_t ix = subunit_to_unit_string(dest, buff_size, nano_avax, NANO_AVAX_SCALE);
-  return ix;
-}
-
 size_t wei_to_gwei_string(
     char dest[const], size_t const buff_size,
     uint64_t const wei)
@@ -350,14 +342,6 @@ void nano_avax_to_string_indirect64(
 {
     check_null(number);
     nano_avax_to_string(dest, buff_size, *number);
-}
-
-void nano_weight_to_string_indirect64(
-    char dest[const], size_t const buff_size,
-    uint64_t const *const number)
-{
-    check_null(number);
-    nano_weight_to_string(dest, buff_size, *number);
 }
 
 void copy_string(

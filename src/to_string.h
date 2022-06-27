@@ -12,9 +12,6 @@
 size_t nano_avax_to_string(
 	char dest[const], size_t const buff_size,
 	uint64_t const nano_avax);
-size_t nano_weight_to_string(
-	char dest[const], size_t const buff_size,
-	uint64_t const nano_avax);
 size_t wei_to_gwei_string(
 	char dest[const], size_t const buff_size,
 	uint64_t const wei);
@@ -44,9 +41,6 @@ size_t number_to_string
 
 // These take their number parameter through a pointer and take a length
 void nano_avax_to_string_indirect64
-    (char dest[const], size_t const buff_size,
-    uint64_t const *const number);
-void nano_weight_to_string_indirect64
     (char dest[const], size_t const buff_size,
     uint64_t const *const number);
 void number_to_string_indirect64

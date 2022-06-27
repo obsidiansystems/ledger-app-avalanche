@@ -367,7 +367,7 @@ describe('Staking tests', async function () {
       {header: 'Validator', body: 'NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN' },
       {header: 'Start time', body: '2020-07-29 22:07:25 UTC' },
       {header: 'End time', body: '2020-08-28 21:57:26 UTC' },
-      {header: 'Weight', body: '0.000054321' },
+      {header: 'Weight', body: '54321' },
       {header: 'Subnet', body: 'g4WNtLL98APX666NZGfjoDDsr6fsS27NsjhuCSTAeX5Dtx1Nb' },
       {header: 'Fee', body: '2000.001 AVAX'}
     ]).concat([[finalizePrompt]]);
