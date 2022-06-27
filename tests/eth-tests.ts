@@ -353,10 +353,10 @@ describe("Eth app compatibility tests", async function () {
     await testEIP1559Signing(this, chainId, prompts, tx);
   });
 
-  it.skip('A call to assetCall with incorrect call data rejects', async function() {
+  it('A call to assetCall with incorrect call data rejects', async function() {
     const resolution = null;
     try {
-      const dat = sendCommand(async (eth: Eth) =>
+      const dat = await sendCommand(async (eth: Eth) =>
         await eth.signTransaction(
           "44'/60'/0'/0/0",
           'f83880856d6e2edc00832dc6c0940100000000000000000000000000000000000002019190000102030405060708090a0b0c0d0e0f82a8688080',
