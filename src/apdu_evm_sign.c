@@ -169,7 +169,10 @@ static size_t next_parse(bool const is_reentry) {
         transaction_complete_prompt();
     }
 
-    PRINTF("Parse error: %d %d %d\n", rv, G.meta_state.input.consumed, G.meta_state.input.length);
+    PRINTF("Parse error: rv=%d consumed=%d length=%d\n",
+      rv,
+      G.meta_state.input.consumed,
+      G.meta_state.input.length);
     THROW(EXC_PARSE_ERROR);
 }
 
