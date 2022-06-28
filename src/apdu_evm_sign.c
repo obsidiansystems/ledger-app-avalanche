@@ -131,7 +131,7 @@ static size_t next_parse(bool const is_reentry) {
     enum parse_rv rv = PARSE_RV_INVALID;
     BEGIN_TRY {
       TRY {
-        set_next_batch_size(&G.meta_state.prompt, TRANSACTION_PROMPT_MAX_BATCH_SIZE);
+        set_next_batch_size(&G.meta_state.prompt, PROMPT_MAX_BATCH_SIZE);
         rv = parse_evm_txn(&G.state, &G.meta_state);
       }
       FINALLY {
@@ -169,7 +169,10 @@ static size_t next_parse(bool const is_reentry) {
         transaction_complete_prompt();
     }
 
-    PRINTF("Parse error: %d %d %d\n", rv, G.meta_state.input.consumed, G.meta_state.input.length);
+    PRINTF("Parse error: rv=%d consumed=%d length=%d\n",
+      rv,
+      G.meta_state.input.consumed,
+      G.meta_state.input.length);
     THROW(EXC_PARSE_ERROR);
 }
 

@@ -422,7 +422,9 @@ typedef struct {
     } data;
 } prompt_entry_t;
 
-#define TRANSACTION_PROMPT_MAX_BATCH_SIZE 5
+#ifndef PROMPT_MAX_BATCH_SIZE
+#  error "PROMPT_MAX_BATCH_SIZE not set!"
+#endif
 
 enum transaction_x_chain_type_id_t {
     TRANSACTION_X_CHAIN_TYPE_ID_BASE            = 0x00,
@@ -459,8 +461,8 @@ enum chain_role {
 typedef struct  {
   size_t count;
   size_t flushIndex;
-  char const *labels[TRANSACTION_PROMPT_MAX_BATCH_SIZE + 1]; // For NULL at end
-  prompt_entry_t entries[TRANSACTION_PROMPT_MAX_BATCH_SIZE];
+  char const *labels[PROMPT_MAX_BATCH_SIZE + 1]; // For NULL at end
+  prompt_entry_t entries[PROMPT_MAX_BATCH_SIZE];
 } prompt_batch_t;
 
 typedef struct {

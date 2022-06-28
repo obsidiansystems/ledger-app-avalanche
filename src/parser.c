@@ -7,7 +7,11 @@
 #include "network_info.h"
 
 bool should_flush(const prompt_batch_t *const prompt) {
-  return prompt->count > prompt->flushIndex;
+  bool test = prompt->count > prompt->flushIndex;
+  if (test) {
+    PRINTF("prompt buffer full; should flush!\n");
+  }
+  return test;
 }
 void set_next_batch_size(prompt_batch_t *const prompt, size_t size) {
   if(!size) size = NUM_ELEMENTS(prompt->entries);
@@ -24,8 +28,9 @@ void set_next_batch_size(prompt_batch_t *const prompt, size_t size) {
         meta->prompt.entries[meta->prompt.count].to_string = to_string_; \
         memcpy(&meta->prompt.entries[meta->prompt.count].data, data_, size_); \
         meta->prompt.count++; \
-        if (should_flush(&meta->prompt)) \
+        if (should_flush(&meta->prompt)) { \
             sub_rv = PARSE_RV_PROMPT; \
+        } \
     }
 
 #define CALL_SUBPARSER(subFieldName, subParser) { \
