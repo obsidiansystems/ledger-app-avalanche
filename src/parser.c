@@ -192,6 +192,11 @@ static void validator_to_string(char *const out, size_t const out_size, address_
     nodeid_to_string(&out[ix], out_size - ix, &in->address.val);
 }
 
+static void subnetid_to_string(char *const out, size_t const out_size, Id32 const *const in) {
+    size_t ix = 0;
+    subid_to_string(&out[ix], out_size - ix, &in->val);
+} 
+
 enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
     switch (state->state) {
@@ -322,6 +327,9 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                           output_prompt_to_string
                           );
                       break;
+		    case TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR:
+		      PRINTF("This transaction does not conduct a transfer of funds\n");
+		      break;
                     default:
                       ADD_PROMPT(
                           "Transfer",
@@ -491,8 +499,8 @@ enum parse_rv parse_SubnetAuth(struct SubnetAuth_state *const state, parser_meta
 
         CALL_SUBPARSER(uint32State, uint32_t);
 
-        ADD_PROMPT("Address Index", &state->uint32State.val, sizeof(uint32_t), number_to_string_indirect32);
-
+        PRINTF("Address Index: %d\n", state->uint32State.val);
+  
         state->sigindices_i++;
         if (state->sigindices_i < state->sigindices_n)
         {
@@ -1246,7 +1254,7 @@ enum parse_rv parse_Validator(struct Validator_state *const state, parser_meta_s
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
       meta->staking_weight = state->uint64State.val;
-      ADD_PROMPT("Total Stake", &state->uint64State.val, sizeof(uint64_t), nano_avax_to_string_indirect64);
+      ADD_PROMPT("Weight", &state->uint64State.val, sizeof(uint64_t), number_to_string_indirect64);
       RET_IF_PROMPT_FLUSH;
       fallthrough; // NOTE
     case 4:
@@ -1326,8 +1334,7 @@ enum parse_rv parse_AddSNValidatorTransaction(
       fallthrough;
     case 1: {//Subnet ID
       CALL_SUBPARSER(id32State, Id32);
-      PRINTF("Subnet ID: %.*h\n", 32, state->id32State.buf);
-      // potentially need check_subnet_id function??
+      ADD_PROMPT("Subnet", &state->id32State.val, sizeof(Id32), subnetid_to_string);
       state->state++;
       INIT_SUBPARSER(subnetauthState, SubnetAuth);
     } fallthrough;
