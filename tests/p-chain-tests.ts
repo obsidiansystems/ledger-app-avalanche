@@ -490,8 +490,10 @@ describe('Staking tests', async function () {
     // Need to add headers for SubnetID and Sigindices?
     const prompts = chunkPrompts([
       {header: 'Sign', body: 'Create Chain'},
-      {header: 'Transfer', body: '3.999 AVAX to local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n'},
-      {header: 'Address Index', body: '0' },
+      {header: 'Subnet', body: ''},
+      {header: 'Chain Name', body: ''},
+      {header: 'VM ID', body: ''},
+      {header: 'Genesis Data', body: ''},
       {header: 'Fee', body: '2000.001 AVAX'}
     ]).concat([[finalizePrompt]]);
     const ui = await flowMultiPrompt(this.speculos, prompts);

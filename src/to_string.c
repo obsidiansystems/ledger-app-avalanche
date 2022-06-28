@@ -41,6 +41,17 @@ size_t subid_to_string(
     return b58sz;
 }
 
+size_t buf_to_string(
+    char out[const], size_t const out_size, uint8_t const *const payload, size_t const buf_size)
+{
+    size_t ix = 0;
+    size_t b58sz = out_size;
+    if(!cb58enc(&out[ix], &b58sz, (const void*)payload, buf_size))
+       THROW(EXC_MEMORY_ERROR);
+    
+    return b58sz;
+}
+
 size_t pkh_to_string(
     char out[const], size_t const out_size,
     char const *const hrp, size_t const hrp_size,

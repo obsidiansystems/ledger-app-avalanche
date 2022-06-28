@@ -197,6 +197,22 @@ static void subnetid_to_string(char *const out, size_t const out_size, Id32 cons
     subid_to_string(&out[ix], out_size - ix, &in->val);
 } 
 
+static void chainname_to_string(char *const out, size_t const out_size, uint8_t const *const in) {
+    size_t ix = 0;
+    uint16_t *buffer_size = in;
+    uint8_t buffer[*buffer_size];
+    memcpy(buffer, in+sizeof(uint16_t), *buffer_size);
+    buf_to_string(&out[ix], out_size - ix, buffer, *buffer_size);   
+}
+
+static void gendata_to_string(char *const out, size_t const out_size, uint8_t const *const in) {
+    size_t ix = 0;
+    uint32_t *buffer_size = in;
+    uint8_t buffer[*buffer_size];
+    memcpy(buffer, in+sizeof(uint32_t), *buffer_size);
+    buf_to_string(&out[ix], out_size - ix, buffer, *buffer_size);
+}
+
 enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
     switch (state->state) {
@@ -1375,15 +1391,18 @@ enum parse_rv parse_Genesis(struct Genesis_state *const state, parser_meta_state
         state->state++;
         break;
       }
-      uint8_t buf[state->gen_n];
-      while(state->gen_i < state->gen_n)
-      {
+      size_t buffer_size = state->gen_n + sizeof(uint32_t);
+      uint8_t buf[buffer_size];
+      memcpy(buf, &state->gen_n, sizeof(uint32_t));
+      state->gen_i += sizeof(uint32_t);
+      state->gen_n += sizeof(uint32_t);
+      while(state->gen_i < state->gen_n) {
         CALL_SUBPARSER(uint8State, uint8_t);
         buf[state->gen_i] = state->uint8State.val;
 	INIT_SUBPARSER(uint8State, uint8_t);
 	state->gen_i++;
       }
-      //PRINTF("Genesis Data: %.*h\n", sizeof(buf), buf);
+      ADD_PROMPT("Genesis Data", buf, sizeof(buf), gendata_to_string);
     } fallthrough;
     case 2:
       sub_rv = PARSE_RV_DONE;
@@ -1419,15 +1438,19 @@ enum parse_rv parse_ChainName(struct ChainName_state *const state, parser_meta_s
         state->state++;
         break;
       }
-      //uint8_t buf[state->chainN_n];
+      uint16_t buf_size = state->chainN_n + sizeof(uint16_t);
+      uint8_t buf[buf_size];
+      memcpy(buf, &state->chainN_n, sizeof(uint16_t));
+      state->chainN_i += sizeof(uint16_t);
+      state->chainN_n += sizeof(uint16_t);
       while(state->chainN_i < state->chainN_n)
       {
         CALL_SUBPARSER(uint8State, uint8_t);
-	//buf[state->chainN_i] = state->uint8State.val;
+	buf[state->chainN_i] = state->uint8State.val;
 	INIT_SUBPARSER(uint8State, uint8_t);
 	state->chainN_i++;
       }
-      // ADD_PROMPT("Chain Name", &buf, sizeof(buf), );
+      ADD_PROMPT("Chain Name", &buf, sizeof(buf), chainname_to_string);
     } fallthrough;
     case 2:
       sub_rv = PARSE_RV_DONE;
