@@ -28,7 +28,7 @@ size_t nodeid_to_string(
     return b58sz;
 }
 
-size_t subid_to_string(
+size_t id_to_string(
     char out[const],size_t const out_size, Id32 const *const payload)
 {
     if (out_size == 0)

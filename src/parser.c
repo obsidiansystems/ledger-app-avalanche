@@ -192,9 +192,9 @@ static void validator_to_string(char *const out, size_t const out_size, address_
     nodeid_to_string(&out[ix], out_size - ix, &in->address.val);
 }
 
-static void subnetid_to_string(char *const out, size_t const out_size, Id32 const *const in) {
+static void ids_to_string(char *const out, size_t const out_size, Id32 const *const in) {
     size_t ix = 0;
-    subid_to_string(&out[ix], out_size - ix, &in->val);
+    id_to_string(&out[ix], out_size - ix, &in->val);
 } 
 
 static void chainname_to_string(char *const out, size_t const out_size, uint8_t const *const in) {
@@ -346,7 +346,10 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
 		    case TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR:
 		      PRINTF("This transaction does not conduct a transfer of funds\n");
 		      break;
-                    default:
+                    case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_CHAIN:
+		      PRINTF("This transaction does not conduct a transfer of funds\n");
+		      break;
+		    default:
                       ADD_PROMPT(
                           "Transfer",
                           &output_prompt, sizeof(output_prompt),
@@ -1357,7 +1360,7 @@ enum parse_rv parse_AddSNValidatorTransaction(
       fallthrough;
     case 1: {//Subnet ID
       CALL_SUBPARSER(id32State, Id32);
-      ADD_PROMPT("Subnet", &state->id32State.val, sizeof(Id32), subnetid_to_string);
+      ADD_PROMPT("Subnet", &state->id32State.val, sizeof(Id32), ids_to_string);
       state->state++;
       INIT_SUBPARSER(subnetauthState, SubnetAuth);
     } fallthrough;
@@ -1398,18 +1401,26 @@ enum parse_rv parse_Genesis(struct Genesis_state *const state, parser_meta_state
         state->state++;
         break;
       }
-      size_t buffer_size = state->gen_n + sizeof(uint32_t);
-      uint8_t buf[buffer_size];
-      memcpy(buf, &state->gen_n, sizeof(uint32_t));
+      
+      uint32_t buffer_size = (state->gen_n - state->gen_i) + sizeof(uint32_t);
+      PRINTF("size of the buffer: %d\n", buffer_size);
+      uint8_t buf[buffer_size]; 
+      memcpy(buf, (uint8_t*)&state->gen_n, sizeof(uint32_t));
+      
+      state->gen_i = state->gen_i - state->gen_i;
+      state->gen_n = state->gen_n - state->gen_i;
       state->gen_i += sizeof(uint32_t);
       state->gen_n += sizeof(uint32_t);
+      
       while(state->gen_i < state->gen_n) {
         CALL_SUBPARSER(uint8State, uint8_t);
         buf[state->gen_i] = state->uint8State.val;
 	INIT_SUBPARSER(uint8State, uint8_t);
 	state->gen_i++;
       }
+      
       ADD_PROMPT("Genesis Data", buf, sizeof(buf), gendata_to_string);
+      RET_IF_PROMPT_FLUSH;
     } fallthrough;
     case 2:
       sub_rv = PARSE_RV_DONE;
@@ -1445,19 +1456,23 @@ enum parse_rv parse_ChainName(struct ChainName_state *const state, parser_meta_s
         state->state++;
         break;
       }
+      
       uint16_t buf_size = state->chainN_n + sizeof(uint16_t);
       uint8_t buf[buf_size];
-      memcpy(buf, &state->chainN_n, sizeof(uint16_t));
+      memcpy(buf, (uint8_t*)&state->chainN_n, sizeof(uint16_t));
       state->chainN_i += sizeof(uint16_t);
       state->chainN_n += sizeof(uint16_t);
+      
       while(state->chainN_i < state->chainN_n)
       {
         CALL_SUBPARSER(uint8State, uint8_t);
 	buf[state->chainN_i] = state->uint8State.val;
-	INIT_SUBPARSER(uint8State, uint8_t);
 	state->chainN_i++;
+	INIT_SUBPARSER(uint8State, uint8_t);
       }
+      state->state++;
       ADD_PROMPT("Chain Name", &buf, sizeof(buf), chainname_to_string);
+      RET_IF_PROMPT_FLUSH;
     } fallthrough;
     case 2:
       sub_rv = PARSE_RV_DONE;
@@ -1481,9 +1496,10 @@ enum parse_rv parse_CreateChainTransaction(
   {
     case 0: // Subnet ID
       CALL_SUBPARSER(id32State, Id32);
-      PRINTF("Subnet ID: %.*h\n", 32, state->id32State.buf);
+      ADD_PROMPT("Subnet", &state->id32State.val, sizeof(Id32), ids_to_string);
       state->state++;
       INIT_SUBPARSER(chainnameState, ChainName);
+      RET_IF_PROMPT_FLUSH;
       fallthrough;
     case 1: { // chain name
       CALL_SUBPARSER(chainnameState, ChainName);
@@ -1493,9 +1509,11 @@ enum parse_rv parse_CreateChainTransaction(
     } fallthrough;
     case 2: {
       CALL_SUBPARSER(id32State, Id32);
-      PRINTF("VM ID: %.*h\n", 32, state->id32State.buf);
+      //PRINTF("VM ID: %.*h\n", 32, state->id32State.buf);
+      ADD_PROMPT("VM ID", &state->id32State.val, sizeof(Id32), ids_to_string);
       state->state++;
-      INIT_SUBPARSER(uint32State, uint32_t);
+      INIT_SUBPARSER(uint32State, uint32_t); 
+      RET_IF_PROMPT_FLUSH;
     } fallthrough;
     case 3: {
       CALL_SUBPARSER(uint32State, uint32_t);
@@ -1528,14 +1546,14 @@ enum parse_rv parse_CreateChainTransaction(
         {
           INIT_SUBPARSER(id32State, Id32);
           RET_IF_PROMPT_FLUSH;
-          continue;
+	  continue;
         }
         else
         {
           state->state++;
           INIT_SUBPARSER(genesisState, Genesis);
           RET_IF_PROMPT_FLUSH;
-          break;
+	  break;
         } 
       } while(false);
     } fallthrough;

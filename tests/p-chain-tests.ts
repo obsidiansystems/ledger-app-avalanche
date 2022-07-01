@@ -294,7 +294,7 @@ describe('Staking tests', async function () {
     await ui.promptsPromise;
   });
 
-  it.only('can sign an add subnet validator transaction', async function () {
+  it('can sign an add subnet validator transaction', async function () {
     const txn = Buffer.from([
       0x00, 0x00,
       0x00, 0x00, 0x00, 0x0d, 0x00, 0x00, 0x30, 0x39,
@@ -490,9 +490,9 @@ describe('Staking tests', async function () {
     // Need to add headers for SubnetID and Sigindices?
     const prompts = chunkPrompts([
       {header: 'Sign', body: 'Create Chain'},
-      {header: 'Subnet', body: ''},
-      {header: 'Chain Name', body: ''},
-      {header: 'VM ID', body: ''},
+      {header: 'Subnet', body: '24tZhrm8j8GCJRE9PomW8FaeqbgGS4UAQjJnqqn8pq5NwYSYV1'},
+      {header: 'Chain Name', body: '2Js8zX7z4uv9sXQNA'},
+      {header: 'VM ID', body: 'jvYyfQTxGMJLuGWa55kdP2p2zSUYsQ5Raupu4TW34ZAUBAbtq'},
       {header: 'Genesis Data', body: ''},
       {header: 'Fee', body: '2000.001 AVAX'}
     ]).concat([[finalizePrompt]]);
