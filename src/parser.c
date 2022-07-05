@@ -1253,13 +1253,13 @@ enum parse_rv parse_Validator(struct Validator_state *const state, parser_meta_s
       CALL_SUBPARSER(uint64State, uint64_t);
       state->state++;
       meta->staking_weight = state->uint64State.val;
-      if(meta->type_id.p == TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR)
+      if(meta->type_id.p == TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR)
       {
-        ADD_PROMPT("Total Stake", &state->uint64State.val, sizeof(uint64_t), nano_avax_to_string_indirect64);
+        ADD_PROMPT("Weight", &state->uint64State.val, sizeof(uint64_t), number_to_string_indirect64); 
       }
       else
       {
-        ADD_PROMPT("Weight", &state->uint64State.val, sizeof(uint64_t), number_to_string_indirect64);
+        ADD_PROMPT("Total Stake", &state->uint64State.val, sizeof(uint64_t), nano_avax_to_string_indirect64);
       }
       RET_IF_PROMPT_FLUSH;
       fallthrough; // NOTE
