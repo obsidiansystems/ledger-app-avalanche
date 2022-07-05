@@ -340,11 +340,11 @@ struct CreateChainTransactionState {
   uint32_t fxid_n;
   uint32_t fxid_i;
   union {
-	struct uint32_t_state uint32State;
+        struct uint32_t_state uint32State;
         struct Id32_state id32State;
         struct ChainName_state  chainnameState;
-        struct Genesis_state genesisState; 
-        struct SubnetAuth_state subnetauthState;	
+        struct Genesis_state genesisState;
+        struct SubnetAuth_state subnetauthState;
   };
 };
 

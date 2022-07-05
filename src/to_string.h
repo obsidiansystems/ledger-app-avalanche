@@ -35,8 +35,11 @@ size_t pkh_to_string(
     public_key_hash_t const *const payload);
 size_t nodeid_to_string(
     char out[const], size_t const out_size, public_key_hash_t const *const payload);
-size_t subid_to_string(
+size_t id_to_string(
     char out[const], size_t const out_size, Id32 const *const payload);
+
+size_t buf_to_string(
+    char out[const], size_t const out_size, uint8_t const *const payload, size_t const buf_size);
 
 size_t number_to_string
     (char dest[const], // dest must be at least MAX_INT_DIGITS
