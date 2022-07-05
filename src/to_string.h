@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "keys.h"
+#include "identifier.h"
 #include "os_cx.h"
 #include "types.h"
 #include "ui.h"
@@ -34,6 +35,8 @@ size_t pkh_to_string(
     public_key_hash_t const *const payload);
 size_t nodeid_to_string(
     char out[const], size_t const out_size, public_key_hash_t const *const payload);
+size_t subid_to_string(
+    char out[const], size_t const out_size, Id32 const *const payload);
 
 size_t number_to_string
     (char dest[const], // dest must be at least MAX_INT_DIGITS
