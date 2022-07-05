@@ -1564,7 +1564,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
                 CALL_SUBPARSER_BREAK(addSNValidatorTxState, AddSNValidatorTransaction);
                 break;
               case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_SUBNET:
-                CALL_SUBPARSER(createSubnetTxState, CreateSubnetTransaction);
+                CALL_SUBPARSER_BREAK(createSubnetTxState, CreateSubnetTransaction);
                 break;
               case TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR:
               case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR:
