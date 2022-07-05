@@ -193,7 +193,7 @@ static void validator_to_string(char *const out, size_t const out_size, address_
 
 static void subnetid_to_string(char *const out, size_t const out_size, Id32 const *const in) {
     size_t ix = 0;
-    subid_to_string(&out[ix], out_size - ix, &in->val);
+    subid_to_string(&out[ix], out_size - ix, in);
 } 
 
 enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const state, parser_meta_state_t *const meta) {
