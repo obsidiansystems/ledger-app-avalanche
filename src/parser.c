@@ -1343,6 +1343,7 @@ enum parse_rv parse_AddSNValidatorTransaction(
       ADD_PROMPT("Subnet", &state->id32State.val, sizeof(Id32), subnetid_to_string);
       state->state++;
       INIT_SUBPARSER(subnetauthState, SubnetAuth);
+      RET_IF_PROMPT_FLUSH;
     } fallthrough;
     case 2: {
       CALL_SUBPARSER(subnetauthState, SubnetAuth);
