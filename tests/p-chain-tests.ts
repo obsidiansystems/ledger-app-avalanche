@@ -381,7 +381,7 @@ describe('Staking tests', async function () {
     await ui.promptsPromise;
   });
 
-  it.only('can sign a create subnet transaction', async function () {
+  it('can sign a create subnet transaction', async function () {
     const txn = Buffer.from([
       0x00, 0x00,
       0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x30, 0x39,
