@@ -1,6 +1,7 @@
 #pragma once
 
 #include "types.h"
+#include "identifier.h"
 #include "uint256.h"
 #include "network_info.h"
 
@@ -60,10 +61,6 @@ DEFINE_FIXED_BE(uint16_t);
 DEFINE_FIXED_BE(uint32_t);
 DEFINE_FIXED_BE(uint64_t);
 DEFINE_FIXED_BE(uint256_t);
-
-typedef struct {
-    uint8_t val[32];
-} Id32;
 
 DEFINE_FIXED(Id32);
 
