@@ -442,7 +442,7 @@ describe('Staking tests', async function () {
     const prompts = chunkPrompts([
       {header: 'Sign', body: 'Create Subnet'},
       {header: 'Threshold', body: '1'},
-      {header: 'Rewards to', body: 'local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n' },
+      {header: 'Rewards To', body: 'local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n' },
       {header: 'Fee', body: '2000.001 AVAX'}
     ]).concat([[finalizePrompt]]);
     const ui = await flowMultiPrompt(this.speculos, prompts);
