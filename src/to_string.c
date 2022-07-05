@@ -29,7 +29,7 @@ size_t nodeid_to_string(
 }
 
 size_t subid_to_string(
-    char out[const],size_t const out_size, Id32 const *const payload)
+    char out[const], size_t const out_size, Id32 const *const payload)
 {
     if (out_size == 0)
         THROW(EXC_MEMORY_ERROR);
