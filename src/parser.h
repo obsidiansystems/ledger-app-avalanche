@@ -123,6 +123,14 @@ struct Output_state {
 
 DEFINE_FIXED(blockchain_id_t);
 
+#define MAX_NAME_SIZE 16
+
+typedef struct {
+    char name[MAX_NAME_SIZE];
+} Name;
+
+DEFINE_FIXED(Name);
+
 struct Genesis_state {
   int state;
   uint32_t gen_n;
