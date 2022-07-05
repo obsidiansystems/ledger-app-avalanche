@@ -194,7 +194,7 @@ static void validator_to_string(char *const out, size_t const out_size, address_
 static void subnetid_to_string(char *const out, size_t const out_size, Id32 const *const in) {
     size_t ix = 0;
     subid_to_string(&out[ix], out_size - ix, in);
-} 
+}
 
 enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const state, parser_meta_state_t *const meta) {
     enum parse_rv sub_rv = PARSE_RV_INVALID;
@@ -499,7 +499,7 @@ enum parse_rv parse_SubnetAuth(struct SubnetAuth_state *const state, parser_meta
         CALL_SUBPARSER(uint32State, uint32_t);
 
         PRINTF("Address Index: %d\n", state->uint32State.val);
-  
+
         state->sigindices_i++;
         if (state->sigindices_i < state->sigindices_n)
         {
@@ -1255,7 +1255,7 @@ enum parse_rv parse_Validator(struct Validator_state *const state, parser_meta_s
       meta->staking_weight = state->uint64State.val;
       if(meta->type_id.p == TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR)
       {
-        ADD_PROMPT("Weight", &state->uint64State.val, sizeof(uint64_t), number_to_string_indirect64); 
+        ADD_PROMPT("Weight", &state->uint64State.val, sizeof(uint64_t), number_to_string_indirect64);
       }
       else
       {
