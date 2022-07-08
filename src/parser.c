@@ -197,18 +197,14 @@ static void ids_to_string(char *const out, size_t const out_size, Id32 const *co
     id_to_string(&out[ix], out_size - ix, in);
 }
 
-static void chainname_to_string(char *const out, size_t const out_size, uint8_t const *const in) {
+static void chainname_to_string(char *const out, size_t const out_size, chainname_prompt_t const *const in) {
     size_t ix = 0;
-    uint16_t buffer_size = *(uint16_t const *)in;
-    uint8_t const *buffer = in + sizeof(buffer_size);
-    buf_to_string(&out[ix], out_size - ix, buffer, buffer_size);
+    buf_to_string(&out[ix], out_size - ix, in->buffer, in->buffer_size);
 }
 
-static void gendata_to_string(char *const out, size_t const out_size, uint8_t const *const in) {
+static void gendata_to_string(char *const out, size_t const out_size, gendata_prompt_t const *const in) {
     size_t ix = 0;
-    uint32_t buffer_size = *(uint32_t const *)in;
-    uint8_t const *buffer = in + sizeof(buffer_size);
-    buf_to_string(&out[ix], out_size - ix, buffer, buffer_size);
+    buf_to_string(&out[ix], out_size - ix, in->buffer, in->buffer_size);
 }
 
 enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const state, parser_meta_state_t *const meta) {
@@ -522,13 +518,12 @@ enum parse_rv parse_SubnetAuth(struct SubnetAuth_state *const state, parser_meta
         if (state->sigindices_i < state->sigindices_n)
         {
           INIT_SUBPARSER(uint32State, uint32_t);
-          RET_IF_PROMPT_FLUSH;
+	  //PRINTF("Reached\n");
           continue;
         }
         else
         {
           state->state++;
-          RET_IF_PROMPT_FLUSH;
           break;
         }
       } while(false);
@@ -1377,6 +1372,7 @@ void init_Genesis(struct Genesis_state *const state)
 {
   state->state = 0;
   state->gen_i = 0;
+  memset(state->buffer, 0, sizeof(state->buffer));
   INIT_SUBPARSER(uint32State, uint32_t);
 }
 
@@ -1400,26 +1396,35 @@ enum parse_rv parse_Genesis(struct Genesis_state *const state, parser_meta_state
         state->state++;
         break;
       }
+     do
+      {
+        // loop invariant
+        if (state->gen_i == state->gen_n)
+        {
+          THROW(EXC_MEMORY_ERROR);
+        }
 
-      uint32_t buffer_size = (state->gen_n - state->gen_i) + sizeof(uint32_t);
-      PRINTF("size of the buffer: %d\n", buffer_size);
-      uint8_t buf[buffer_size];
-      memcpy(buf, (uint8_t*)&state->gen_n, sizeof(uint32_t));
-
-      state->gen_i = state->gen_i - state->gen_i;
-      state->gen_n = state->gen_n - state->gen_i;
-      state->gen_i += sizeof(uint32_t);
-      state->gen_n += sizeof(uint32_t);
-
-      while(state->gen_i < state->gen_n) {
         CALL_SUBPARSER(uint8State, uint8_t);
-        buf[state->gen_i] = state->uint8State.val;
-        INIT_SUBPARSER(uint8State, uint8_t);
-        state->gen_i++;
-      }
 
-      ADD_PROMPT("Genesis Data", buf, sizeof(buf), gendata_to_string);
-      RET_IF_PROMPT_FLUSH;
+        state->buffer[state->gen_i] = state->uint8State.val;
+        state->gen_i++;
+        if (state->gen_i < state->gen_n)
+        {
+          INIT_SUBPARSER(uint8State, uint8_t);
+	  RET_IF_NOT_DONE;
+          continue;
+        }
+        else
+	{
+          state->state++;
+	  gendata_prompt_t gendata_prompt;
+	  gendata_prompt.buffer_size = state->gen_n;
+	  memcpy(gendata_prompt.buffer, state->buffer, state->gen_n);
+	  ADD_PROMPT("Genesis Data", &gendata_prompt, sizeof(gendata_prompt), gendata_to_string);
+	  RET_IF_PROMPT_FLUSH;
+          break;
+        }
+      } while(true);
     } fallthrough;
     case 2:
       sub_rv = PARSE_RV_DONE;
@@ -1432,6 +1437,7 @@ void init_ChainName(struct ChainName_state *const state)
 {
   state->state = 0;
   state->chainN_i = 0;
+  memset(state->buffer, 0, sizeof(state->buffer));
   INIT_SUBPARSER(uint16State, uint16_t);
 }
 
@@ -1455,23 +1461,35 @@ enum parse_rv parse_ChainName(struct ChainName_state *const state, parser_meta_s
         state->state++;
         break;
       }
-
-      uint16_t buf_size = state->chainN_n + sizeof(uint16_t);
-      uint8_t buf[buf_size];
-      memcpy(buf, (uint8_t*)&state->chainN_n, sizeof(uint16_t));
-      state->chainN_i += sizeof(uint16_t);
-      state->chainN_n += sizeof(uint16_t);
-
-      while(state->chainN_i < state->chainN_n)
+     do
       {
+        // loop invariant
+        if (state->chainN_i == state->chainN_n)
+        {
+          THROW(EXC_MEMORY_ERROR);
+        }
+
         CALL_SUBPARSER(uint8State, uint8_t);
-        buf[state->chainN_i] = state->uint8State.val;
+
+        state->buffer[state->chainN_i] = state->uint8State.val;
         state->chainN_i++;
-        INIT_SUBPARSER(uint8State, uint8_t);
-      }
-      state->state++;
-      ADD_PROMPT("Chain Name", &buf, sizeof(buf), chainname_to_string);
-      RET_IF_PROMPT_FLUSH;
+        if (state->chainN_i < state->chainN_n)
+        {
+          INIT_SUBPARSER(uint8State, uint8_t);
+	  RET_IF_NOT_DONE;
+          continue;
+        }
+        else
+	{
+          state->state++;
+	  chainname_prompt_t chainname_prompt;
+	  chainname_prompt.buffer_size = state->chainN_n;
+	  memcpy(chainname_prompt.buffer, state->buffer, state->chainN_n);
+	  ADD_PROMPT("Chain Name", &chainname_prompt, sizeof(chainname_prompt), chainname_to_string);
+	  RET_IF_PROMPT_FLUSH;
+          break;
+        }
+      } while(true); 
     } fallthrough;
     case 2:
       sub_rv = PARSE_RV_DONE;
@@ -1498,7 +1516,6 @@ enum parse_rv parse_CreateChainTransaction(
       ADD_PROMPT("Subnet", &state->id32State.val, sizeof(Id32), ids_to_string);
       state->state++;
       INIT_SUBPARSER(chainnameState, ChainName);
-      RET_IF_PROMPT_FLUSH;
       fallthrough;
     case 1: { // chain name
       CALL_SUBPARSER(chainnameState, ChainName);
@@ -1544,14 +1561,12 @@ enum parse_rv parse_CreateChainTransaction(
         if(state->fxid_i < state->fxid_n)
         {
           INIT_SUBPARSER(id32State, Id32);
-          RET_IF_PROMPT_FLUSH;
           continue;
         }
         else
         {
           state->state++;
           INIT_SUBPARSER(genesisState, Genesis);
-          RET_IF_PROMPT_FLUSH;
           break;
         }
       } while(false);

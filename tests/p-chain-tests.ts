@@ -493,7 +493,7 @@ describe('Staking tests', async function () {
       {header: 'Subnet', body: '24tZhrm8j8GCJRE9PomW8FaeqbgGS4UAQjJnqqn8pq5NwYSYV1'},
       {header: 'Chain Name', body: '2Js8zX7z4uv9sXQNA'},
       {header: 'VM ID', body: 'jvYyfQTxGMJLuGWa55kdP2p2zSUYsQ5Raupu4TW34ZAUBAbtq'},
-      {header: 'Genesis Data', body: ''},
+      {header: 'Genesis Data', body: '1111149zAuGHxexa9fsXF2L98zXpSvRnbcZtUu9C3kZNx41Mn6tLruRiYB1YdK1XCrfpF3WB7R'},
       {header: 'Fee', body: '2000.001 AVAX'}
     ]).concat([[finalizePrompt]]);
     const ui = await flowMultiPrompt(this.speculos, prompts);

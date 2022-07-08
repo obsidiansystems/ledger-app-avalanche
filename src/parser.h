@@ -123,28 +123,26 @@ struct Output_state {
 
 DEFINE_FIXED(blockchain_id_t);
 
-#define MAX_NAME_SIZE 16
-
-typedef struct {
-    char name[MAX_NAME_SIZE];
-} Name;
-
-DEFINE_FIXED(Name);
+#define GEN_DATA_MAX_SIZE 200
 
 struct Genesis_state {
   int state;
   uint32_t gen_n;
   uint32_t gen_i;
+  uint8_t buffer[GEN_DATA_MAX_SIZE];
   union {
       NUMBER_STATES;
       struct uint8_t_state uint8State;
   };
 };
 
+#define CHAIN_NAME_MAX_SIZE 128
+
 struct ChainName_state{
   int state;
   uint16_t chainN_n;
   uint16_t chainN_i;
+  uint8_t buffer[CHAIN_NAME_MAX_SIZE];
   union {
       struct uint16_t_state uint16State;
       struct uint8_t_state uint8State;
@@ -409,6 +407,17 @@ typedef struct {
     network_id_t network_id;
     Address address;
 } address_prompt_t;
+
+
+typedef struct {
+    size_t buffer_size;
+    uint8_t buffer[CHAIN_NAME_MAX_SIZE];
+} chainname_prompt_t;
+
+typedef struct {
+    size_t buffer_size;
+    uint8_t buffer[GEN_DATA_MAX_SIZE];
+} gendata_prompt_t;
 
 typedef struct {
     uint64_t amount;
