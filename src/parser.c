@@ -1411,7 +1411,6 @@ enum parse_rv parse_Genesis(struct Genesis_state *const state, parser_meta_state
         if (state->gen_i < state->gen_n)
         {
           INIT_SUBPARSER(uint8State, uint8_t);
-	  RET_IF_NOT_DONE;
           continue;
         }
         else
@@ -1476,7 +1475,6 @@ enum parse_rv parse_ChainName(struct ChainName_state *const state, parser_meta_s
         if (state->chainN_i < state->chainN_n)
         {
           INIT_SUBPARSER(uint8State, uint8_t);
-	  RET_IF_NOT_DONE;
           continue;
         }
         else
