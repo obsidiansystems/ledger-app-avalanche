@@ -108,16 +108,20 @@ static size_t sign_hash_with_suffix(uint8_t *const out, bool const is_last_signa
     char path_str[100];
     bip32_path_to_string(path_str, sizeof(path_str), &bip32_path);
     PRINTF("Signing hash %.*h with %s\n", sizeof(G.final_hash), G.final_hash, path_str);
+    measure_stack_max();
 #endif
 
     size_t const tx = WITH_EXTENDED_KEY_PAIR(bip32_path, it, size_t, ({
+        measure_stack_max();
         sign(out, MAX_SIGNATURE_SIZE, &it->key_pair, G.final_hash, sizeof(G.final_hash));
+        measure_stack_max();
     }));
 
     if (G.num_signatures_left == 0) {
+        measure_stack_max();
         clear_data();
     }
-
+    measure_stack_max();
     return tx;
 }
 

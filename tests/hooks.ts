@@ -31,6 +31,7 @@ export const mochaHooks = {
           process.env.LEDGER_APP,
           '--display', 'headless',
           '--sdk', '2.1',
+          '--trace',
         ], speculosProcessOptions);
         console.log("Speculos started");
 

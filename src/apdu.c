@@ -118,9 +118,13 @@ __attribute__((noinline)) void stack_sentry_fill(void) {
 void measure_stack_max(void) {
   uint32_t* p;
   volatile int top;
+  int appstackcanary = &app_stack_canary;
+  int top2 = &top;
   for (p = &app_stack_canary + 1; p < ((&top) - 10); p++)
     if (*p != 0x2a2a2a2a) {
         PRINTF("Free space between globals and maximum stack: %d\n", 4 * (p - &app_stack_canary));
+        PRINTF("Address: %x, Top: %x\n", appstackcanary, top2);
+        PRINTF("MEMORY: %.*h\n", top2 - appstackcanary, appstackcanary);
         return;
     }
 }
@@ -190,6 +194,8 @@ __attribute__((noreturn)) void main_loop(struct app_handlers const *const app_ha
                 PRINTF("Normal return\n");
 
                 if (0xdeadbeef != app_stack_canary) {
+                    PRINTF("HIT IF\n");
+                    measure_stack_max();
                     THROW(EXC_STACK_ERROR);
                 }
 #ifdef STACK_MEASURE

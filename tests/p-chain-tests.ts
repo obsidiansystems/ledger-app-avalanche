@@ -680,7 +680,7 @@ describe('Staking tests', async function () {
 
     await checkSignTransaction(pathPrefix, pathSuffixes, txn, prompts);
   });
-  it('can sign a live add validator transaction where some funds are locked', async function () {
+  it.only('can sign a live add validator transaction where some funds are locked', async function () {
     const txn = Buffer.from([
       0x00, 0x00,
       0x00, 0x00, 0x00, 0x0C, 0x00, 0x00, 0x00, 0x05,
