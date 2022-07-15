@@ -123,10 +123,13 @@ struct Output_state {
 
 DEFINE_FIXED(blockchain_id_t);
 
-#define GEN_DATA_MAX_SIZE 200
+#define GEN_DATA_MAX_SIZE 256
+#define GEN_HASH_SIZE 32
 
 struct Genesis_state {
   int state;
+  cx_sha256_t genhash_state;
+  uint8_t final_genhash[GEN_HASH_SIZE];
   uint32_t gen_n;
   uint32_t gen_i;
   uint8_t buffer[GEN_DATA_MAX_SIZE];
@@ -415,8 +418,7 @@ typedef struct {
 } chainname_prompt_t;
 
 typedef struct {
-    size_t buffer_size;
-    uint8_t buffer[GEN_DATA_MAX_SIZE];
+    uint8_t buffer[GEN_HASH_SIZE];
 } gendata_prompt_t;
 
 typedef struct {
@@ -434,7 +436,7 @@ typedef struct {
         //TODO: Now that weve added this, do we need the ones above?
         output_prompt_t output_prompt;
     } data;
-} prompt_entry_t;
+}prompt_entry_t;
 
 #ifndef PROMPT_MAX_BATCH_SIZE
 #  error "PROMPT_MAX_BATCH_SIZE not set!"

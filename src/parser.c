@@ -198,13 +198,14 @@ static void ids_to_string(char *const out, size_t const out_size, Id32 const *co
 }
 
 static void chainname_to_string(char *const out, size_t const out_size, chainname_prompt_t const *const in) {
+    
     size_t ix = 0;
-    buf_to_string(&out[ix], out_size - ix, in->buffer, in->buffer_size);
+    chain_name_to_string(&out[ix], out_size - ix, in->buffer, in->buffer_size);
 }
 
-static void gendata_to_string(char *const out, size_t const out_size, gendata_prompt_t const *const in) {
+static void gendata_to_hex(char *const out, size_t const out_size, gendata_prompt_t const *const in) {
     size_t ix = 0;
-    buf_to_string(&out[ix], out_size - ix, in->buffer, in->buffer_size);
+    bin_to_hex(&out[ix], out_size - ix, in->buffer, sizeof(in->buffer));
 }
 
 enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const state, parser_meta_state_t *const meta) {
@@ -1372,6 +1373,7 @@ void init_Genesis(struct Genesis_state *const state)
 {
   state->state = 0;
   state->gen_i = 0;
+  cx_sha256_init(&state->genhash_state);  
   memset(state->buffer, 0, sizeof(state->buffer));
   INIT_SUBPARSER(uint32State, uint32_t);
 }
@@ -1405,21 +1407,22 @@ enum parse_rv parse_Genesis(struct Genesis_state *const state, parser_meta_state
         }
 
         CALL_SUBPARSER(uint8State, uint8_t);
+        RET_IF_NOT_DONE;       
 
-        state->buffer[state->gen_i] = state->uint8State.val;
-        state->gen_i++;
-        if (state->gen_i < state->gen_n)
+	state->buffer[state->gen_i] = state->uint8State.val; 	
+	state->gen_i++;
+	if (state->gen_i < state->gen_n)
         {
           INIT_SUBPARSER(uint8State, uint8_t);
-          continue;
+	  continue;
         }
         else
 	{
           state->state++;
 	  gendata_prompt_t gendata_prompt;
-	  gendata_prompt.buffer_size = state->gen_n;
-	  memcpy(gendata_prompt.buffer, state->buffer, state->gen_n);
-	  ADD_PROMPT("Genesis Data", &gendata_prompt, sizeof(gendata_prompt), gendata_to_string);
+	  cx_hash((cx_hash_t const*)&state->genhash_state, CX_LAST, state->buffer, state->gen_n, state->final_genhash, GEN_HASH_SIZE);
+	  memcpy(gendata_prompt.buffer, state->final_genhash, GEN_HASH_SIZE);
+	  ADD_PROMPT("Genesis Data", &gendata_prompt, sizeof(gendata_prompt), gendata_to_hex);
 	  RET_IF_PROMPT_FLUSH;
           break;
         }
