@@ -335,6 +335,13 @@ struct AddSNValidatorTransactionState {
   };
 };
 
+struct CreateSubnetTransactionState {
+  int state;
+  union {
+        struct SECP256K1OutputOwners_state ownersState;
+  };
+};
+
 struct AddDelegatorTransactionState {
   int state;
   union {
@@ -371,6 +378,7 @@ struct TransactionState {
     struct AddValidatorTransactionState addValidatorTxState;
     struct AddSNValidatorTransactionState addSNValidatorTxState;
     struct CreateChainTransactionState createChainTxState;
+    struct CreateSubnetTransactionState createSubnetTxState;
     struct AddDelegatorTransactionState addDelegatorTxState;
     struct CChainImportTransactionState cChainImportState;
     struct CChainExportTransactionState cChainExportState;
@@ -453,6 +461,7 @@ enum transaction_p_chain_type_id_t {
     TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR    = 0x0e,
     TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR = 0x0d,
     TRANSACTION_P_CHAIN_TYPE_ID_CREATE_CHAIN     = 0x0f,
+    TRANSACTION_P_CHAIN_TYPE_ID_CREATE_SUBNET    = 0x10,
     TRANSACTION_P_CHAIN_TYPE_ID_IMPORT           = 0x11,
     TRANSACTION_P_CHAIN_TYPE_ID_EXPORT           = 0x12
 };

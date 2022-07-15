@@ -76,6 +76,7 @@ void initFixed(struct FixedState *const state, size_t const len) {
     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR: \
     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR: \
     case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_CHAIN: \
+    case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_SUBNET: \
     case TRANSACTION_P_CHAIN_TYPE_ID_IMPORT: \
     case TRANSACTION_P_CHAIN_TYPE_ID_EXPORT
 
@@ -342,6 +343,9 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                       PRINTF("This transaction does not conduct a transfer of funds\n");
                       break;
                     case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_CHAIN:
+		      PRINTF("This transaction does not conduct a transfer of funds\n");
+		      break;
+                    case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_SUBNET:
                       PRINTF("This transaction does not conduct a transfer of funds\n");
                       break;
                     default:
@@ -419,8 +423,13 @@ enum parse_rv parse_SECP256K1OutputOwners(struct SECP256K1OutputOwners_state *co
             // Threshold
             CALL_SUBPARSER(uint32State, uint32_t);
             PRINTF("Threshold: %d\n", state->uint32State.val);
+            if(meta->type_id.p == TRANSACTION_P_CHAIN_TYPE_ID_CREATE_SUBNET)
+            {
+              ADD_PROMPT("Threshold", &state->uint32State.val, sizeof(state->uint32State.val), number_to_string_indirect32);
+            }
             state->state++;
             INIT_SUBPARSER(uint32State, uint32_t);
+            RET_IF_PROMPT_FLUSH;
             fallthrough;
         case 3: // Address Count
             CALL_SUBPARSER(uint32State, uint32_t);
@@ -448,7 +457,14 @@ enum parse_rv parse_SECP256K1OutputOwners(struct SECP256K1OutputOwners_state *co
                 address_prompt.network_id = meta->network_id;
                 memcpy(&address_prompt.address, &state->addressState.val, sizeof(address_prompt.address));
                 // TODO: We can get rid of this if we add back the P/X- in front of an address
-                ADD_PROMPT("Rewards To", &address_prompt, sizeof(address_prompt_t), output_address_to_string);
+                if(meta->type_id.p == TRANSACTION_P_CHAIN_TYPE_ID_CREATE_SUBNET)
+		{	
+		ADD_PROMPT("Address", &address_prompt, sizeof(address_prompt_t), output_address_to_string);
+		}
+		else
+		{
+		  ADD_PROMPT("Rewards To", &address_prompt, sizeof(address_prompt_t), output_address_to_string);
+		}
 
                 state->address_i++;
                 if (state->address_i < state->address_n) {
@@ -1435,6 +1451,33 @@ enum parse_rv parse_Genesis(struct Genesis_state *const state, parser_meta_state
   return sub_rv;
 }
 
+
+
+void init_CreateSubnetTransaction(struct CreateSubnetTransactionState *const state)
+{
+  state->state = 0;
+  INIT_SUBPARSER(ownersState, SECP256K1OutputOwners);
+}
+
+enum parse_rv parse_CreateSubnetTransaction(
+     struct CreateSubnetTransactionState *const state,
+     parser_meta_state_t *const meta)
+
+{
+  enum parse_rv sub_rv = PARSE_RV_INVALID;
+  switch(state->state)
+  {
+    case 0:
+      CALL_SUBPARSER(ownersState, SECP256K1OutputOwners);
+      state->state++;
+      fallthrough;
+    case 1:
+      sub_rv = PARSE_RV_DONE;
+      break;
+  }
+  return sub_rv;
+}
+
 void init_ChainName(struct ChainName_state *const state)
 {
   state->state = 0;
@@ -1448,7 +1491,7 @@ enum parse_rv parse_ChainName(struct ChainName_state *const state, parser_meta_s
   enum parse_rv sub_rv = PARSE_RV_INVALID;
   switch(state->state)
   {
-    case 0:
+    case 0:	   
       // Number of bytes in Chain Name
       CALL_SUBPARSER(uint16State, uint16_t);
       state->state++;
@@ -1595,6 +1638,7 @@ static char const validateLabel[] = "Add Validator";
 static char const validatesnLabel[] = "Add Subnet Validator";
 static char const createchainLabel[] = "Create Chain";
 static char const delegateLabel[] = "Add Delegator";
+static char const createsubnetLabel[] = "Create Subnet";
 
 typedef struct { char const* label; size_t label_size; } label_t;
 
@@ -1618,6 +1662,7 @@ static label_t type_id_to_label(union transaction_type_id_t type_id, enum chain_
     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR: return LABEL(validatesn);
     case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_CHAIN: return LABEL(createchain);
     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR: return LABEL(delegate);
+    case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_SUBNET: return LABEL(createsubnet);
     default:; // throws below
     };
     break;
@@ -1716,6 +1761,9 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
                 break;
               case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_CHAIN:
                 INIT_SUBPARSER(createChainTxState, CreateChainTransaction);
+		break;
+              case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_SUBNET:
+                INIT_SUBPARSER(createSubnetTxState, CreateSubnetTransaction);
                 break;
               case TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR:
               case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR:
@@ -1766,6 +1814,9 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
                 break;
               case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_CHAIN:
                 CALL_SUBPARSER_BREAK(createChainTxState, CreateChainTransaction);
+		break;
+              case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_SUBNET:
+                CALL_SUBPARSER_BREAK(createSubnetTxState, CreateSubnetTransaction);
                 break;
               case TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR:
               case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR:
