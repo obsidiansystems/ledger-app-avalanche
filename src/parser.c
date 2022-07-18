@@ -500,7 +500,7 @@ enum parse_rv parse_SubnetAuth(struct SubnetAuth_state *const state, parser_meta
     case 0:
       // Type ID
       CALL_SUBPARSER(uint32State, uint32_t);
-      //PRINTF("SUBNET AUTH\n");
+      PRINTF("SUBNET AUTH\n");
       state->state++;
       INIT_SUBPARSER(uint32State, uint32_t);
       fallthrough;
@@ -509,7 +509,7 @@ enum parse_rv parse_SubnetAuth(struct SubnetAuth_state *const state, parser_meta
       CALL_SUBPARSER(uint32State, uint32_t);
       state->state++;
       state->sigindices_n = state->uint32State.val;
-      //PRINTF("Sigind Count\n");
+      PRINTF("Sigind Count\n");
       INIT_SUBPARSER(uint32State, uint32_t);
     } fallthrough;
     case 2: {
@@ -535,7 +535,6 @@ enum parse_rv parse_SubnetAuth(struct SubnetAuth_state *const state, parser_meta
         if (state->sigindices_i < state->sigindices_n)
         {
           INIT_SUBPARSER(uint32State, uint32_t);
-	  //PRINTF("Reached\n");
           continue;
         }
         else
@@ -1408,7 +1407,6 @@ enum parse_rv parse_Genesis(struct Genesis_state *const state, parser_meta_state
       INIT_SUBPARSER(uint8State, uint8_t);
     } fallthrough;
     case 1: {
-      //
       if (state->gen_i == state->gen_n)
       {
         state->state++;

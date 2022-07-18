@@ -444,7 +444,7 @@ typedef struct {
         //TODO: Now that weve added this, do we need the ones above?
         output_prompt_t output_prompt;
     } data;
-}prompt_entry_t;
+} prompt_entry_t;
 
 #ifndef PROMPT_MAX_BATCH_SIZE
 #  error "PROMPT_MAX_BATCH_SIZE not set!"
