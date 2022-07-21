@@ -41,7 +41,7 @@ endif
 # Chunk size #
 ##############
 
-PROMPT_MAX_BATCH_SIZE = 2
+PROMPT_MAX_BATCH_SIZE = 5
 
 DEFINES   += PROMPT_MAX_BATCH_SIZE=$(PROMPT_MAX_BATCH_SIZE)
 
