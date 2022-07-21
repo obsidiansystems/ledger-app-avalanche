@@ -124,7 +124,7 @@ void measure_stack_max(void) {
     if (*p != 0x2a2a2a2a) {
         PRINTF("Free space between globals and maximum stack: %d\n", 4 * (p - &app_stack_canary));
         PRINTF("Address: %x, Top: %x\n", appstackcanary, top2);
-        PRINTF("MEMORY: %.*h\n", top2 - appstackcanary, appstackcanary);
+        //PRINTF("MEMORY: %.*h\n", top2 - appstackcanary, appstackcanary);
         return;
     }
 }
@@ -190,6 +190,7 @@ __attribute__((noreturn)) void main_loop(struct app_handlers const *const app_ha
                     : (apdu_handler)PIC(((apdu_handler*)PIC(handlers->handlers))[instruction]);
 
                 PRINTF("Calling handler\n");
+                DBGOUT();
                 size_t const tx = cb();
                 PRINTF("Normal return\n");
 

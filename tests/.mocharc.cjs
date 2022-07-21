@@ -4,7 +4,7 @@ if (process.env.LEDGER_LIVE_HARDWARE) {
 }
 
 module.exports = {
-  timeout: parseInt(process.env.GEN_TIME_LIMIT || base_time) * 2
+  timeout: 99999999999999999 //parseInt(process.env.GEN_TIME_LIMIT || base_time) * 2
 };
 console.log("Config file loaded.");
 console.log(module.exports);

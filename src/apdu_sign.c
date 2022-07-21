@@ -90,7 +90,15 @@ static size_t sign_hash_complete(void) {
 
 }
 
+void __attribute__ ((noinline)) print_ava_debug(bip32_path_t bip32_path) {
+    char path_str[100];
+    bip32_path_to_string(path_str, sizeof(path_str), &bip32_path);
+    PRINTF("Signing hash %.*h with %s\n", sizeof(G.final_hash), G.final_hash, path_str);
+}
+
 static size_t sign_hash_with_suffix(uint8_t *const out, bool const is_last_signature, uint8_t const *const in, size_t const in_size) {
+    PRINTF("-- sign_hash_with_suffix begin\n");
+    DBGOUT();
     PRINTF("Signing hash: num_signatures_left = %d of requested_num_signatures = %d%s\n", G.num_signatures_left, G.requested_num_signatures, is_last_signature ? ", last signature" : "");
     if (G.num_signatures_left == 0 || G.num_signatures_left > G.requested_num_signatures) THROW(EXC_SECURITY);
     G.num_signatures_left = is_last_signature ? 0 : G.num_signatures_left - 1;
@@ -105,23 +113,23 @@ static size_t sign_hash_with_suffix(uint8_t *const out, bool const is_last_signa
     concat_bip32_path(&bip32_path, &bip32_path_suffix);
 
 #if defined(AVA_DEBUG)
-    char path_str[100];
-    bip32_path_to_string(path_str, sizeof(path_str), &bip32_path);
-    PRINTF("Signing hash %.*h with %s\n", sizeof(G.final_hash), G.final_hash, path_str);
+    print_ava_debug(bip32_path);
     measure_stack_max();
 #endif
-
+    PRINTF("--After AVA_DEBUG \n");
     size_t const tx = WITH_EXTENDED_KEY_PAIR(bip32_path, it, size_t, ({
-        measure_stack_max();
         sign(out, MAX_SIGNATURE_SIZE, &it->key_pair, G.final_hash, sizeof(G.final_hash));
-        measure_stack_max();
     }));
-
+    PRINTF("tx: %d\n", tx);
+    PRINTF("-- After WITH_EXTENDED_KEY_PAIR\n");
+    DBGOUT();
     if (G.num_signatures_left == 0) {
         measure_stack_max();
         clear_data();
     }
     measure_stack_max();
+    PRINTF("-- sign_hash_with_suffix end\n");
+    DBGOUT();
     return tx;
 }
 
@@ -323,7 +331,24 @@ static size_t next_parse(bool const is_reentry) {
 
 #define P2_HAS_CHANGE_PATH 0x01
 
+void __attribute__ ((noinline)) handle_has_change_path(size_t ix, uint8_t const *const in, uint8_t const in_size) {
+    bip32_path_t change_path;
+    memset(&change_path, 0, sizeof(change_path));
+    read_bip32_path(&change_path, &in[ix], in_size - ix);
+
+    if (change_path.length != 5) {
+        THROW(EXC_WRONG_LENGTH);
+    }
+
+    check_bip32(&change_path, true);
+    extended_public_key_t ext_public_key;
+    generate_extended_public_key(&ext_public_key, &change_path);
+    generate_pkh_for_pubkey(&ext_public_key.public_key, &G.change_address);
+}
+
 size_t handle_apdu_sign_transaction(void) {
+    PRINTF("-- handle_apdu_sign_transaction(void) begin\n");
+    DBGOUT();
     uint8_t const *const in = &G_io_apdu_buffer[OFFSET_CDATA];
     uint8_t const in_size = READ_UNALIGNED_BIG_ENDIAN(uint8_t, &G_io_apdu_buffer[OFFSET_LC]);
     if (in_size > MAX_APDU_SIZE)
@@ -331,11 +356,11 @@ size_t handle_apdu_sign_transaction(void) {
     uint8_t const p1 = READ_UNALIGNED_BIG_ENDIAN(uint8_t, &G_io_apdu_buffer[OFFSET_P1]);
     uint8_t const p2 = READ_UNALIGNED_BIG_ENDIAN(uint8_t, &G_io_apdu_buffer[OFFSET_P2]);
     bool const hasChangePath = (p2 & P2_HAS_CHANGE_PATH) != 0;
-
     switch (p1) {
         case SIGN_TRANSACTION_SECTION_PREAMBLE: {
+            PRINTF("--SIGN_TRANSACTION_SECTION_PREAMBLE \n");
             clear_data();
-
+            PRINTF("--cleared data \n");
             size_t ix = 0;
             if (ix + sizeof(uint8_t) > in_size) THROW_(EXC_WRONG_LENGTH, "Input too small");
             G.requested_num_signatures = CONSUME_UNALIGNED_BIG_ENDIAN(ix, uint8_t, &in[ix]);
@@ -344,23 +369,13 @@ size_t handle_apdu_sign_transaction(void) {
             ix += read_bip32_path(&G.bip32_path_prefix, &in[ix], in_size - ix);
             check_bip32(&G.bip32_path_prefix, false);
             if (G.bip32_path_prefix.length < 3) THROW_(EXC_SECURITY, "Signing prefix path not long enough");
-
+            PRINTF("--before change path \n");
             if (hasChangePath) {
-                bip32_path_t change_path;
-                memset(&change_path, 0, sizeof(change_path));
-                read_bip32_path(&change_path, &in[ix], in_size - ix);
-
-                if (change_path.length != 5) {
-                    THROW(EXC_WRONG_LENGTH);
-                }
-
-                check_bip32(&change_path, true);
-                extended_public_key_t ext_public_key;
-                generate_extended_public_key(&ext_public_key, &change_path);
-                generate_pkh_for_pubkey(&ext_public_key.public_key, &G.change_address);
+                handle_has_change_path(ix, in, in_size);
             }
-
+            PRINTF("--before initTransaction \n");
             initTransaction(&G.parser.state);
+            PRINTF("--after initTransaction \n");
             return finalize_successful_send(0);
         }
 
@@ -376,10 +391,13 @@ size_t handle_apdu_sign_transaction(void) {
 
         case SIGN_TRANSACTION_SECTION_SIGN_WITH_PATH_LAST:
         case SIGN_TRANSACTION_SECTION_SIGN_WITH_PATH:
+            PRINTF("--ENTERING sign_hash_with_suffix\n");
             return finalize_successful_send(
                 sign_hash_with_suffix(G_io_apdu_buffer, p1 == SIGN_TRANSACTION_SECTION_SIGN_WITH_PATH_LAST, in, in_size)
             );
 
         default: THROW_(EXC_WRONG_PARAM, "Unrecognized P1 %d", p1);
     }
+    PRINTF("-- handle_apdu_sign_transaction(void) end\n");
+    DBGOUT();
 }

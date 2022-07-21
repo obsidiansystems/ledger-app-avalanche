@@ -143,6 +143,7 @@ size_t sign(uint8_t *const out, size_t const out_size, key_pair_t const *const p
     check_null(out);
     check_null(pair);
     check_null(in);
+    PRINTF("--sign begin\n");
     DBGOUT();
     PRINTF("--------------key: %.*h, in_size: %d\n", sizeof(pair->private_key), &pair->private_key, in_size);
 
@@ -150,16 +151,15 @@ size_t sign(uint8_t *const out, size_t const out_size, key_pair_t const *const p
 
     if (out_size < OUT_SIZE)
         THROW(EXC_WRONG_LENGTH);
-    DBGOUT();
     explicit_bzero(out, OUT_SIZE);
     static size_t const SIG_SIZE = 100;
     uint8_t sig[SIG_SIZE];
     explicit_bzero(sig, sizeof(sig));
-    DBGOUT();
     unsigned int info = 0;
 
     PRINTF("------Address: %x \n", sig);
-    cx_ecdsa_sign_no_throw(&pair->private_key, CX_RND_RFC6979,
+    DBGOUT();
+    cx_ecdsa_sign(&pair->private_key, CX_RND_RFC6979,
                   CX_SHA256, // historical reasons...semantically CX_NONE
                   (uint8_t const *const)PIC(in), in_size, sig, &SIG_SIZE, &info);
     DBGOUT();
@@ -172,9 +172,7 @@ size_t sign(uint8_t *const out, size_t const out_size, key_pair_t const *const p
     uint8_t const *const s = sig + 4 + r_size + 2 + (s_size > 32 ? 1 : 0);
 
     memcpy(out + 32 - r_size_sat, r, r_size_sat);
-    DBGOUT();
     memcpy(out + 64 - s_size_sat, s, s_size_sat);
-    DBGOUT();
     out[64] = 0;
     if (info & CX_ECCINFO_PARITY_ODD) {
         out[64] |= 0x01;
@@ -182,7 +180,9 @@ size_t sign(uint8_t *const out, size_t const out_size, key_pair_t const *const p
     if (info & CX_ECCINFO_xGTn) {
         out[64] |= 0x02;
     }
+    PRINTF("--sign end\n");
     DBGOUT();
+    PRINTF("-- OUT_SIZE: %d\n", OUT_SIZE);
     return OUT_SIZE;
 }
 

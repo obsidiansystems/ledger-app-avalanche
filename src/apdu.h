@@ -35,6 +35,7 @@ __attribute__((noreturn)) void main_loop(struct app_handlers const *const handle
 
 static inline size_t finalize_successful_send(size_t tx) {
     if (tx + 2 > IO_APDU_BUFFER_SIZE) {
+        PRINTF("-- ERR in finalize_successful_send: %d\n", tx);
         THROW(EXC_MEMORY_ERROR);
     }
     G_io_apdu_buffer[tx++] = 0x90;

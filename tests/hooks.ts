@@ -19,7 +19,7 @@ export const getEvents = async (): Promise<Event[]> =>
 
 export const mochaHooks = {
   beforeAll: async function (this: Mocha.Context) { // Need 'function' to get 'this'
-    this.timeout(10000); // We'll let this wait for up to 10 seconds to get a speculos instance.
+    this.timeout(1000000000); // We'll let this wait for up to 10 seconds to get a speculos instance.
     if (process.env.LEDGER_LIVE_HARDWARE) {
       this.speculos = await HidTransport.create();
       this.speculos.button = console.log;
@@ -31,7 +31,8 @@ export const mochaHooks = {
           process.env.LEDGER_APP,
           '--display', 'headless',
           '--sdk', '2.1',
-          '--trace',
+          //'-d',
+          //'--trace',
         ], speculosProcessOptions);
         console.log("Speculos started");
 

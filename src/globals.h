@@ -144,10 +144,5 @@ static inline void throw_stack_size(void) {
 #define STRINGIFY(x) #x
 #define TOSTRING(x)  STRINGIFY(x)
 #define AT           __FILE__ ":" TOSTRING(__LINE__)
-inline void dbgout(char *at) {
-    volatile uint i;
-    PRINTF("%s - sp %p spg %p %d\n", at, &i, &app_stack_canary, app_stack_canary);
-    PRINTF("MEMORY: %.*h\n", &i - &app_stack_canary, &app_stack_canary);
-}
 #define DBGOUT() dbgout(AT)
 #endif
