@@ -18,6 +18,15 @@
 // ************************************************************
 
 
+#ifdef AVA_DEBUG
+void __attribute__ ((noinline)) dbgout(char *at) {
+    volatile unsigned int i;
+    PRINTF("%s - sp %p spg %p %d\n", at, &i, &app_stack_canary, app_stack_canary);
+    PRINTF("MEMORY: %.*h\n", &i - &app_stack_canary, &app_stack_canary);
+    PRINTF("Free space between globals and maximum stack: %d\n", 4 * (&i - &app_stack_canary));
+}
+#endif
+
 globals_t global;
 
 // These are strange variables that the SDK relies on us to define but uses directly itself.
