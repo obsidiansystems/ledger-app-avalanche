@@ -110,7 +110,7 @@ export const processPrompts = function(prompts: Event[]): Screen[] {
     if(value["y"] == 3) {
       let m = value["text"].match(regexp);
       let cleanM = m && m[1] || value["text"]
-      if(cleanM != header) {
+      if(cleanM != header || m[2] == "1") {
         if(header || body) rv.push({ header, body });
         header = cleanM;
         body = "";
