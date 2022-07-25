@@ -393,22 +393,15 @@ describe('Staking tests', async function () {
     ]);
 
     const pathPrefix = "44'/9000'/0'";
-    const pathSuffixes = ["0/0", "0/1", "100/100"];
+    const pathSuffixes = ["0/0", "0/1", "1/100"];
     // Need to add headers for SubnetID and Sigindices?
     const prompts = chunkPrompts([
       {header: 'Sign', body: 'Create Subnet'},
       {header: 'Threshold', body: '1'},
       {header: 'Address', body: 'local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n' },
       {header: 'Fee', body: '2000.001 AVAX'}
-    ]).concat([[finalizePrompt]]);
-    const ui = await flowMultiPrompt(this.speculos, prompts);
-    const sigPromise = this.ava.signTransaction(
-      BIPPath.fromString(pathPrefix),
-      pathSuffixes.map(x => BIPPath.fromString(x, false)),
-      txn,
-    );
-    await sigPromise;
-    await ui.promptsPromise;
+    ]).concat([finalizePrompt]);
+    await checkSignTransaction(pathPrefix, pathSuffixes, txn, prompts);
   });
 
   it('Rejects an add validator transaction if total stake is not sum of stake UTXOs', async function () {
