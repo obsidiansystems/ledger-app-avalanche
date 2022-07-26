@@ -240,21 +240,6 @@ static void empty_prompt_queue(void) {
     }
 }
 
-static void peek_prompt_queue_reject(void) {
-    if (G.parser.meta_state.prompt.count > 0) {
-        PRINTF("Prompting for %d fields\n", G.parser.meta_state.prompt.count);
-
-        if (G.parser.meta_state.prompt.count) {
-            register_ui_callback(
-                0,
-                G.parser.meta_state.prompt.entries[0].to_string,
-                &G.parser.meta_state.prompt.entries[0].data
-            );
-        }
-        ui_prompt_with(ASYNC_EXCEPTION, "FAILED", G.parser.meta_state.prompt.labels, sign_reject, sign_reject);
-    }
-}
-
 static size_t next_parse(bool const is_reentry) {
     PRINTF("Next parse\n");
     enum parse_rv rv = PARSE_RV_INVALID;
@@ -268,8 +253,6 @@ static size_t next_parse(bool const is_reentry) {
         case PARSE_RV_NEED_MORE:
           break;
         case PARSE_RV_INVALID:
-          //peek_prompt_queue_reject();
-          //break;
         case PARSE_RV_PROMPT:
         case PARSE_RV_DONE:
           empty_prompt_queue();
