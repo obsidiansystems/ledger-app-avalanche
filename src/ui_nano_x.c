@@ -83,7 +83,7 @@ void switch_sign_hash_cb(void) {
         break;
     case ALLOW_ON_SIGN_HASH:
         data.sign_hash_policy = WARN_ON_SIGN_HASH;
-        strcpy(data.sign_hash_policy_prompt, "Allow w/ warning");
+        strcpy(data.sign_hash_policy_prompt, "Allow with warning");
         break;
     }
 

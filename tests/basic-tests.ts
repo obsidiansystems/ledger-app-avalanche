@@ -150,7 +150,7 @@ describe("Basic Tests", () => {
         expect(e).has.property('statusCode', 0x6985); // REJECT
         expect(e).has.property('statusText', 'CONDITIONS_OF_USE_NOT_SATISFIED');
       } finally {
-        await (await flipHashPolicy("Allow w/ warning")).promptsPromise;
+        await (await flipHashPolicy("Allow with warning")).promptsPromise;
       }
     });
 
