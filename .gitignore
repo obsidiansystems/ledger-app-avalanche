@@ -8,7 +8,7 @@ src/glyphs.c
 result*
 speculos.log
 
-node_modules/
+node_modules
 
 compile_commands.json
 .vscode/
