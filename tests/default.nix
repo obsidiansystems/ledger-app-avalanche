@@ -150,7 +150,7 @@ in rec {
     ln -s $NODE_PATH ./node_modules
 
     export NO_UPDATE_NOTIFIER=true
-    exec ${pkgs.yarn}/bin/yarn run test ./*.ts
+    exec ${pkgs.yarn}/bin/yarn run test ./*-tests.ts
   '';
 
   testPackage = nixLib.buildNodePackage ({
