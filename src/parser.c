@@ -443,13 +443,13 @@ enum parse_rv parse_SECP256K1OutputOwners(struct SECP256K1OutputOwners_state *co
                 memcpy(&address_prompt.address, &state->addressState.val, sizeof(address_prompt.address));
                 // TODO: We can get rid of this if we add back the P/X- in front of an address
                 if(meta->type_id.p == TRANSACTION_P_CHAIN_TYPE_ID_CREATE_SUBNET)
-		{	
-		ADD_PROMPT("Address", &address_prompt, sizeof(address_prompt_t), output_address_to_string);
-		}
-		else
-		{
-		  ADD_PROMPT("Rewards To", &address_prompt, sizeof(address_prompt_t), output_address_to_string);
-		}
+                {
+                    ADD_PROMPT("Address", &address_prompt, sizeof(address_prompt_t), output_address_to_string);
+                }
+                else
+                {
+                    ADD_PROMPT("Rewards To", &address_prompt, sizeof(address_prompt_t), output_address_to_string);
+                }
 
                 state->address_i++;
                 if (state->address_i < state->address_n) {
