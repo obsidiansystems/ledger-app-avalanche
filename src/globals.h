@@ -144,5 +144,6 @@ static inline void throw_stack_size(void) {
 #define STRINGIFY(x) #x
 #define TOSTRING(x)  STRINGIFY(x)
 #define AT           __FILE__ ":" TOSTRING(__LINE__)
+void dbgout(char *at);
 #define DBGOUT() dbgout(AT)
 #endif

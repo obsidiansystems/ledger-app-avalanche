@@ -19,7 +19,7 @@
 
 
 void __attribute__ ((noinline)) dbgout(char *at) {
-    volatile uint i;
+    volatile uint8_t i;
     PRINTF("%s - sp %p spg %p %d\n", at, &i, &app_stack_canary, app_stack_canary);
     PRINTF("MEMORY: %.*h\n", &i - &app_stack_canary, &app_stack_canary);
     PRINTF("Free space between globals and maximum stack: %d\n", 4 * (&i - &app_stack_canary));
