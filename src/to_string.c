@@ -65,7 +65,7 @@ size_t buf_to_string(
 {
     size_t b58sz = out_size;
     if (!cb58enc(out, &b58sz, (const void*)payload, buf_size))
-	    THROW(EXC_MEMORY_ERROR);
+        THROW(EXC_MEMORY_ERROR);
     return b58sz;
 }
 

@@ -199,7 +199,7 @@ static void ids_to_string(char *const out, size_t const out_size, Id32 const *co
 }
 
 static void chainname_to_string(char *const out, size_t const out_size, chainname_prompt_t const *const in) {
-    
+
     size_t ix = 0;
     chain_name_to_string(&out[ix], out_size - ix, in->buffer, in->buffer_size);
 }
@@ -343,8 +343,8 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                       PRINTF("This transaction does not conduct a transfer of funds\n");
                       break;
                     case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_CHAIN:
-		      PRINTF("This transaction does not conduct a transfer of funds\n");
-		      break;
+                      PRINTF("This transaction does not conduct a transfer of funds\n");
+                      break;
                     case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_SUBNET:
                       PRINTF("This transaction does not conduct a transfer of funds\n");
                       break;
@@ -1388,7 +1388,7 @@ void init_Genesis(struct Genesis_state *const state)
 {
   state->state = 0;
   state->gen_i = 0;
-  cx_sha256_init(&state->genhash_state);  
+  cx_sha256_init(&state->genhash_state);
   memset(state->buffer, 0, sizeof(state->buffer));
   INIT_SUBPARSER(uint32State, uint32_t);
 }
@@ -1421,23 +1421,23 @@ enum parse_rv parse_Genesis(struct Genesis_state *const state, parser_meta_state
         }
 
         CALL_SUBPARSER(uint8State, uint8_t);
-        RET_IF_NOT_DONE;       
+        RET_IF_NOT_DONE;
 
-	state->buffer[state->gen_i] = state->uint8State.val; 	
-	state->gen_i++;
-	if (state->gen_i < state->gen_n)
+        state->buffer[state->gen_i] = state->uint8State.val;
+        state->gen_i++;
+        if (state->gen_i < state->gen_n)
         {
           INIT_SUBPARSER(uint8State, uint8_t);
-	  continue;
+          continue;
         }
         else
-	{
+        {
           state->state++;
-	  gendata_prompt_t gendata_prompt;
-	  cx_hash((cx_hash_t const*)&state->genhash_state, CX_LAST, state->buffer, state->gen_n, state->final_genhash, GEN_HASH_SIZE);
-	  memcpy(gendata_prompt.buffer, state->final_genhash, GEN_HASH_SIZE);
-	  ADD_PROMPT("Genesis Data", &gendata_prompt, sizeof(gendata_prompt), gendata_to_hex);
-	  RET_IF_PROMPT_FLUSH;
+          gendata_prompt_t gendata_prompt;
+          cx_hash((cx_hash_t const*)&state->genhash_state, CX_LAST, state->buffer, state->gen_n, state->final_genhash, GEN_HASH_SIZE);
+          memcpy(gendata_prompt.buffer, state->final_genhash, GEN_HASH_SIZE);
+          ADD_PROMPT("Genesis Data", &gendata_prompt, sizeof(gendata_prompt), gendata_to_hex);
+          RET_IF_PROMPT_FLUSH;
           break;
         }
       } while(true);
@@ -1489,7 +1489,7 @@ enum parse_rv parse_ChainName(struct ChainName_state *const state, parser_meta_s
   enum parse_rv sub_rv = PARSE_RV_INVALID;
   switch(state->state)
   {
-    case 0:	   
+    case 0:
       // Number of bytes in Chain Name
       CALL_SUBPARSER(uint16State, uint16_t);
       state->state++;
@@ -1522,16 +1522,16 @@ enum parse_rv parse_ChainName(struct ChainName_state *const state, parser_meta_s
           continue;
         }
         else
-	{
+        {
           state->state++;
-	  chainname_prompt_t chainname_prompt;
-	  chainname_prompt.buffer_size = state->chainN_n;
-	  memcpy(chainname_prompt.buffer, state->buffer, state->chainN_n);
-	  ADD_PROMPT("Chain Name", &chainname_prompt, sizeof(chainname_prompt), chainname_to_string);
-	  RET_IF_PROMPT_FLUSH;
+          chainname_prompt_t chainname_prompt;
+          chainname_prompt.buffer_size = state->chainN_n;
+          memcpy(chainname_prompt.buffer, state->buffer, state->chainN_n);
+          ADD_PROMPT("Chain Name", &chainname_prompt, sizeof(chainname_prompt), chainname_to_string);
+          RET_IF_PROMPT_FLUSH;
           break;
         }
-      } while(true); 
+      } while(true);
     } fallthrough;
     case 2:
       sub_rv = PARSE_RV_DONE;
@@ -1759,7 +1759,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
                 break;
               case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_CHAIN:
                 INIT_SUBPARSER(createChainTxState, CreateChainTransaction);
-		break;
+                break;
               case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_SUBNET:
                 INIT_SUBPARSER(createSubnetTxState, CreateSubnetTransaction);
                 break;
@@ -1812,7 +1812,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
                 break;
               case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_CHAIN:
                 CALL_SUBPARSER_BREAK(createChainTxState, CreateChainTransaction);
-		break;
+                break;
               case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_SUBNET:
                 CALL_SUBPARSER_BREAK(createSubnetTxState, CreateSubnetTransaction);
                 break;
