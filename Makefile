@@ -11,8 +11,8 @@ GIT_DESCRIBE ?= $(shell git describe --tags --abbrev=8 --always --long --dirty 2
 
 VERSION_TAG ?= $(shell echo "$(GIT_DESCRIBE)" | cut -f1 -d-)
 APPVERSION_M=0
-APPVERSION_N=5
-APPVERSION_P=8
+APPVERSION_N=6
+APPVERSION_P=0
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 
 # Only warn about version tags if specified/inferred
@@ -31,11 +31,19 @@ else
   $(info COMMIT=$(COMMIT))
 endif
 
-ifeq ($(TARGET_NAME),TARGET_NANOX)
-ICONNAME=icons/nano-x.gif
-else
+ifeq ($(TARGET_NAME),TARGET_NANOS)
 ICONNAME=icons/nano-s.gif
+else
+ICONNAME=icons/nano-x.gif
 endif
+
+##############
+# Chunk size #
+##############
+
+PROMPT_MAX_BATCH_SIZE = 5
+
+DEFINES   += PROMPT_MAX_BATCH_SIZE=$(PROMPT_MAX_BATCH_SIZE)
 
 ################
 # Default rule #
@@ -62,23 +70,23 @@ DEFINES   += COMMIT=\"$(COMMIT)\" APPVERSION_N=$(APPVERSION_N) APPVERSION_P=$(AP
 
 ifeq ($(TARGET_NAME),TARGET_NANOX)
 APP_LOAD_PARAMS += --appFlags 0x240 # with BLE support
-DEFINES   += IO_SEPROXYHAL_BUFFER_SIZE_B=300
 DEFINES   += HAVE_BLE BLE_COMMAND_TIMEOUT_MS=2000
 DEFINES   += HAVE_BLE_APDU # basic ledger apdu transport over BLE
 
+SDK_SOURCE_PATH  += lib_blewbxx lib_blewbxx_impl
+endif
+
+ifeq ($(TARGET_NAME),TARGET_NANOS)
+DEFINES   += IO_SEPROXYHAL_BUFFER_SIZE_B=128
+DEFINES   += HAVE_UX_FLOW
+else
+DEFINES   += IO_SEPROXYHAL_BUFFER_SIZE_B=300
 DEFINES   += HAVE_GLO096 HAVE_UX_FLOW
 DEFINES   += HAVE_BAGL BAGL_WIDTH=128 BAGL_HEIGHT=64
 DEFINES   += HAVE_BAGL_ELLIPSIS # long label truncation feature
 DEFINES   += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
 DEFINES   += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
 DEFINES   += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
-
-SDK_SOURCE_PATH  += lib_blewbxx lib_blewbxx_impl
-SDK_SOURCE_PATH  += lib_ux
-else
-DEFINES   += IO_SEPROXYHAL_BUFFER_SIZE_B=128
-DEFINES   += HAVE_UX_FLOW
-SDK_SOURCE_PATH  += lib_ux
 endif
 
 # Enabling debug PRINTF
@@ -88,10 +96,10 @@ ifneq ($(DEBUG),0)
         DEFINES += AVA_DEBUG
         DEFINES += STACK_MEASURE
 
-        ifeq ($(TARGET_NAME),TARGET_NANOX)
-                DEFINES   += HAVE_PRINTF PRINTF=mcu_usb_printf
-        else
+        ifeq ($(TARGET_NAME),TARGET_NANOS)
                 DEFINES   += HAVE_PRINTF PRINTF=screen_printf
+        else
+                DEFINES   += HAVE_PRINTF PRINTF=mcu_usb_printf
         endif
 else
         DEFINES   += PRINTF\(...\)=
@@ -151,9 +159,10 @@ include $(BOLOS_SDK)/Makefile.glyphs
 ### computed variables
 APP_SOURCE_PATH  += src
 SDK_SOURCE_PATH  += lib_stusb lib_stusb_impl
+SDK_SOURCE_PATH  += lib_ux
 
 ### U2F support (wallet app only)
-SDK_SOURCE_PATH  += lib_u2f lib_stusb_impl
+SDK_SOURCE_PATH  += lib_u2f
 
 DEFINES   += USB_SEGMENT_SIZE=64
 # Need to use the same magic as the eth app; else metamask (which still uses u2f) won't see us.
@@ -175,15 +184,20 @@ include $(BOLOS_SDK)/Makefile.rules
 #add dependency on custom makefile filename
 dep/%.d: %.c Makefile
 
-.PHONY: test test-no-nix watch
+.PHONY: test test-no-nix watch watch-test
 
 watch:
-	ls src/*.c src/*.h tests/*.js tests/hw-app-avalanche/src/*.js | entr -cr make test
+	ls Makefile src/*.c src/*.h | entr -cr $(MAKE)
 
-test: tests/*.js tests/package.json bin/app.elf
-	LEDGER_APP=bin/app.elf run-ledger-tests.sh tests/
+watch-test:
+	ls Makefile src/*.c src/*.h tests/*.ts tests/deps/hw-app-avalanche/src/*.ts | entr -cr $(MAKE) test
 
-test-no-nix: tests/node_packages tests/*.js tests/package.json bin/app.elf
+test: tests/*.ts tests/package.json bin/app.elf
+	LEDGER_APP=bin/app.elf \
+		PROMPT_MAX_BATCH_SIZE=$(PROMPT_MAX_BATCH_SIZE) \
+		mocha-wrapper tests
+
+test-no-nix: tests/node_packages tests/*.ts tests/package.json bin/app.elf
 	(cd tests; yarn test)
 
 tests/node_packages: tests/package.json

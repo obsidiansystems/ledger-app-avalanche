@@ -90,6 +90,12 @@ static size_t sign_hash_complete(void) {
 
 }
 
+void __attribute__ ((noinline)) print_ava_debug(bip32_path_t bip32_path) {
+    char path_str[100];
+    bip32_path_to_string(path_str, sizeof(path_str), &bip32_path);
+    PRINTF("Signing hash %.*h with %s\n", sizeof(G.final_hash), G.final_hash, path_str);
+}
+
 static size_t sign_hash_with_suffix(uint8_t *const out, bool const is_last_signature, uint8_t const *const in, size_t const in_size) {
     PRINTF("Signing hash: num_signatures_left = %d of requested_num_signatures = %d%s\n", G.num_signatures_left, G.requested_num_signatures, is_last_signature ? ", last signature" : "");
     if (G.num_signatures_left == 0 || G.num_signatures_left > G.requested_num_signatures) THROW(EXC_SECURITY);
@@ -105,9 +111,7 @@ static size_t sign_hash_with_suffix(uint8_t *const out, bool const is_last_signa
     concat_bip32_path(&bip32_path, &bip32_path_suffix);
 
 #if defined(AVA_DEBUG)
-    char path_str[100];
-    bip32_path_to_string(path_str, sizeof(path_str), &bip32_path);
-    PRINTF("Signing hash %.*h with %s\n", sizeof(G.final_hash), G.final_hash, path_str);
+    print_ava_debug(bip32_path);
 #endif
 
     size_t const tx = WITH_EXTENDED_KEY_PAIR(bip32_path, it, size_t, ({
@@ -240,26 +244,12 @@ static void empty_prompt_queue(void) {
     }
 }
 
-static void peek_prompt_queue_reject(void) {
-    if (G.parser.meta_state.prompt.count > 0) {
-        PRINTF("Prompting for %d fields\n", G.parser.meta_state.prompt.count);
-
-        if (G.parser.meta_state.prompt.count) {
-            register_ui_callback(
-                0,
-                G.parser.meta_state.prompt.entries[0].to_string,
-                &G.parser.meta_state.prompt.entries[0].data
-            );
-        }
-        ui_prompt_with(ASYNC_EXCEPTION, "FAILED", G.parser.meta_state.prompt.labels, sign_reject, sign_reject);
-    }
-}
-
 static size_t next_parse(bool const is_reentry) {
     PRINTF("Next parse\n");
     enum parse_rv rv = PARSE_RV_INVALID;
     BEGIN_TRY {
       TRY {
+        set_next_batch_size(&G.parser.meta_state.prompt, PROMPT_MAX_BATCH_SIZE);
         rv = parseTransaction(&G.parser.state, &G.parser.meta_state);
       }
       FINALLY {
@@ -267,8 +257,6 @@ static size_t next_parse(bool const is_reentry) {
         case PARSE_RV_NEED_MORE:
           break;
         case PARSE_RV_INVALID:
-          //peek_prompt_queue_reject();
-          //break;
         case PARSE_RV_PROMPT:
         case PARSE_RV_DONE:
           empty_prompt_queue();
@@ -278,32 +266,33 @@ static size_t next_parse(bool const is_reentry) {
     }
     END_TRY;
 
-    if (rv == PARSE_RV_DONE || rv == PARSE_RV_NEED_MORE) {
-        if (G.parser.meta_state.input.consumed != G.parser.meta_state.input.length) {
-            PRINTF("Not all input was parsed: %d %d %d\n", rv, G.parser.meta_state.input.consumed, G.parser.meta_state.input.length);
+    if ((rv == PARSE_RV_DONE || rv == PARSE_RV_NEED_MORE) &&
+        G.parser.meta_state.input.consumed != G.parser.meta_state.input.length)
+    {
+        PRINTF("Not all input was parsed: %d %d %d\n", rv, G.parser.meta_state.input.consumed, G.parser.meta_state.input.length);
+        THROW(EXC_PARSE_ERROR);
+    }
+
+    if (rv == PARSE_RV_NEED_MORE) {
+        if (G.parser.is_last_message) {
+            PRINTF("Sender claimed last message and we aren't done\n");
+            THROW(EXC_PARSE_ERROR);
+        }
+        PRINTF("Need more\n");
+        return reply_maybe_delayed(is_reentry, finalize_successful_send(0));
+    }
+
+    if (rv == PARSE_RV_DONE) {
+        if (!G.parser.is_last_message) {
+            PRINTF("Sender claims there is more but we are done\n");
             THROW(EXC_PARSE_ERROR);
         }
 
-        if (rv == PARSE_RV_NEED_MORE) {
-            if (G.parser.is_last_message) {
-                PRINTF("Sender claimed last message and we aren't done\n");
-                THROW(EXC_PARSE_ERROR);
-            }
-            PRINTF("Need more\n");
-            return reply_maybe_delayed(is_reentry, finalize_successful_send(0));
-        }
-
-        if (rv == PARSE_RV_DONE) {
-            if (!G.parser.is_last_message) {
-                PRINTF("Sender claims there is more but we are done\n");
-                THROW(EXC_PARSE_ERROR);
-            }
-
-            PRINTF("Parser signaled done; sending final prompt\n");
-            cx_hash((cx_hash_t *const)&G.parser.state.hash_state, CX_LAST, NULL, 0, G.final_hash, sizeof(G.final_hash));
-            transaction_complete_prompt();
-        }
+        PRINTF("Parser signaled done; sending final prompt\n");
+        cx_hash((cx_hash_t *const)&G.parser.state.hash_state, CX_LAST, NULL, 0, G.final_hash, sizeof(G.final_hash));
+        transaction_complete_prompt();
     }
+
 
     PRINTF("Parse error: %d %d %d\n", rv, G.parser.meta_state.input.consumed, G.parser.meta_state.input.length);
     THROW(EXC_PARSE_ERROR);
@@ -316,6 +305,21 @@ static size_t next_parse(bool const is_reentry) {
 #define SIGN_TRANSACTION_SECTION_SIGN_WITH_PATH_LAST 0x82
 
 #define P2_HAS_CHANGE_PATH 0x01
+
+void __attribute__ ((noinline)) handle_has_change_path(size_t ix, uint8_t const *const in, uint8_t const in_size) {
+    bip32_path_t change_path;
+    memset(&change_path, 0, sizeof(change_path));
+    read_bip32_path(&change_path, &in[ix], in_size - ix);
+
+    if (change_path.length != 5) {
+        THROW(EXC_WRONG_LENGTH);
+    }
+
+    check_bip32(&change_path, true);
+    extended_public_key_t ext_public_key;
+    generate_extended_public_key(&ext_public_key, &change_path);
+    generate_pkh_for_pubkey(&ext_public_key.public_key, &G.change_address);
+}
 
 size_t handle_apdu_sign_transaction(void) {
     uint8_t const *const in = &G_io_apdu_buffer[OFFSET_CDATA];
@@ -340,18 +344,7 @@ size_t handle_apdu_sign_transaction(void) {
             if (G.bip32_path_prefix.length < 3) THROW_(EXC_SECURITY, "Signing prefix path not long enough");
 
             if (hasChangePath) {
-                bip32_path_t change_path;
-                memset(&change_path, 0, sizeof(change_path));
-                read_bip32_path(&change_path, &in[ix], in_size - ix);
-
-                if (change_path.length != 5) {
-                    THROW(EXC_WRONG_LENGTH);
-                }
-
-                check_bip32(&change_path, true);
-                extended_public_key_t ext_public_key;
-                generate_extended_public_key(&ext_public_key, &change_path);
-                generate_pkh_for_pubkey(&ext_public_key.public_key, &G.change_address);
+                handle_has_change_path(ix, in, in_size);
             }
 
             initTransaction(&G.parser.state);

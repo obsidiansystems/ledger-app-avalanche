@@ -102,11 +102,24 @@ enum txn_being_parsed_t {
   EIP1559
 };
 
+enum TxnDataSort {
+  TXN_DATA_UNSET,
+  TXN_DATA_CONTRACT_CALL_KNOWN_DEST,
+  TXN_DATA_CONTRACT_CALL_UNKNOWN_DEST,
+  TXN_DATA_DEPLOY,
+  TXN_DATA_PLAIN_TRANSFER,
+};
+
 struct EVM_RLP_txn_state {
     int state;
     uint64_t remaining;
     uint8_t len_len;
     uint8_t item_index;
+    struct {
+      uint8_t per_item_prompt;
+      enum TxnDataSort sort;
+      enum parse_rv item_rv;
+    };
     bool hasTo;
     bool hasData;
     uint64_t gasLimit;
@@ -141,5 +154,3 @@ enum parse_rv parse_legacy_rlp_txn(struct EVM_RLP_txn_state *const state, evm_pa
 void strcpy_prompt(char *const out, size_t const out_size, char const *const in);
 
 bool should_flush(const prompt_batch_t *const prompt);
-
-void set_next_batch_size(prompt_batch_t *const prompt, size_t size);

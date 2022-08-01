@@ -103,7 +103,7 @@ extern globals_t global;
 extern unsigned int volatile app_stack_canary; // From SDK
 
 // Used by macros that we don't control.
-#ifdef TARGET_NANOX
+#if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
 extern ux_state_t G_ux;
 extern bolos_ux_params_t G_ux_params;
 #else
@@ -118,7 +118,7 @@ static inline void throw_stack_size(void) {
     THROW(0x9000 + tmp2);
 }
 
-#ifdef TARGET_NANOX
+#if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
     extern nvram_data const N_data_real;
 #   define N_data (*(volatile nvram_data *)PIC(&N_data_real))
 #else
@@ -144,9 +144,6 @@ static inline void throw_stack_size(void) {
 #define STRINGIFY(x) #x
 #define TOSTRING(x)  STRINGIFY(x)
 #define AT           __FILE__ ":" TOSTRING(__LINE__)
-inline void dbgout(char *at) {
-    int i;
-    PRINTF("%s - sp %p spg %p %d\n", at, &i, &app_stack_canary, app_stack_canary);
-}
+void dbgout(char *at);
 #define DBGOUT() dbgout(AT)
 #endif

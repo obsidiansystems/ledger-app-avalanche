@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "esModuleInterop": true
+  },
+  "ts-node": {
+    "files": true
+  }
+}

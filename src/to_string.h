@@ -4,25 +4,26 @@
 #include <stdbool.h>
 
 #include "keys.h"
+#include "identifier.h"
 #include "os_cx.h"
 #include "types.h"
 #include "ui.h"
 #include "uint256.h"
 
 size_t nano_avax_to_string(
-	char dest[const], size_t const buff_size,
-	uint64_t const nano_avax);
+    char dest[const], size_t const buff_size,
+    uint64_t const nano_avax);
 size_t wei_to_gwei_string(
-	char dest[const], size_t const buff_size,
-	uint64_t const wei);
+    char dest[const], size_t const buff_size,
+    uint64_t const wei);
 size_t wei_to_gwei_string_256(
-	char dest[const], size_t const buff_size,
-	uint256_t const *const wei);
+    char dest[const], size_t const buff_size,
+    uint256_t const *const wei);
 size_t wei_to_navax_string(
-	char dest[const], size_t const buff_size,
-	uint64_t const wei);
+    char dest[const], size_t const buff_size,
+    uint64_t const wei);
 size_t wei_to_avax_or_navax_string_256(
-	char dest[const], size_t const buff_size,
+    char dest[const], size_t const buff_size,
     uint256_t const *const wei);
 
 void bip32_path_to_string(
@@ -34,6 +35,8 @@ size_t pkh_to_string(
     public_key_hash_t const *const payload);
 size_t nodeid_to_string(
     char out[const], size_t const out_size, public_key_hash_t const *const payload);
+size_t subid_to_string(
+    char out[const], size_t const out_size, Id32 const *const payload);
 
 size_t number_to_string
     (char dest[const], // dest must be at least MAX_INT_DIGITS
@@ -62,8 +65,8 @@ void copy_string
 // Encodes binary blob to hex string.
 // `in` may be unrelocated pointer to rodata.
 void bin_to_hex(
-	char out[const], size_t const out_size,
-	uint8_t const in[const], size_t const in_size);
+    char out[const], size_t const out_size,
+    uint8_t const in[const], size_t const in_size);
 
 // Encodes binary blob to hex string.
 // `in` may be unrelocated pointer to rodata.
@@ -74,8 +77,8 @@ void bin_to_hex_lc(
 // Wrapper around `bin_to_hex` that works on `buffer_t`.
 // `in` may be unrelocated pointer to rodata.
 void buffer_to_hex(
-	char out[const], size_t const out_size,
-	buffer_t const in[const]);
+    char out[const], size_t const out_size,
+    buffer_t const in[const]);
 
 // Convert time to YYYY-MM-DD HH:MM:SS format
 size_t time_to_string

@@ -28,6 +28,19 @@ size_t nodeid_to_string(
     return b58sz;
 }
 
+size_t subid_to_string(
+    char out[const], size_t const out_size, Id32 const *const payload)
+{
+    if (out_size == 0)
+        THROW(EXC_MEMORY_ERROR);
+    
+    size_t ix = 0; 
+    size_t b58sz = out_size;
+    if (!cb58enc(&out[ix], &b58sz, (const void*)payload, sizeof(*payload)))
+        THROW(EXC_MEMORY_ERROR);
+    return b58sz;
+}
+
 size_t pkh_to_string(
     char out[const], size_t const out_size,
     char const *const hrp, size_t const hrp_size,
@@ -83,7 +96,7 @@ void bip32_path_to_string(
 // This is intended to be used with a temporary buffer of length MAX_INT_DIGITS
 // Returns offset of where it stopped filling in
 static inline size_t convert_number(
-	char dest[MAX_INT_DIGITS], uint64_t number, bool leading_zeroes)
+    char dest[MAX_INT_DIGITS], uint64_t number, bool leading_zeroes)
 {
     check_null(dest);
     char *const end = dest + MAX_INT_DIGITS;
@@ -99,7 +112,7 @@ static inline size_t convert_number(
 
 // add a fixed number of zeros with padding
 static inline size_t convert_number_fixed(
-	char dest[MAX_INT_DIGITS], uint64_t number, size_t padding)
+    char dest[MAX_INT_DIGITS], uint64_t number, size_t padding)
 {
     check_null(dest);
     char *const end = dest + padding;
@@ -259,6 +272,7 @@ size_t nano_avax_to_string(
   ix += sizeof(unit) - 1;
   return ix;
 }
+
 size_t wei_to_gwei_string(
     char dest[const], size_t const buff_size,
     uint64_t const wei)
@@ -488,5 +502,5 @@ void time_to_string_void_ret(
     char dest[const], size_t const buff_size,
     uint64_t const *const time)
 {
-	return (void)time_to_string(dest, buff_size, time);
+    return (void)time_to_string(dest, buff_size, time);
 }
