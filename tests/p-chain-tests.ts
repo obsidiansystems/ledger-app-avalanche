@@ -393,22 +393,15 @@ it('can sign a create subnet transaction', async function () {
       0xed, 0xa8, 0xeb, 0x30, 0xfb, 0x5a, 0x71, 0x5c]);
       
       const pathPrefix = "44'/9000'/0'";
-      const pathSuffixes = ["0/0", "0/1", "100/100"];
+      const pathSuffixes = ["0/0", "0/1", "1/100"];
       // Need to add headers for SubnetID and Sigindices?
       const prompts = chunkPrompts([
         {header: 'Sign', body: 'Create Subnet'},
         {header: 'Threshold', body: '1'},
         {header: 'Address', body: 'local1mg47uqd7stkvqrp57ds7m28txra45u2uzkta8n' },
         {header: 'Fee', body: '2000.001 AVAX'}
-      ]).concat([[finalizePrompt]]);
-      const ui = await flowMultiPrompt(this.speculos, prompts);
-      const sigPromise = this.ava.signTransaction(
-      BIPPath.fromString(pathPrefix),
-      pathSuffixes.map(x => BIPPath.fromString(x, false)),
-      txn,
-    );
-    await sigPromise;
-    await ui.promptsPromise;
+      ]).concat([finalizePrompt]);
+      await checkSignTransaction(pathPrefix, pathSuffixes, txn, prompts);
   });
 
   it('can sign a create chain transaction', async function () {
