@@ -1,10 +1,10 @@
-{ ledger-platform ? import ./nix/dep/ledger-platform {}
+{ alamgu ? import ./nix/dep/alamgu {}
 , gitDescribe ? "TEST-dirty"
 , debug ? false
 , runTest ? true
 }:
 let
-  inherit (ledger-platform)
+  inherit (alamgu)
     pkgs ledgerPkgs
     gitignoreNix gitignoreSource
     usbtool
