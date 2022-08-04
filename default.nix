@@ -1,12 +1,12 @@
 { localSystem ? { system = builtins.currentSystem; }
-, ledger-platform ? import ./nix/dep/ledger-platform { inherit localSystem; }
+, alamgu ? import ./nix/dep/alamgu { inherit localSystem; }
 , gitDescribe ? "TEST-dirty"
 , debug ? false
 , runTest ? true
 , buildTestDeps ? true # So we at least CI them
 }:
 let
-  inherit (ledger-platform)
+  inherit (alamgu)
     pkgs ledgerPkgs
     gitignoreNix gitignoreSource
     usbtool
