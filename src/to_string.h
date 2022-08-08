@@ -35,6 +35,8 @@ size_t pkh_to_string(
     public_key_hash_t const *const payload);
 size_t nodeid_to_string(
     char out[const], size_t const out_size, public_key_hash_t const *const payload);
+size_t chain_name_to_string(
+    char out[const], size_t const out_size, uint8_t const *const payload, size_t const buf_size);
 size_t id_to_string(
     char out[const], size_t const out_size, Id32 const *const payload);
 

@@ -1434,7 +1434,7 @@ enum parse_rv parse_Genesis(struct Genesis_state *const state, parser_meta_state
         {
           state->state++;
           gendata_prompt_t gendata_prompt;
-          cx_hash((cx_hash_t const*)&state->genhash_state, CX_LAST, state->buffer, state->gen_n, state->final_genhash, GEN_HASH_SIZE);
+          cx_hash((cx_hash_t *const)&state->genhash_state, CX_LAST, state->buffer, state->gen_n, state->final_genhash, GEN_HASH_SIZE);
           memcpy(gendata_prompt.buffer, state->final_genhash, GEN_HASH_SIZE);
           ADD_PROMPT("Genesis Data", &gendata_prompt, sizeof(gendata_prompt), gendata_to_hex);
           RET_IF_PROMPT_FLUSH;
