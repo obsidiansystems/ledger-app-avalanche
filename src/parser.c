@@ -5,6 +5,7 @@
 #include "to_string.h"
 #include "types.h"
 #include "network_info.h"
+#include "hash.h"
 
 bool should_flush(const prompt_batch_t *const prompt) {
   bool test = prompt->count > prompt->flushIndex;
@@ -838,11 +839,6 @@ void initTransaction(struct TransactionState *const state) {
     init_uint32_t(&state->uint32State);
     cx_sha256_init(&state->hash_state);
     INIT_SUBPARSER(uint16State, uint16_t);
-}
-
-void update_transaction_hash(cx_sha256_t *const state, uint8_t const *const src, size_t const length) {
-    PRINTF("HASH DATA: %d bytes: %.*h\n", length, length, src);
-    cx_hash((cx_hash_t *const)state, 0, src, length, NULL, 0);
 }
 
 void strcpy_prompt(char *const out, size_t const out_size, char const *const in) {
@@ -1860,7 +1856,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
     if (meta->input.consumed > start_consumed) {
         size_t consume_next = meta->input.consumed - start_consumed;
         PRINTF("Hash %d bytes of input\n", consume_next);
-        update_transaction_hash(&state->hash_state, &meta->input.src[start_consumed], consume_next);
+        update_hash(&state->hash_state, &meta->input.src[start_consumed], consume_next);
     }
     PRINTF("Consumed %d bytes of input so far\n", meta->input.consumed);
     return sub_rv;
