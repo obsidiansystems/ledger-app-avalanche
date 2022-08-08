@@ -1,4 +1,4 @@
-{ pkgs ? import (import ../nix/dep/ledger-platform/thunk.nix + "/dep/nixpkgs") {}
+{ pkgs ? import (import ../nix/dep/alamgu/thunk.nix + "/dep/nixpkgs") {}
 , nodejs ? pkgs.nodejs
 }:
 
