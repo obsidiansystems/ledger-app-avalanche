@@ -378,7 +378,7 @@ it('can sign a create subnet transaction', async function () {
       0x00, 0x00, 0x00, 0x00,
       // memo length
       0x00, 0x00, 0x00, 0x00,
-      
+
       // RewardsOwner type_id
       0x00, 0x00, 0x00, 0x0b,
       // locktime:
@@ -391,7 +391,7 @@ it('can sign a create subnet transaction', async function () {
       0xda, 0x2b, 0xee, 0x01,
       0xbe, 0x82, 0xec, 0xc0, 0x0c, 0x34, 0xf3, 0x61,
       0xed, 0xa8, 0xeb, 0x30, 0xfb, 0x5a, 0x71, 0x5c]);
-      
+
       const pathPrefix = "44'/9000'/0'";
       const pathSuffixes = ["0/0", "0/1", "1/100"];
       // Need to add headers for SubnetID and Sigindices?
