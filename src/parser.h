@@ -123,32 +123,37 @@ struct Output_state {
 
 DEFINE_FIXED(blockchain_id_t);
 
-#define GEN_DATA_MAX_SIZE 256
 #define GEN_HASH_SIZE 32
+
+typedef uint8_t genhash_t[GEN_HASH_SIZE];
 
 struct Genesis_state {
   int state;
-  cx_sha256_t genhash_state;
-  uint8_t final_genhash[GEN_HASH_SIZE];
-  uint32_t gen_n;
-  uint32_t gen_i;
-  uint8_t buffer[GEN_DATA_MAX_SIZE];
   union {
-      NUMBER_STATES;
-      struct uint8_t_state uint8State;
+    struct uint32_t_state gen_n_state;
+    struct {
+      size_t gen_n;
+      size_t gen_i;
+      cx_sha256_t genhash_state;
+    };
   };
 };
 
 #define CHAIN_NAME_MAX_SIZE 128
 
+typedef struct {
+    size_t buffer_size;
+    uint8_t buffer[CHAIN_NAME_MAX_SIZE];
+} chainname_prompt_t;
+
 struct ChainName_state{
   int state;
-  uint16_t chainN_n;
-  uint16_t chainN_i;
-  uint8_t buffer[CHAIN_NAME_MAX_SIZE];
   union {
-      struct uint16_t_state uint16State;
-      struct uint8_t_state uint8State;
+    struct uint16_t_state uint16State;
+    struct {
+      chainname_prompt_t name;
+      uint16_t chainN_i;
+    };
   };
 };
 
@@ -418,12 +423,6 @@ typedef struct {
     network_id_t network_id;
     Address address;
 } address_prompt_t;
-
-
-typedef struct {
-    size_t buffer_size;
-    uint8_t buffer[CHAIN_NAME_MAX_SIZE];
-} chainname_prompt_t;
 
 typedef struct {
     uint8_t buffer[GEN_HASH_SIZE];

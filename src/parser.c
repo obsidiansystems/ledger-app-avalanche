@@ -138,7 +138,7 @@ union transaction_type_id_t convert_type_id_to_type(uint32_t raw_type_id, enum c
 enum parse_rv parseFixed(struct FixedState *const state, parser_input_meta_state_t *const input, size_t const len) {
     size_t const available = input->length - input->consumed;
     size_t const needed = len - state->filledTo;
-    size_t const to_copy = available > needed ? needed : available;
+    size_t const to_copy = MIN(needed, available);
     memcpy(&state->buffer[state->filledTo], &input->src[input->consumed], to_copy);
     state->filledTo += to_copy;
     input->consumed += to_copy;
@@ -148,7 +148,7 @@ enum parse_rv parseFixed(struct FixedState *const state, parser_input_meta_state
 enum parse_rv skipBytes(struct FixedState *const state, parser_input_meta_state_t *const input, size_t const len) {
   size_t const available = input->length - input->consumed;
   size_t const needed = len - state->filledTo;
-  size_t const to_copy = available > needed ? needed : available;
+  size_t const to_copy = MIN(needed, available);
   state->filledTo += to_copy;
   input->consumed += to_copy;
   return state->filledTo == len ? PARSE_RV_DONE : PARSE_RV_NEED_MORE;
@@ -1383,62 +1383,65 @@ enum parse_rv parse_AddSNValidatorTransaction(
 void init_Genesis(struct Genesis_state *const state)
 {
   state->state = 0;
-  state->gen_i = 0;
-  cx_sha256_init(&state->genhash_state);
-  memset(state->buffer, 0, sizeof(state->buffer));
-  INIT_SUBPARSER(uint32State, uint32_t);
+  INIT_SUBPARSER(gen_n_state, uint32_t);
 }
 
 enum parse_rv parse_Genesis(struct Genesis_state *const state, parser_meta_state_t *const meta)
 {
   enum parse_rv sub_rv = PARSE_RV_INVALID;
+rebranch:
   switch(state->state)
   {
     case 0: {
       // Number of bytes of Genesis Data
-      CALL_SUBPARSER(uint32State, uint32_t);
+      CALL_SUBPARSER(gen_n_state, uint32_t);
+      uint32_t temp = state->gen_n_state.val;
+      state->gen_n = temp;
+      state->gen_i = 0;
+      cx_sha256_init(&state->genhash_state);
       state->state++;
-      state->gen_n = state->uint32State.val;
       PRINTF("Gen Data Count\n");
-      INIT_SUBPARSER(uint8State, uint8_t);
     } fallthrough;
     case 1: {
+      // loop invariant
+      if (state->gen_i >= state->gen_n)
+      {
+        THROW(EXC_MEMORY_ERROR);
+      }
+
       if (state->gen_i == state->gen_n)
       {
         state->state++;
-        break;
+        goto rebranch;
       }
-     do
-      {
-        // loop invariant
-        if (state->gen_i == state->gen_n)
-        {
-          THROW(EXC_MEMORY_ERROR);
-        }
 
-        CALL_SUBPARSER(uint8State, uint8_t);
-        RET_IF_NOT_DONE;
+      parser_input_meta_state_t * input = &meta->input;
 
-        state->buffer[state->gen_i] = state->uint8State.val;
-        state->gen_i++;
-        if (state->gen_i < state->gen_n)
-        {
-          INIT_SUBPARSER(uint8State, uint8_t);
-          continue;
-        }
-        else
-        {
-          state->state++;
-          gendata_prompt_t gendata_prompt;
-          cx_hash((cx_hash_t *const)&state->genhash_state, CX_LAST, state->buffer, state->gen_n, state->final_genhash, GEN_HASH_SIZE);
-          memcpy(gendata_prompt.buffer, state->final_genhash, GEN_HASH_SIZE);
-          ADD_PROMPT("Genesis Data", &gendata_prompt, sizeof(gendata_prompt), gendata_to_hex);
-          RET_IF_PROMPT_FLUSH;
-          break;
-        }
-      } while(true);
+      size_t const available = input->length - input->consumed;
+      size_t const needed = state->gen_n - state->gen_i;
+      size_t const to_hash = MIN(needed, available);
+      update_hash(&state->genhash_state, &meta->input.src[input->consumed], to_hash);
+      state->gen_i += to_hash;
+      input->consumed += to_hash;
+      sub_rv = state->gen_i == state->gen_n ? PARSE_RV_DONE : PARSE_RV_NEED_MORE;
+      RET_IF_NOT_DONE;
+
+      state->state++;
     } fallthrough;
-    case 2:
+    case 2: {
+      if (state->gen_i <  state->gen_n)
+      {
+        PRINTF("Should not have gotten here yet\n");
+        THROW(EXC_MEMORY_ERROR);
+      }
+
+      state->state++;
+      genhash_t temp_final_hash;
+      finish_hash((cx_hash_t *const)&state->genhash_state, &temp_final_hash);
+      ADD_PROMPT("Genesis Data", &temp_final_hash, sizeof(temp_final_hash), gendata_to_hex);
+      RET_IF_PROMPT_FLUSH;
+    } fallthrough;
+    case 3:
       sub_rv = PARSE_RV_DONE;
       break;
   }
@@ -1475,61 +1478,65 @@ enum parse_rv parse_CreateSubnetTransaction(
 void init_ChainName(struct ChainName_state *const state)
 {
   state->state = 0;
-  state->chainN_i = 0;
-  memset(state->buffer, 0, sizeof(state->buffer));
   INIT_SUBPARSER(uint16State, uint16_t);
 }
 
 enum parse_rv parse_ChainName(struct ChainName_state *const state, parser_meta_state_t *const meta)
 {
   enum parse_rv sub_rv = PARSE_RV_INVALID;
+rebranch:
   switch(state->state)
   {
     case 0:
       // Number of bytes in Chain Name
       CALL_SUBPARSER(uint16State, uint16_t);
       state->state++;
-      state->chainN_n = state->uint16State.val;
-      //PRINTF("Chain Name Length: %d\n", state->chainN_n);
-      INIT_SUBPARSER(uint8State, uint8_t);
+      state->name.buffer_size = state->uint16State.val;
+      state->chainN_i = 0;
+      memset(state->name.buffer, 0, sizeof(state->name.buffer));
+      if (state->name.buffer_size > sizeof(state->name.buffer)) {
+        PRINTF("Chain Name is too long");
+        THROW(EXC_MEMORY_ERROR);
+      }
+      PRINTF("Chain Name Length: %d\n", state->name.buffer_size);
       fallthrough;
     case 1: {
-      //
-      if (state->chainN_i == state->chainN_n)
+      // loop invariant
+      if (state->chainN_i == state->name.buffer_size)
+      {
+        THROW(EXC_MEMORY_ERROR);
+      }
+
+      if (state->chainN_i == state->name.buffer_size)
       {
         state->state++;
-        break;
+        goto rebranch;
       }
-     do
-      {
-        // loop invariant
-        if (state->chainN_i == state->chainN_n)
-        {
-          THROW(EXC_MEMORY_ERROR);
-        }
 
-        CALL_SUBPARSER(uint8State, uint8_t);
+      parser_input_meta_state_t * input = &meta->input;
 
-        state->buffer[state->chainN_i] = state->uint8State.val;
-        state->chainN_i++;
-        if (state->chainN_i < state->chainN_n)
-        {
-          INIT_SUBPARSER(uint8State, uint8_t);
-          continue;
-        }
-        else
-        {
-          state->state++;
-          chainname_prompt_t chainname_prompt;
-          chainname_prompt.buffer_size = state->chainN_n;
-          memcpy(chainname_prompt.buffer, state->buffer, state->chainN_n);
-          ADD_PROMPT("Chain Name", &chainname_prompt, sizeof(chainname_prompt), chainname_to_string);
-          RET_IF_PROMPT_FLUSH;
-          break;
-        }
-      } while(true);
+      size_t const available = input->length - input->consumed;
+      size_t const needed = state->name.buffer_size - state->chainN_i;
+      size_t const to_copy = MIN(needed, available);
+      memcpy(&state->name.buffer, &meta->input.src[input->consumed], to_copy);
+      state->chainN_i += to_copy;
+      input->consumed += to_copy;
+      sub_rv = state->chainN_i == state->name.buffer_size ? PARSE_RV_DONE : PARSE_RV_NEED_MORE;
+      RET_IF_NOT_DONE;
+
+      state->state++;
     } fallthrough;
-    case 2:
+    case 2: {
+      if (state->chainN_i <  state->name.buffer_size)
+      {
+        PRINTF("Should not have gotten here yet\n");
+        THROW(EXC_MEMORY_ERROR);
+      }
+      state->state++;
+      ADD_PROMPT("Chain Name", &state->name, sizeof(state->name), chainname_to_string);
+      RET_IF_PROMPT_FLUSH;
+    } fallthrough;
+    case 3:
       sub_rv = PARSE_RV_DONE;
       break;
   }
