@@ -28,15 +28,43 @@ size_t nodeid_to_string(
     return b58sz;
 }
 
-size_t subid_to_string(
+size_t chain_name_to_string(
+    char out[const], size_t const out_size, uint8_t const *const payload, size_t const buf_size)
+{
+  if (buf_size > out_size)
+      THROW(EXC_MEMORY_ERROR);
+  
+  size_t chain_name_size;
+  size_t ix = 0;
+  char terminate = '\0';
+
+  memcpy(&out[ix], (const char*)payload, buf_size);
+  ix += buf_size;
+  
+  memcpy(&out[ix], &terminate, sizeof(char));
+  
+  chain_name_size = out_size - ix;
+  
+  return chain_name_size;
+}
+
+size_t id_to_string(
     char out[const], size_t const out_size, Id32 const *const payload)
 {
     if (out_size == 0)
         THROW(EXC_MEMORY_ERROR);
-    
-    size_t ix = 0; 
+
     size_t b58sz = out_size;
-    if (!cb58enc(&out[ix], &b58sz, (const void*)payload, sizeof(*payload)))
+    if (!cb58enc(out, &b58sz, (const void*)payload, sizeof(*payload)))
+        THROW(EXC_MEMORY_ERROR);
+    return b58sz;
+}
+
+size_t buf_to_string(
+    char out[const], size_t const out_size, uint8_t const *const payload, size_t const buf_size)
+{
+    size_t b58sz = out_size;
+    if (!cb58enc(out, &b58sz, (const void*)payload, buf_size))
         THROW(EXC_MEMORY_ERROR);
     return b58sz;
 }
@@ -313,7 +341,7 @@ size_t wei_to_avax_or_navax_string_256(
 {
   const uint8_t AVAX_NAVAX_DISPLAY_THRESHOLD_BE[] = {
       0x0, 0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,
-      0x0, 0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,      
+      0x0, 0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,
       0x0, 0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,
       0x0, 0x03, 0x8D, 0x7E, 0xA4, 0xC6, 0x80, 0x00}; // 38D7EA4C68000 = 1000000000000000dec
   uint256_t AVAX_NAVAX_DISPLAY_THRESHOLD_256;

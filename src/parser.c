@@ -5,6 +5,7 @@
 #include "to_string.h"
 #include "types.h"
 #include "network_info.h"
+#include "hash.h"
 
 bool should_flush(const prompt_batch_t *const prompt) {
   bool test = prompt->count > prompt->flushIndex;
@@ -75,6 +76,7 @@ void initFixed(struct FixedState *const state, size_t const len) {
     /**/ TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR: \
     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR: \
     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR: \
+    case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_CHAIN: \
     case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_SUBNET: \
     case TRANSACTION_P_CHAIN_TYPE_ID_IMPORT: \
     case TRANSACTION_P_CHAIN_TYPE_ID_EXPORT
@@ -136,7 +138,7 @@ union transaction_type_id_t convert_type_id_to_type(uint32_t raw_type_id, enum c
 enum parse_rv parseFixed(struct FixedState *const state, parser_input_meta_state_t *const input, size_t const len) {
     size_t const available = input->length - input->consumed;
     size_t const needed = len - state->filledTo;
-    size_t const to_copy = available > needed ? needed : available;
+    size_t const to_copy = MIN(needed, available);
     memcpy(&state->buffer[state->filledTo], &input->src[input->consumed], to_copy);
     state->filledTo += to_copy;
     input->consumed += to_copy;
@@ -146,7 +148,7 @@ enum parse_rv parseFixed(struct FixedState *const state, parser_input_meta_state
 enum parse_rv skipBytes(struct FixedState *const state, parser_input_meta_state_t *const input, size_t const len) {
   size_t const available = input->length - input->consumed;
   size_t const needed = len - state->filledTo;
-  size_t const to_copy = available > needed ? needed : available;
+  size_t const to_copy = MIN(needed, available);
   state->filledTo += to_copy;
   input->consumed += to_copy;
   return state->filledTo == len ? PARSE_RV_DONE : PARSE_RV_NEED_MORE;
@@ -192,9 +194,20 @@ static void validator_to_string(char *const out, size_t const out_size, address_
     nodeid_to_string(&out[ix], out_size - ix, &in->address.val);
 }
 
-static void subnetid_to_string(char *const out, size_t const out_size, Id32 const *const in) {
+static void ids_to_string(char *const out, size_t const out_size, Id32 const *const in) {
     size_t ix = 0;
-    subid_to_string(&out[ix], out_size - ix, in);
+    id_to_string(&out[ix], out_size - ix, in);
+}
+
+static void chainname_to_string(char *const out, size_t const out_size, chainname_prompt_t const *const in) {
+
+    size_t ix = 0;
+    chain_name_to_string(&out[ix], out_size - ix, in->buffer, in->buffer_size);
+}
+
+static void gendata_to_hex(char *const out, size_t const out_size, gendata_prompt_t const *const in) {
+    size_t ix = 0;
+    bin_to_hex(&out[ix], out_size - ix, in->buffer, sizeof(in->buffer));
 }
 
 enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state *const state, parser_meta_state_t *const meta) {
@@ -328,6 +341,9 @@ enum parse_rv parse_SECP256K1TransferOutput(struct SECP256K1TransferOutput_state
                           );
                       break;
                     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR:
+                      PRINTF("This transaction does not conduct a transfer of funds\n");
+                      break;
+                    case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_CHAIN:
                       PRINTF("This transaction does not conduct a transfer of funds\n");
                       break;
                     case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_SUBNET:
@@ -520,13 +536,11 @@ enum parse_rv parse_SubnetAuth(struct SubnetAuth_state *const state, parser_meta
         if (state->sigindices_i < state->sigindices_n)
         {
           INIT_SUBPARSER(uint32State, uint32_t);
-          RET_IF_PROMPT_FLUSH;
           continue;
         }
         else
         {
           state->state++;
-          RET_IF_PROMPT_FLUSH;
           break;
         }
       } while(false);
@@ -825,11 +839,6 @@ void initTransaction(struct TransactionState *const state) {
     init_uint32_t(&state->uint32State);
     cx_sha256_init(&state->hash_state);
     INIT_SUBPARSER(uint16State, uint16_t);
-}
-
-void update_transaction_hash(cx_sha256_t *const state, uint8_t const *const src, size_t const length) {
-    PRINTF("HASH DATA: %d bytes: %.*h\n", length, length, src);
-    cx_hash((cx_hash_t *const)state, 0, src, length, NULL, 0);
 }
 
 void strcpy_prompt(char *const out, size_t const out_size, char const *const in) {
@@ -1356,7 +1365,7 @@ enum parse_rv parse_AddSNValidatorTransaction(
       fallthrough;
     case 1: {//Subnet ID
       CALL_SUBPARSER(id32State, Id32);
-      ADD_PROMPT("Subnet", &state->id32State.val, sizeof(Id32), subnetid_to_string);
+      ADD_PROMPT("Subnet", &state->id32State.val, sizeof(Id32), ids_to_string);
       state->state++;
       INIT_SUBPARSER(subnetauthState, SubnetAuth);
       RET_IF_PROMPT_FLUSH;
@@ -1371,6 +1380,76 @@ enum parse_rv parse_AddSNValidatorTransaction(
   return sub_rv;
 }
 
+void init_Genesis(struct Genesis_state *const state)
+{
+  state->state = 0;
+  INIT_SUBPARSER(gen_n_state, uint32_t);
+}
+
+enum parse_rv parse_Genesis(struct Genesis_state *const state, parser_meta_state_t *const meta)
+{
+  enum parse_rv sub_rv = PARSE_RV_INVALID;
+rebranch:
+  switch(state->state)
+  {
+    case 0: {
+      // Number of bytes of Genesis Data
+      CALL_SUBPARSER(gen_n_state, uint32_t);
+      uint32_t temp = state->gen_n_state.val;
+      state->gen_n = temp;
+      state->gen_i = 0;
+      cx_sha256_init(&state->genhash_state);
+      state->state++;
+      PRINTF("Gen Data Count\n");
+    } fallthrough;
+    case 1: {
+      // loop invariant
+      if (state->gen_i >= state->gen_n)
+      {
+        THROW(EXC_MEMORY_ERROR);
+      }
+
+      if (state->gen_i == state->gen_n)
+      {
+        state->state++;
+        goto rebranch;
+      }
+
+      parser_input_meta_state_t * input = &meta->input;
+
+      size_t const available = input->length - input->consumed;
+      size_t const needed = state->gen_n - state->gen_i;
+      size_t const to_hash = MIN(needed, available);
+      update_hash(&state->genhash_state, &meta->input.src[input->consumed], to_hash);
+      state->gen_i += to_hash;
+      input->consumed += to_hash;
+      sub_rv = state->gen_i == state->gen_n ? PARSE_RV_DONE : PARSE_RV_NEED_MORE;
+      RET_IF_NOT_DONE;
+
+      state->state++;
+    } fallthrough;
+    case 2: {
+      if (state->gen_i <  state->gen_n)
+      {
+        PRINTF("Should not have gotten here yet\n");
+        THROW(EXC_MEMORY_ERROR);
+      }
+
+      state->state++;
+      genhash_t temp_final_hash;
+      finish_hash((cx_hash_t *const)&state->genhash_state, &temp_final_hash);
+      ADD_PROMPT("Genesis Data", &temp_final_hash, sizeof(temp_final_hash), gendata_to_hex);
+      RET_IF_PROMPT_FLUSH;
+    } fallthrough;
+    case 3:
+      sub_rv = PARSE_RV_DONE;
+      break;
+  }
+  return sub_rv;
+}
+
+
+
 void init_CreateSubnetTransaction(struct CreateSubnetTransactionState *const state)
 {
   state->state = 0;
@@ -1380,6 +1459,7 @@ void init_CreateSubnetTransaction(struct CreateSubnetTransactionState *const sta
 enum parse_rv parse_CreateSubnetTransaction(
      struct CreateSubnetTransactionState *const state,
      parser_meta_state_t *const meta)
+
 {
   enum parse_rv sub_rv = PARSE_RV_INVALID;
   switch(state->state)
@@ -1390,15 +1470,174 @@ enum parse_rv parse_CreateSubnetTransaction(
       fallthrough;
     case 1:
       sub_rv = PARSE_RV_DONE;
+      break;
   }
   return sub_rv;
 }
+
+void init_ChainName(struct ChainName_state *const state)
+{
+  state->state = 0;
+  INIT_SUBPARSER(uint16State, uint16_t);
+}
+
+enum parse_rv parse_ChainName(struct ChainName_state *const state, parser_meta_state_t *const meta)
+{
+  enum parse_rv sub_rv = PARSE_RV_INVALID;
+rebranch:
+  switch(state->state)
+  {
+    case 0:
+      // Number of bytes in Chain Name
+      CALL_SUBPARSER(uint16State, uint16_t);
+      state->state++;
+      state->name.buffer_size = state->uint16State.val;
+      state->chainN_i = 0;
+      memset(state->name.buffer, 0, sizeof(state->name.buffer));
+      if (state->name.buffer_size > sizeof(state->name.buffer)) {
+        PRINTF("Chain Name is too long");
+        THROW(EXC_MEMORY_ERROR);
+      }
+      PRINTF("Chain Name Length: %d\n", state->name.buffer_size);
+      fallthrough;
+    case 1: {
+      // loop invariant
+      if (state->chainN_i == state->name.buffer_size)
+      {
+        THROW(EXC_MEMORY_ERROR);
+      }
+
+      if (state->chainN_i == state->name.buffer_size)
+      {
+        state->state++;
+        goto rebranch;
+      }
+
+      parser_input_meta_state_t * input = &meta->input;
+
+      size_t const available = input->length - input->consumed;
+      size_t const needed = state->name.buffer_size - state->chainN_i;
+      size_t const to_copy = MIN(needed, available);
+      memcpy(&state->name.buffer, &meta->input.src[input->consumed], to_copy);
+      state->chainN_i += to_copy;
+      input->consumed += to_copy;
+      sub_rv = state->chainN_i == state->name.buffer_size ? PARSE_RV_DONE : PARSE_RV_NEED_MORE;
+      RET_IF_NOT_DONE;
+
+      state->state++;
+    } fallthrough;
+    case 2: {
+      if (state->chainN_i <  state->name.buffer_size)
+      {
+        PRINTF("Should not have gotten here yet\n");
+        THROW(EXC_MEMORY_ERROR);
+      }
+      state->state++;
+      ADD_PROMPT("Chain Name", &state->name, sizeof(state->name), chainname_to_string);
+      RET_IF_PROMPT_FLUSH;
+    } fallthrough;
+    case 3:
+      sub_rv = PARSE_RV_DONE;
+      break;
+  }
+  return sub_rv;
+}
+
+void init_CreateChainTransaction(struct CreateChainTransactionState *const state) {
+  state->state = 0;
+  state->fxid_i = 0;
+  INIT_SUBPARSER(id32State, Id32);
+}
+
+enum parse_rv parse_CreateChainTransaction(
+  struct CreateChainTransactionState *const state,
+  parser_meta_state_t *const meta)
+{
+  enum parse_rv sub_rv = PARSE_RV_INVALID;
+  switch(state->state)
+  {
+    case 0: // Subnet ID
+      CALL_SUBPARSER(id32State, Id32);
+      ADD_PROMPT("Subnet", &state->id32State.val, sizeof(Id32), ids_to_string);
+      state->state++;
+      INIT_SUBPARSER(chainnameState, ChainName);
+      fallthrough;
+    case 1: { // chain name
+      CALL_SUBPARSER(chainnameState, ChainName);
+      PRINTF("Done with Chain Name\n");
+      state->state++;
+      INIT_SUBPARSER(id32State, Id32);
+    } fallthrough;
+    case 2: {
+      CALL_SUBPARSER(id32State, Id32);
+      //PRINTF("VM ID: %.*h\n", 32, state->id32State.buf);
+      ADD_PROMPT("VM ID", &state->id32State.val, sizeof(Id32), ids_to_string);
+      state->state++;
+      INIT_SUBPARSER(uint32State, uint32_t);
+      RET_IF_PROMPT_FLUSH;
+    } fallthrough;
+    case 3: {
+      CALL_SUBPARSER(uint32State, uint32_t);
+      PRINTF("Num of fxids\n");
+      state->fxid_n = state->uint32State.val;
+      state->state++;
+      INIT_SUBPARSER(id32State, Id32);
+    } fallthrough;
+    case 4: {
+      if(state->fxid_i == state->fxid_n)
+      {
+        state->state++;
+        INIT_SUBPARSER(genesisState, Genesis);
+        break;
+      }
+      do
+      {
+        // loop invariant
+        if(state->fxid_i == state->fxid_n)
+        {
+          THROW(EXC_MEMORY_ERROR);
+        }
+
+        CALL_SUBPARSER(id32State, Id32);
+
+        PRINTF("FX ID: %.*h\n", 32, state->id32State.buf);
+
+        state->fxid_i++;
+        if(state->fxid_i < state->fxid_n)
+        {
+          INIT_SUBPARSER(id32State, Id32);
+          continue;
+        }
+        else
+        {
+          state->state++;
+          INIT_SUBPARSER(genesisState, Genesis);
+          break;
+        }
+      } while(false);
+    } fallthrough;
+    case 5: {
+      CALL_SUBPARSER(genesisState, Genesis);
+      state->state++;
+      INIT_SUBPARSER(subnetauthState, SubnetAuth);
+    } fallthrough;
+    case 6: {
+      CALL_SUBPARSER(subnetauthState, SubnetAuth);
+      state->state++;
+    } fallthrough;
+    case 7:
+      sub_rv = PARSE_RV_DONE;
+  }
+  return sub_rv;
+}
+
 
 static char const transactionLabel[] = "Transaction";
 static char const importLabel[] = "Import";
 static char const exportLabel[] = "Export";
 static char const validateLabel[] = "Add Validator";
 static char const validatesnLabel[] = "Add Subnet Validator";
+static char const createchainLabel[] = "Create Chain";
 static char const delegateLabel[] = "Add Delegator";
 static char const createsubnetLabel[] = "Create Subnet";
 
@@ -1422,6 +1661,7 @@ static label_t type_id_to_label(union transaction_type_id_t type_id, enum chain_
     case TRANSACTION_P_CHAIN_TYPE_ID_EXPORT: return LABEL(export);
     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR: return LABEL(validate);
     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR: return LABEL(validatesn);
+    case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_CHAIN: return LABEL(createchain);
     case TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR: return LABEL(delegate);
     case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_SUBNET: return LABEL(createsubnet);
     default:; // throws below
@@ -1520,6 +1760,9 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
               case TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR:
                 INIT_SUBPARSER(addSNValidatorTxState, AddSNValidatorTransaction);
                 break;
+              case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_CHAIN:
+                INIT_SUBPARSER(createChainTxState, CreateChainTransaction);
+                break;
               case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_SUBNET:
                 INIT_SUBPARSER(createSubnetTxState, CreateSubnetTransaction);
                 break;
@@ -1570,6 +1813,9 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
               case TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR:
                 CALL_SUBPARSER_BREAK(addSNValidatorTxState, AddSNValidatorTransaction);
                 break;
+              case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_CHAIN:
+                CALL_SUBPARSER_BREAK(createChainTxState, CreateChainTransaction);
+                break;
               case TRANSACTION_P_CHAIN_TYPE_ID_CREATE_SUBNET:
                 CALL_SUBPARSER_BREAK(createSubnetTxState, CreateSubnetTransaction);
                 break;
@@ -1617,7 +1863,7 @@ enum parse_rv parseTransaction(struct TransactionState *const state, parser_meta
     if (meta->input.consumed > start_consumed) {
         size_t consume_next = meta->input.consumed - start_consumed;
         PRINTF("Hash %d bytes of input\n", consume_next);
-        update_transaction_hash(&state->hash_state, &meta->input.src[start_consumed], consume_next);
+        update_hash(&state->hash_state, &meta->input.src[start_consumed], consume_next);
     }
     PRINTF("Consumed %d bytes of input so far\n", meta->input.consumed);
     return sub_rv;

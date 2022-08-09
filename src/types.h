@@ -76,6 +76,8 @@ static inline bool bip32_paths_eq(bip32_path_t volatile const *const a, bip32_pa
 
 #define SIGN_HASH_SIZE 32 // TODO: Rename or use a different constant.
 
+typedef uint8_t sign_hash_t[SIGN_HASH_SIZE];
+
 #define MAX_SCREEN_COUNT 7 // Current maximum usage
 #define PROMPT_WIDTH     17
 #define VALUE_WIDTH      256 // Needs to hold an assetCall prompt

@@ -101,6 +101,7 @@ struct SubnetAuth_state {
   };
 };
 
+
 struct StakeableLockOutput_state {
     int state;
     uint64_t locktime;
@@ -121,6 +122,41 @@ struct Output_state {
 };
 
 DEFINE_FIXED(blockchain_id_t);
+
+#define GEN_HASH_SIZE 32
+
+typedef uint8_t genhash_t[GEN_HASH_SIZE];
+
+struct Genesis_state {
+  int state;
+  union {
+    struct uint32_t_state gen_n_state;
+    struct {
+      size_t gen_n;
+      size_t gen_i;
+      cx_sha256_t genhash_state;
+    };
+  };
+};
+
+#define CHAIN_NAME_MAX_SIZE 128
+
+typedef struct {
+    size_t buffer_size;
+    uint8_t buffer[CHAIN_NAME_MAX_SIZE];
+} chainname_prompt_t;
+
+struct ChainName_state{
+  int state;
+  union {
+    struct uint16_t_state uint16State;
+    struct {
+      chainname_prompt_t name;
+      uint16_t chainN_i;
+    };
+  };
+};
+
 
 struct TransferableOutput_state {
     int state;
@@ -320,6 +356,19 @@ struct AddDelegatorTransactionState {
   };
 };
 
+struct CreateChainTransactionState {
+  int state;
+  uint32_t fxid_n;
+  uint32_t fxid_i;
+  union {
+        struct uint32_t_state uint32State;
+        struct Id32_state id32State;
+        struct ChainName_state  chainnameState;
+        struct Genesis_state genesisState;
+        struct SubnetAuth_state subnetauthState;
+  };
+};
+
 struct TransactionState {
   int state;
   uint32_t type;
@@ -333,6 +382,7 @@ struct TransactionState {
     struct ExportTransactionState exportTxState;
     struct AddValidatorTransactionState addValidatorTxState;
     struct AddSNValidatorTransactionState addSNValidatorTxState;
+    struct CreateChainTransactionState createChainTxState;
     struct CreateSubnetTransactionState createSubnetTxState;
     struct AddDelegatorTransactionState addDelegatorTxState;
     struct CChainImportTransactionState cChainImportState;
@@ -375,6 +425,10 @@ typedef struct {
 } address_prompt_t;
 
 typedef struct {
+    uint8_t buffer[GEN_HASH_SIZE];
+} gendata_prompt_t;
+
+typedef struct {
     uint64_t amount;
     uint64_t until;
 } locked_prompt_t;
@@ -405,6 +459,7 @@ enum transaction_p_chain_type_id_t {
     TRANSACTION_P_CHAIN_TYPE_ID_ADD_VALIDATOR    = 0x0c,
     TRANSACTION_P_CHAIN_TYPE_ID_ADD_DELEGATOR    = 0x0e,
     TRANSACTION_P_CHAIN_TYPE_ID_ADD_SN_VALIDATOR = 0x0d,
+    TRANSACTION_P_CHAIN_TYPE_ID_CREATE_CHAIN     = 0x0f,
     TRANSACTION_P_CHAIN_TYPE_ID_CREATE_SUBNET    = 0x10,
     TRANSACTION_P_CHAIN_TYPE_ID_IMPORT           = 0x11,
     TRANSACTION_P_CHAIN_TYPE_ID_EXPORT           = 0x12
