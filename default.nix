@@ -85,8 +85,11 @@ let
       # same syntax. It also expects a C compiler to not complain about extra
       # args, do C pre-processing, etc. We could get clang to use GNU as, but
       # we'll just use GCC as they presumably do for this.
+      #
+      # Also assembler rule is broken not creating OBJ dir.
       setAssembler = ''
         export AS=${ledgerPkgs.gccStdenv.cc}/bin/${ledgerPkgs.clangStdenv.cc.targetPrefix}gcc
+        mkdir obj
       '';
 
       app = ledgerPkgs.lldClangStdenv.mkDerivation {
