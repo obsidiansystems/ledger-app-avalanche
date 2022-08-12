@@ -23,7 +23,7 @@ export const makeAva = async () => {
   return new Ava(transport);
 };
 
-export const APP_VERSION: string = "0.6.0";
+export const APP_VERSION: string = process.env.APPVERSION || (() => { throw "app version unknown"; })();
 
 export const ignoredScreens: string[] = [
   "W e l c o m e",

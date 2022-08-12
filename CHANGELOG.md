@@ -1,6 +1,13 @@
 # Avalanche Hardware Wallet for Ledger
 
-## WIP 0.6.0
+## WIP 0.6.1
+
+* Support "Create Chain" and "Creat Subnet transactions.
+* Improve batching support, making the transaction parsing more robust in the process.
+* Bump SDK to 2.1.
+* Revamp test suite to use non-deprecated method of interacting with speculos.
+
+## 0.6.0
 
 * More P <-> X interopt is supported.
 * Prompts are now batched for easier usage.

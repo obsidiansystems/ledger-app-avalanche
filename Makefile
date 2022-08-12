@@ -12,7 +12,7 @@ GIT_DESCRIBE ?= $(shell git describe --tags --abbrev=8 --always --long --dirty 2
 VERSION_TAG ?= $(shell echo "$(GIT_DESCRIBE)" | cut -f1 -d-)
 APPVERSION_M=0
 APPVERSION_N=6
-APPVERSION_P=0
+APPVERSION_P=1
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 
 # Only warn about version tags if specified/inferred
@@ -195,6 +195,7 @@ watch-test:
 test: tests/*.ts tests/package.json bin/app.elf
 	LEDGER_APP=bin/app.elf \
 		PROMPT_MAX_BATCH_SIZE=$(PROMPT_MAX_BATCH_SIZE) \
+		APPVERSION=$(APPVERSION) \
 		mocha-wrapper tests
 
 test-no-nix: tests/node_packages tests/*.ts tests/package.json bin/app.elf
