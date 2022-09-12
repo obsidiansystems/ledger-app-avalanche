@@ -254,7 +254,7 @@ let
          export CCC_CXX=$CXX
        '';
        makeFlags = old.makeFlags or []
-         ++ [ "CC=${pkgs.clangAnalyzer}/libexec/ccc-analyzer" ];
+         ++ [ "CC=${pkgs.clang-analyzer}/libexec/ccc-analyzer" ];
        installPhase = ''
         {
           echo "<html><title>Analyzer Report</title><body><h1>Clang Static Analyzer Results</h1>"
