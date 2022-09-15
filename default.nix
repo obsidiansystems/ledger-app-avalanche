@@ -1,4 +1,7 @@
-{ alamgu ? import ./nix/dep/alamgu {}
+{ alamgu ? import ./nix/dep/alamgu {
+    # Until staging-22.05 is merged, this is one backport.
+    pkgsSrc = import ./nix/dep/nixpkgs/thunk.nix;
+  }
 , gitDescribe ? "TEST-dirty"
 , debug ? false
 , runTest ? true

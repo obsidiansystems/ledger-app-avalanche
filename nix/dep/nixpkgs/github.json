@@ -1,0 +1,8 @@
+{
+  "owner": "obsidiansystems",
+  "repo": "nixpkgs",
+  "branch": "nixpkgs-22.05-ledger-app-avalanche-1",
+  "private": false,
+  "rev": "1854ebf9e3280664e1112c7dfd36bbcc8050fef5",
+  "sha256": "0j5ac39p8rfiagsqf2szdwhdvghhzfkw31ign684hq3pa6f78f0h"
+}
