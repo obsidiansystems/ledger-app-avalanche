@@ -33,6 +33,7 @@ let
     {
       s = rec {
         name = "s";
+        inherit (alamgu.perDevice.nanos) ledgerPkgs;
         sdk = patchSDKBinBash "nanos-secure-sdk" (sources.nanos-secure-sdk);
         target = "TARGET_NANOS";
         targetId = "0x31100004";
@@ -45,6 +46,7 @@ let
       };
       x = rec {
         name = "x";
+        inherit (alamgu.perDevice.nanox) ledgerPkgs;
         sdk = patchSDKBinBash "ledger-nanox-sdk" (sources.ledger-nanox-sdk);
         target = "TARGET_NANOX";
         targetId = "0x33000004";
@@ -83,6 +85,8 @@ let
 
   build = bolos:
     let
+      inherit (bolos) ledgerPkgs;
+
       # We want GNU as not LLVM as, which doesn't something completely
       # different, or Clang's internal assembler which doesn't take quite the
       # same syntax. It also expects a C compiler to not complain about extra
