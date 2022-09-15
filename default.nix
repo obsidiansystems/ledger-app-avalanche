@@ -8,7 +8,7 @@
 }:
 let
   inherit (alamgu)
-    pkgs ledgerPkgs
+    pkgs
     gitignoreNix gitignoreSource
     usbtool
     speculos;
