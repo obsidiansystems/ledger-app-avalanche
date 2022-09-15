@@ -1,8 +1,8 @@
 {
   "owner": "obsidiansystems",
   "repo": "yarn2nix-profpatsch",
-  "branch": "alamgu-1",
+  "branch": "jg-at-fix",
   "private": false,
-  "rev": "cc893f3de7aade367263a4a5f9241590c6ee8ab4",
-  "sha256": "07njliy2f721ycqh097msi94z7b24xiff2y5k6spvg300qsjygfz"
+  "rev": "eec23f135ad396f2b774fb4e3059b3c0fbefaa8d",
+  "sha256": "17nwmnxl70hsdrxzrxsabd0n79v46gk9x727lvk26y0acprv6fsj"
 }

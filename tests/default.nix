@@ -59,7 +59,7 @@ let
         "usb@1.8.8" = {
           inherit (super."usb@1.8.8") key;
           drv = super."usb@1.8.8".drv.overrideAttrs (attrs: {
-            nativeBuildInputs = [ pkgs.python3 pkgs.systemd pkgs.v8_5_x nodejs pkgs.libusb1 ];
+            nativeBuildInputs = [ pkgs.python3 pkgs.systemd pkgs.v8 nodejs pkgs.libusb1 ];
             dontBuild = false;
             buildPhase = ''
               ln -s ${nixLib.linkNodeDeps { name=attrs.name; dependencies=attrs.passthru.nodeBuildInputs; }} node_modules
@@ -71,7 +71,7 @@ let
         "node-hid@1.3.0" = {
           inherit (super."node-hid@1.3.0") key;
           drv = super."node-hid@1.3.0".drv.overrideAttrs (attrs: {
-            nativeBuildInputs = [ pkgs.python3 pkgs.systemd pkgs.v8_5_x nodejs pkgs.libusb1 pkgs.pkg-config ];
+            nativeBuildInputs = [ pkgs.python3 pkgs.systemd pkgs.v8 nodejs pkgs.libusb1 pkgs.pkg-config ];
             dontBuild = false;
             buildPhase = ''
               ln -s ${nixLib.linkNodeDeps { name=attrs.name; dependencies=attrs.passthru.nodeBuildInputs; }} node_modules
